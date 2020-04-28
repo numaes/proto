@@ -5,10 +5,10 @@
  *      Author: gamarino
  */
 
-#include "proto.h"
-#include "proto_internal.h"
+#include "../headers/proto.h"
+#include "../headers/proto_internal.h"
 
-void setTreeStatistics(TreeNode *self) {
+void setTreeStatistics(TreeCell *self) {
 	if (!self->previous && !self->next) {
 		self->count = 1;
 		self->height = 1;
@@ -29,7 +29,7 @@ void setTreeStatistics(TreeNode *self) {
 	}
 }
 
-void int getBalance(TreeNode *self) {
+int getBalance(TreeCell *self) {
 	if (self->next && self->previous)
 		return self->previous->height - self->next->height;
 	else if (self->previous)
@@ -42,11 +42,11 @@ void int getBalance(TreeNode *self) {
 
 // A utility function to right rotate subtree rooted with y
 // See the diagram given above.
-TreeNode *rightRotate(TreeNode *n)
+TreeCell *rightRotate(ProtoContext *context, TreeCell *n)
 {
-	TreeNode *y = n->clone();
-    TreeNode *x = y->previous->clone();
-    TreeNode *T2 = x->next;
+	TreeCell *y = n->clone(context);
+    TreeCell *x = y->previous->clone(context);
+    TreeCell *T2 = x->next;
 
     // Perform rotation
     x->previous = y;
@@ -62,11 +62,11 @@ TreeNode *rightRotate(TreeNode *n)
 
 // A utility function to left rotate subtree rooted with x
 // See the diagram given above.
-TreeNode *leftRotate(TreeNode *n)
+TreeCell *leftRotate(ProtoContext *context, TreeCell *n)
 {
-	TreeNode *x = n->clone();
-    TreeNode *y = x->next->clone();
-    TreeNode *T2 = y->previous;
+	TreeCell *x = n->clone(context);
+    TreeCell *y = x->next->clone(context);
+    TreeCell *T2 = y->previous;
 
     // Perform rotation
     y->previous = x;
@@ -81,7 +81,12 @@ TreeNode *leftRotate(TreeNode *n)
 }
 
 
-TreeNode::TreeNode(ProtoObject *key, TreeNode *previous = NULL, TreeNode *next = NULL) {
+TreeCell::TreeCell(
+	ProtoContext *context, 
+	ProtoObject *key, 
+	TreeCell *previous = NULL, 
+	TreeCell *next = NULL
+):Cell() {
 	if (key) {
 		this->key = key;
 		this->previous = previous;
@@ -97,40 +102,31 @@ TreeNode::TreeNode(ProtoObject *key, TreeNode *previous = NULL, TreeNode *next =
 	}
 }
 
-void TreeNode::processReferences(void *callback(Cell *)) {
-	if (this->previous)
-		(*callback)(this->previous);
-	if (this->next)
-		(*callback)(this->next);
-}
+void TreeCell::processReferences(
+	ProtoContext *context, 
+	void (*method)(ProtoContext *context, Cell *cell)) {
 
-void TreeNode::beforeDeleting() {
-
-}
-
-TreeNode *TreeNode::clone() {
-	return new TreeNode(this->key, this->previous, this->next);
-}
-
-TreeNode *TreeNode::get(ProtoObject *key) {
-	TreeNode *node = this;
-
-	if (!this->key)
-		return NULL;
-
-	while (node) {
-		if (node->key == key)
-			return this;
-		if (((int) node->key) < ((int) key))
-			node = node->next;
-		else
-			node = node->previous;
+	if (this->previous) {
+		this->previous->processReferences(
+			context,
+			method
+		);
 	}
-	return NULL;
+
+	if (this->next)
+		this->previous->processReferences(
+			context,
+			method
+		);
+
+	TreeCell *thisNode = this;
+
+	method(context, this);
+
 }
 
-int TreeNode::has(ProtoObject *key) {
-	TreeNode *node = this;
+int TreeCell::has(ProtoContext *context, ProtoObject *key) {
+	TreeCell *node = this;
 
 	if (!this->key)
 		return FALSE;
@@ -146,9 +142,30 @@ int TreeNode::has(ProtoObject *key) {
 	return FALSE;
 }
 
-TreeNode *TreeNode::add(ProtoObject *key) {
-	TreeNode *newNode;
-	TreeNode *newAux;
+TreeCell *TreeCell::clone(ProtoContext *context) {
+	return new(context) TreeCell(this->key, this->previous, this->next);
+}
+
+TreeCell *TreeCell::getAt(ProtoContext *context, ProtoObject *key) {
+	TreeCell *node = this;
+
+	if (!this->key)
+		return NULL;
+
+	while (node) {
+		if (node->key == key)
+			return this;
+		if (((int) node->key) < ((int) key))
+			node = node->next;
+		else
+			node = node->previous;
+	}
+	return NULL;
+}
+
+TreeCell *TreeCell::add(ProtoObject *key) {
+	TreeCell *newNode;
+	TreeCell *newAux;
 	int cmp;
 
 	newNode = this->clone();
@@ -209,10 +226,10 @@ TreeNode *TreeNode::add(ProtoObject *key) {
 	return newNode;
 }
 
-TreeNode *TreeNode::remove(ProtoObject *key) {
+TreeCell *TreeCell::remove(ProtoObject *key) {
 	// STEP 1: PERFORM STANDARD BST DELETE
 
-	TreeNode *newRoot = this;
+	TreeCell *newRoot = this;
 
 	// Empty tree?
 	if (!this->key)
@@ -240,11 +257,11 @@ TreeNode *TreeNode::remove(ProtoObject *key) {
 		// node with only one child or no child
 		if (!this->previous || !this->next)
 		{
-			TreeNode *temp = this->previous ? this->previous :
+			TreeCell *temp = this->previous ? this->previous :
 											  this->next;
 			// No child case
 			if (!temp) {
-				TreeNode *emptyTree = this->clone();
+				TreeCell *emptyTree = this->clone();
 				emptyTree->key = NULL;
 				emptyTree->previous = NULL;
 				emptyTree->next = NULL;
@@ -257,7 +274,7 @@ TreeNode *TreeNode::remove(ProtoObject *key) {
 		{
 			// node with two children: Get the inorder
 			// successor (smallest in the right subtree)
-			TreeNode *s = this->next;
+			TreeCell *s = this->next;
 			while (s->previous)
 				s = s->previous;
 			newRoot = s->clone();

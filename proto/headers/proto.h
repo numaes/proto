@@ -35,14 +35,14 @@ typedef struct {
 	ProtoObject *value;
 } KeywordParameter;
 
-typedef ProtoObject *ProtoMethod(
-	ProtoContext *context,
-	ProtoObject *self,
-	ProtoObject *object,
-	int positionalCount,
-	int keywordCount,
-	KeywordParameter **keywordParameters,
-	ProtoObject **positionalParameters,
+typedef ProtoObject *(*ProtoMethod)(
+	ProtoContext *, 		// context
+	ProtoObject *, 			// self
+	ProtoObject *, 			// object
+	int, 					// positionalCount
+	int, 					// keywordCount
+	KeywordParameter **, 	// keywordParameters
+	ProtoObject **		 	// positionalParameters
 );
 
 class ProtoSpace {
@@ -66,6 +66,8 @@ public:
 	ProtoObject *threadPrototype;
 
 	ProtoObject *rootObject;
+
+	ProtoObject *getLiteralFromString(char *zeroTerminatedUtf8String)
 };
 
 class ProtoContext {
@@ -81,13 +83,14 @@ public:
 	// Constructors for base types, here to get the right context on invoke
 	ProtoObject *fromInteger(int value);
 	ProtoObject *fromDouble(double value);
-	ProtoObject *fromUTF8Char(char *utf8Value);
-	ProtoObject *fromUTF8String(char *utf8Value);
+	ProtoObject *fromUTF8Char(char *utf8OneCharString);
+	ProtoObject *fromUTF8String(char *zeroTerminatedUtf8String);
 	ProtoObject *fromMethod(ProtoMethod *method);
 	ProtoObject *fromPointer(void *pointer);
 	ProtoObject *fromBoolean(BOOLEAN value);
 	ProtoObject *fromByte(char c);
-	ProtoObject *fromString(const char *c);
+	ProtoObject *fromString(const char *zeroTerminatedUtf8String);
+	ProtoObject *literalFromString(const char *zeroTerminatedUtf8String);
 
 	ProtoObject *newMutable(ProtoObject *value=PROTO_NONE);
 };
