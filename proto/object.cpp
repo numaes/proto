@@ -16,18 +16,19 @@ void Object::beforeDeleting() {
 
 }
 
-Object::Object(Object *newParent, DictNode *currentValue = NULL, BOOLEAN isMutant=PROTO_FALSE) {
-	this->parent = newParent;
-	this->isMutant = isMutant;
+Object::Object(ProtoSpace *space, ParentLink *newParent, DictNode *currentValue = NULL, int isMutable=PROTO_FALSE) {
+	this->space = space,
+	this->parent = ParentLink(newParent, NULL);
+	this->isMutable = isMutable;
 	this->currentValue = currentValue;
 }
 
 ProtoObject *Object::clone() {
-	return new Object(this->parent, this->currentValue, this->isMutant);
+	return new Object(this->space, this->parent, this->currentValue, this->isMutable);
 }
 
 ProtoObject *Object::newChild() {
-	Object *newObject = new Object(this->parent, NULL, this->isMutant);
+	Object *newObject = new Object(this->space, ParentLink(this->space, this), DictNode(this->space), this->isMutable);
 	return newObject;
 }
 
@@ -35,7 +36,7 @@ ProtoObject *Object::getAttribute(ProtoObject *name) {
 	if (this->currentValue) {
 		Object *currentObject = this;
 		ParentLink *currentPL;
-		BOOLEAN hasObject;
+		int hasObject;
 
 		do {
 			hasObject = currentObject->hasAttribute(name);
@@ -57,7 +58,7 @@ ProtoObject *Object::hasAttribute(ProtoObject *name) {
 	if (this->currentValue) {
 		Object *currentObject = this;
 		ParentLink *currentPL;
-		BOOLEAN hasObject;
+		int hasObject;
 
 		do {
 			if (currentObject->currentValue)
@@ -81,15 +82,16 @@ ProtoObject *Object::hasAttribute(ProtoObject *name) {
 ProtoObject *Object::setAttribute(ProtoObject *name, ProtoObject *value) {
 	Object *returnObject;
 
-	if (this->isMutant) {
+	if (this->isMutable) {
 		returnObject = this;
 		returnObject->currentValue = returnObject->currentValue->at(name, value);
 	}
 	else {
-		BOOLEAN mutant = this->isMutant;
-		if (!mutant && value)
-			mutant = value->isMutable();
-		returnObject = new Object(this->parent, TreeNode(value), mutant);
+		int mutableMark;
+		mutableMark = this->isMutable;
+		if (!mutableMark && value)
+			mutableMark = value->isMutable();
+		returnObject = new Object(this->parent, TreeNode(value), mutableMark);
 	}
 	return returnObject;
 }
@@ -105,14 +107,14 @@ ProtoObject *Object::getParents() {
 ProtoObject *Object::addParent(ProtoObject *newParent) {
 	Object *returnObject;
 
-	if (this->isMutant) {
+	if (this->isMutable) {
 		this->parent = new ParentLink(this->parent, newParent);
 		return this;
 	}
 	else
 		return new Object(new ParentLink(this->parent, newParent),
 						  this->currentValue,
-						  this->isMutant);
+						  this->isMutable);
 }
 
 ProtoObject *Object::getHash() {
@@ -123,12 +125,13 @@ ProtoObject *Object::isInstanceOf(ProtoObject *prototype) {
 
 }
 
-ProtoObject *Object::isModifiable() {
-	return this->isMutant;
+ProtoObject *Object::isMutable() {
+	return this->isMutable;
 }
 
-ProtoObject *Object::activate(ProtoObject *unnamedParameters,
-					          ProtoObject *keywordParameters) {
+ProtoObject *Object::call(ProtoObject *method,
+						  ProtoObject *unnamedParameters,
+					      ProtoObject *keywordParameters) {
 
 }
 

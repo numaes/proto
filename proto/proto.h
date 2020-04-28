@@ -1,8 +1,8 @@
 /*
  * proto.h
  *
- *  Created on: 20 de jun. de 2016
- *      Author: gamarino
+ *  Created on: November, 2017
+ *      Author: Gustavo Adrian Marino <gamarino@numaes.com>
  */
 
 #ifndef PROTO_H_
@@ -24,81 +24,170 @@
 #define NULL 0L
 #endif
 
+#define PROTO_NONE ((ProtoObject *) NULL)
+
 class ProtoObject;
 
-struct ProtoParameterDescription{
-	ProtoObject	*name;
-	ProtoObject *defaultValue;
-};
+class ProtoContext;
 
-struct ProtoParametersDescription{
-	int parameterCount;
-	struct ProtoParameterDescription *parameters;
-};
+typedef struct {
+	ProtoObject *keyword;
+	ProtoObject *value;
+} KeywordParameter;
 
 typedef ProtoObject *ProtoMethod(
-		ProtoObject *self,
-		ProtoObject *unnamedPars,
-		ProtoObject *keywordPars
+	ProtoContext *context,
+	ProtoObject *self,
+	ProtoObject *object,
+	int positionalCount,
+	int keywordCount,
+	KeywordParameter **keywordParameters,
+	ProtoObject **positionalParameters,
 );
 
 class ProtoSpace {
 public:
-	void ProtoSpace(ProtoMM *memoryManager);
-	virtual void ~ProtoSpace();
+	virtual ~ProtoSpace();
+	ProtoSpace();
 
-	virtual ProtoObject *getObject();
-	virtual ProtoObject *createThread(void *runFunction(ProtoObject *parameters));
+	ProtoObject	*objectPrototype;
+	ProtoObject *integerPrototype;
+	ProtoObject *charPrototype;
+	ProtoObject *nonePrototype;
+	ProtoObject *methodPrototype;
+	ProtoObject *bufferPrototype;
+	ProtoObject *pointerPrototype;
+	ProtoObject *booleanPrototype;
+	ProtoObject *doublePrototype;
+	ProtoObject *datePrototype;
+	ProtoObject *timestampPrototype;
+	ProtoObject *timedeltaPrototype;
+
+	ProtoObject *threadPrototype;
+
+	ProtoObject *rootObject;
+};
+
+class ProtoContext {
+public:
+	ProtoContext(ProtoContext *parentEnvironment = NULL);
+
+	// Automatic mini GC on destructor
+	virtual ~ProtoContext();
+
+	ProtoContext *newContext();
+	void returnValue(ProtoObject *value=PROTO_NONE);
+
+	// Constructors for base types, here to get the right context on invoke
+	ProtoObject *fromInteger(int value);
+	ProtoObject *fromDouble(double value);
+	ProtoObject *fromUTF8Char(char *utf8Value);
+	ProtoObject *fromUTF8String(char *utf8Value);
+	ProtoObject *fromMethod(ProtoMethod *method);
+	ProtoObject *fromPointer(void *pointer);
+	ProtoObject *fromBoolean(BOOLEAN value);
+	ProtoObject *fromByte(char c);
+	ProtoObject *fromString(const char *c);
+
+	ProtoObject *newMutable(ProtoObject *value=PROTO_NONE);
 };
 
 class ProtoObject {
 public:
-	ProtoObject *clone();
-	ProtoObject *newChild();
+	ProtoObject *clone(ProtoContext *c);
+	ProtoObject *newChild(ProtoContext *c);
 
-	ProtoObject *getAttribute(ProtoObject *name);
-	ProtoObject *hasAttribute(ProtoObject *name);
+	ProtoObject *getAttribute(ProtoContext *c, ProtoObject *name);
+	ProtoObject *hasAttribute(ProtoContext *c, ProtoObject *name);
+	ProtoObject *hasOwnAttribute(ProtoContext *c, ProtoObject *name);
+	ProtoObject *setAttribute(ProtoContext *c, ProtoObject *name, ProtoObject *value);
 
-	ProtoObject *setAttribute(ProtoObject *name, ProtoObject *value);
+	ProtoObject *getAttributes(ProtoContext *c);
+	ProtoObject *getOwnAttributes(ProtoContext *c);
+	ProtoObject *getParent(ProtoContext *c);
 
-	ProtoObject *getAttributes();
-	ProtoObject *getParents();
-
-	ProtoObject *addParent(ProtoObject *newParent);
-
+	ProtoObject *addParent(ProtoContext *c, ProtoObject *newParent);
+	ProtoSpace	*getSpace(ProtoContext *c);
 	ProtoObject *getHash();
-	ProtoObject *isInstanceOf(ProtoObject *prototype);
-	ProtoObject *isMutable();
-	ProtoObject *asMutable();
-	ProtoObject *asNonmutable();
+	ProtoObject *isInstanceOf(ProtoContext *c, ProtoObject *prototype);
 
-	ProtoObject *activate(ProtoObject *unnamedParameters,
-			              ProtoObject *keywordParameters);
+	ProtoObject *call(ProtoContext *c,
+					  ProtoObject *method,
+					  ProtoObject *unnamedParametersList,
+			          ProtoObject *keywordParametersDict);
 
-	ProtoObject *fromInteger(int value);
-	ProtoObject *fromDouble(double value);
-	ProtoObject *fromLiteral(char *utf8Value);
-	ProtoObject *fromMethod(ProtoMethod *method,
-							ProtoParametersDescription *pars);
-	ProtoObject *fromPointer(void *pointer);
-	ProtoObject *fromBuffer(char *buffer, int length);
-	ProtoObject *fromBoolean(int value);
+	// Only for mutables
+	ProtoObject *currentValue();
+	ProtoObject *setValue(ProtoObject *currentValue, ProtoObject *newValue);
+
+
+	// Utilities for special values
 
 	int         asInteger();
 	double      asDouble();
-	void        asLiteral(char *utf8Buffer, int maxLength);
-	int         asLiteralLength();
+	int			asUTF8Char();
 	ProtoMethod *asMethod();
 	void        *asPointer();
-	char		*asBufferPointer();
-	int			*asBufferLength();
-	int         *asBoolean();
+	BOOLEAN     *asBoolean();
+	char		*asByte();
 
-	void		exitThread(int exitCode);
+	ProtoObject *isMutable();
+	ProtoObject	*isInteger();
+	ProtoObject	*isDouble();
+	ProtoObject	*isUTF8Char();
+	ProtoObject	*isMethod();
+	ProtoObject	*isPointer();
+	ProtoObject	*isBoolean();
+	ProtoObject	*isByte();
 };
 
-#define PROTO_TRUE  0x00000000000034
-#define PROTO_FALSE 0x00000000000024
-#define PROTO_NONE  0x0
+class ProtoMutableObject:ProtoObject {
+public:
+	ProtoObject	*mutableGetAt(ProtoContext *c, ProtoObject *key);
+	ProtoObject *mutableHas(ProtoObject *key);
+	void *mutableSetAt(ProtoObject *key, ProtoObject *value);
+};
+
+class ProtoExternalPointer:ProtoObject {
+public:
+	void	*getPointer();
+	static	ProtoObject *fromPointer(void *value);
+};
+
+class ProtoSmallInt:ProtoObject {
+public:
+	int		asInt();
+	static	ProtoObject *fromInt(int value);
+};
+
+class ProtoSmallDouble:ProtoObject {
+public:
+	double	asDouble();
+	static	ProtoObject *fromDouble(double value);
+};
+
+class ProtoMethod:ProtoObject {
+public:
+	ProtoMethod	*asMethod();
+	static	ProtoObject *fromMethod(ProtoMethod *value);
+};
+
+class ProtoBoolean:ProtoObject {
+public:
+	int		asBoolean();
+	static	ProtoObject *fromBoolean(int value);
+};
+
+class ProtoByte:ProtoObject {
+public:
+	int		asByte();
+	static	ProtoObject *fromByte(int value);
+};
+
+class ProtoPointer:ProtoObject {
+public:
+	void	*asPointer();
+	static	ProtoObject *fromByte(int value);
+};
 
 #endif /* PROTO_H_ */
