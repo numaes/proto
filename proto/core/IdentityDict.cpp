@@ -82,7 +82,6 @@ TreeCell *leftRotate(ProtoContext *context, TreeCell *n)
 
 
 TreeCell::TreeCell(
-	ProtoContext *context, 
 	ProtoObject *key, 
 	TreeCell *previous = NULL, 
 	TreeCell *next = NULL

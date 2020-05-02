@@ -47,8 +47,10 @@ typedef ProtoObject *(*ProtoMethod)(
 
 class ProtoSpace {
 public:
-	virtual ~ProtoSpace();
 	ProtoSpace();
+	virtual ~ProtoSpace();
+
+	void * operator new(size_t size);
 
 	ProtoObject	*objectPrototype;
 	ProtoObject *integerPrototype;
@@ -67,17 +69,18 @@ public:
 
 	ProtoObject *rootObject;
 
-	ProtoObject *getLiteralFromString(char *zeroTerminatedUtf8String)
+	ProtoObject *getLiteralFromString(ProtoContext *context, char *zeroTerminatedUtf8String);
+
+	ProtoThread *getNewThread();
+
+	ProtoObject *getThreads();
 };
 
 class ProtoContext {
 public:
-	ProtoContext(ProtoContext *parentEnvironment = NULL);
+	void *operator new(size_t size);
 
-	// Automatic mini GC on destructor
-	virtual ~ProtoContext();
-
-	ProtoContext *newContext();
+	Cell *allocCell();
 	void returnValue(ProtoObject *value=PROTO_NONE);
 
 	// Constructors for base types, here to get the right context on invoke
@@ -85,14 +88,14 @@ public:
 	ProtoObject *fromDouble(double value);
 	ProtoObject *fromUTF8Char(char *utf8OneCharString);
 	ProtoObject *fromUTF8String(char *zeroTerminatedUtf8String);
-	ProtoObject *fromMethod(ProtoMethod *method);
-	ProtoObject *fromPointer(void *pointer);
+	ProtoObject *fromMethod(ProtoMethod method);
+	ProtoObject *fromBuffer(char *pointer, unsigned long length);
 	ProtoObject *fromBoolean(BOOLEAN value);
 	ProtoObject *fromByte(char c);
-	ProtoObject *fromString(const char *zeroTerminatedUtf8String);
-	ProtoObject *literalFromString(const char *zeroTerminatedUtf8String);
+	ProtoObject *literalFromString(char *zeroTerminatedUtf8String);
 
 	ProtoObject *newMutable(ProtoObject *value=PROTO_NONE);
+
 };
 
 class ProtoObject {
@@ -142,6 +145,17 @@ public:
 	ProtoObject	*isPointer();
 	ProtoObject	*isBoolean();
 	ProtoObject	*isByte();
+
+	// General processing
+	// Apply method recursivelly to all referenced objects, except itself
+    virtual void 	processReferences(
+		ProtoContext *context, 
+		void (*method)(
+			ProtoContext *context, 
+			void *self,
+			ProtoObject *referencedObject
+		)
+	);
 };
 
 class ProtoMutableObject:ProtoObject {

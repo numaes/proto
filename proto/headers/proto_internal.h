@@ -10,8 +10,11 @@
 
 #include "proto.h"
 #include <cstddef>
+#include <atomic>
 
 union ProtoObjectPointer {
+	ProtoObjectPointer() {};
+
 	ProtoObject	*oid;
 	Cell *cell;
 	ProtoMethod methodPointer;
@@ -24,46 +27,52 @@ union ProtoObjectPointer {
 
 	// Pointer tag dependent values
 	struct {
-		signed long pad:3;
+		unsigned long long pointer_tag:3;
 		signed long smallInteger:61;
 	} si;
 	struct {
-		unsigned long pad:3;
+		unsigned long long pointer_tag:3;
 		unsigned long smallDouble:61;
 	} sd;
 	struct {
-		unsigned long pad:3;
+		unsigned long long pointer_tag:3;
 		unsigned long mutableID:61;
 	} mutableObject;
 
 	// Embedded types dependent values
 	struct {
-		char pad;
-		char utfChar[4];
-	} utf8Char;
+		unsigned long long pointer_tag:3;
+		unsigned long long embedded_type:5;
+		unsigned int unicodeValue:32;
+	} unicodeChar;
 	struct {
-		unsigned pad:8;
+		unsigned long long pointer_tag:3;
+		unsigned long long embedded_type:5;
 		unsigned booleanValue:1;
 	} booleanValue;
 	struct {
-		unsigned char pad;
+		unsigned long long pointer_tag:3;
+		unsigned long long embedded_type:5;
 		unsigned char byteData;
 	} byteValue;
 
 	struct {
-		unsigned long pad:8;
+		unsigned long long pointer_tag:3;
+		unsigned long long embedded_type:5;
 		unsigned long timestamp;
 	} timestampValue;
 
 	struct {
-		unsigned pad:8;
+		unsigned long long pointer_tag:3;
+		unsigned long long embedded_type:5;
 		unsigned day:8;
 		unsigned month:8;
 		unsigned year:8;
 	} date;
 
 	struct {
-		long pad:8;
+		unsigned long long pointer_tag:3;
+		unsigned long long embedded_type:5;
 		long timedelta:56;
 	} timedeltaValue;
 
@@ -82,11 +91,11 @@ union ProtoObjectPointer {
 #define POINTER_TAG_SMALLINT      0x03
 #define POINTER_TAG_SMALLDOUBLE   0x04
 #define POINTER_TAG_METHOD        0x05
-#define POINTER_TAG_UNASSIGNED_6  0x06
+#define POINTER_TAG_BYTE_BUFFER   0x06
 #define POINTER_TAG_EMBEDEDVALUE  0x07
 
 #define EMBEDED_TYPE_BOOLEAN      0x00
-#define EMBEDED_TYPE_UTF8CHAR     0x01
+#define EMBEDED_TYPE_UNICODECHAR  0x01
 #define EMBEDED_TYPE_BYTE         0x02
 #define EMBEDED_TYPE_TIMESTAMP    0x03
 #define EMBEDED_TYPE_DATE         0x04
@@ -141,45 +150,51 @@ public:
 // 
 
 class Cell {
-protected:
-	Cell();
 public:
+	Cell();
 	virtual ~Cell();
 
 	void *operator new(size_t size, ProtoContext *context);
 
-    Cell			*nextCell;
-    ProtoContext	*context;
-
 	// Apply method recursivelly to all referenced objects, except itself
     virtual void 	processReferences(
 		ProtoContext *context, 
-		void (*method)(ProtoContext *context, Cell *cell)
+		void (*method)(
+			ProtoContext *context, 
+			void *self,
+			Cell *cell
+		)
 	);
- 
+
+	virtual ProtoObject *getHash(ProtoContext *context);
+	virtual Cell		*clone();
+
+    Cell				*nextCell;
+
 };
 
 // ParentPointers are chains of parent classes used to solve attribute access
-class ParentLink: Cell{
-public:
-	virtual ~ParentLink();
-
+class ParentLink: Cell, ProtoObject {
+protected:
 	ProtoObject *parent;
 	ProtoObject *object;
+
+public:
+	ParentLink(
+		ProtoObject *parent=NULL,
+		ProtoObject *object=NULL
+	);
+
+	virtual ~ParentLink();
+
 };
 
 // Base tree structure used by Dictionaries, Sets and Lists
 // Internal use exclusively
 
-class TreeCell: Cell {
-public:
-	TreeCell(
-		ProtoObject *key, 
-		TreeCell *previous = NULL, 
-		TreeCell *next = NULL
-	);
-	virtual ~TreeCell();
-
+class TreeCell: public Cell {
+protected:
+    ProtoObject		*hash;
 	TreeCell	*previous;
 	TreeCell	*next;
 
@@ -188,192 +203,291 @@ public:
 
 	ProtoObject *key;
 
-    virtual void 	processReferences(
-		ProtoContext *context, 
-		void (*method)(ProtoContext *context, Cell *cell)
+public:
+	TreeCell(
+		ProtoObject *hash,
+		TreeCell *previous=NULL,
+		TreeCell *next=NULL,
+		unsigned long long count=0,
+		unsigned long long height=0,
+		ProtoObject *key=NULL
 	);
 
-	virtual BOOLEAN 	has(ProtoContext *context, ProtoObject *key);
+	virtual ~TreeCell();
 
 	virtual TreeCell    *clone(ProtoContext *context);
+
 };
 
-class ProtoDictCell: TreeCell {
-public:
+class IdentityDict: public TreeCell, public ProtoObject {
+protected:
 	ProtoObject *value;
 
-	virtual ProtoObject	*treeHas(ProtoObject *key);
+public:
+	IdentityDict(
+		ProtoObject *hash=NULL,
+		TreeCell *previous=NULL,
+		TreeCell *next=NULL,
+		unsigned long long count=0,
+		unsigned long long height=0,
+		ProtoObject *key=NULL,
+		ProtoObject *value=NULL
+	);
+	virtual ~IdentityDict();
 
-	virtual TreeCell    *clone();
+	virtual ProtoObject	    *treeHas(ProtoObject *key);
 
-	ProtoObject      *getHash(ProtoContext *context);
+	virtual ProtoObject     *getAt(ProtoContext *context, ProtoObject *key);
+	virtual IdentityDict    *setAt(ProtoContext *context, ProtoObject *key, ProtoObject *value);
+	virtual IdentityDict    *removeAt(ProtoContext *context, ProtoObject *index);
+	virtual BOOLEAN 		has(ProtoContext *context, ProtoObject *key);
+	virtual int				compareWith(ProtoContext *context, IdentityDict *otherDict);
 
-	ProtoDictCell    *getAt(ProtoContext *context, ProtoObject *key);
-	ProtoDictCell    *setAt(ProtoContext *context, ProtoObject *index);
+	virtual unsigned long long getSize(ProtoContext *context);
 
-	ProtoDictCell    *removeAt(ProtoContext *context, ProtoObject *index);
-	ProtoDictCell    *removeFirst(ProtoContext *context);
-	ProtoDictCell    *removeLast(ProtoContext *context);
-
-	ProtoDictCell    *getFirst(ProtoContext *context);
-	ProtoDictCell    *getLast(ProtoContext *context);
-	ProtoDictCell	 *getSlice(ProtoContext *context);
-	unsigned long long getSize(ProtoContext *context);
-
-	void			 *processKeys(ProtoContext *context, ProtoMethod *method);
-	void			 *processValues(ProtoContext *context, ProtoMethod *method);
+	void processElements (
+		ProtoContext *context,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			ProtoObject *element
+		)
+	);
+	void processKeys (
+		ProtoContext *context,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			ProtoObject *element
+		)
+	);
+	void processValues (
+		ProtoContext *context,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			ProtoObject *element
+		)
+	);
 };
 
-class ProtoDict: Cell {
+class ProtoList: public TreeCell, public ProtoObject {
 public:
-	ProtoDictCell	*root;
-	ProtoObject		*hash;
-
-	ProtoObject  	*getHash(ProtoContext *context);
-	ProtoDict    	*getFirst(ProtoContext *context);
-	ProtoDict    	*getLast(ProtoContext *context);
-
-	ProtoDict    	*getAt(ProtoContext *context, ProtoObject *key);
-	ProtoDict    	*setAt(ProtoContext *context, ProtoObject *key, ProtoObject *value);
-	int				cmp(ProtoContext *context, ProtoDict *other);
-
-	ProtoDict    	*removeAt(ProtoContext *context, ProtoObject *index);
-	ProtoDict    	*removeFirst(ProtoContext *context);
-	ProtoDict    	*removeLast(ProtoContext *context);
-
-	void			*processKeys(ProtoContext *context, ProtoMethod *method);
-	void			*processValues(ProtoContext *context, ProtoMethod *method);
+	ProtoList(
+		ProtoObject *hash=NULL,
+		TreeCell *previous=NULL,
+		TreeCell *next=NULL,
+		unsigned long long count=0,
+		unsigned long long height=0,
+		ProtoObject *key=NULL
+	);
+	virtual ~ProtoList();
+	
+	ProtoList   *getAt(ProtoContext *context, ProtoObject *index);
+	ProtoList   *getFirst(ProtoContext *context);
+	ProtoList   *getLast(ProtoContext *context);
+	ProtoList   *getKeys(ProtoContext *context);
+	ProtoList	*getSlice(ProtoContext *context, ProtoObject *from, ProtoObject *to);
 	unsigned long long getSize(ProtoContext *context);
 
-	ProtoList	 	*getItems(ProtoContext *context);
-	ProtoList	 	*getKeys(ProtoContext *context);
-	ProtoList	 	*getValues(ProtoContext *context);
+	ProtoObject	*has(ProtoContext *context, ProtoObject* value);
+	ProtoList 	*setAt(ProtoContext *context, ProtoObject *index, ProtoObject* value);
+	ProtoList 	*removeAt(ProtoContext *context, ProtoObject *index);
+
+	ProtoList  	*appendFirst(ProtoContext *context, ProtoObject* value);
+	ProtoList  	*appendLast(ProtoContext *context, ProtoObject* value);
+
+	ProtoList   *removeAt(ProtoContext *context, ProtoObject *index);
+	ProtoList	*removeFirst(ProtoContext *context);
+	ProtoList	*removeLast(ProtoContext *context);
+	ProtoList	*removeAt(ProtoContext *context, ProtoObject* index);
+	ProtoList  	*removeSlice(ProtoContext *context, ProtoObject *from, ProtoObject *to);
+
+	void		processElements(
+		ProtoContext *context,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			ProtoObject *element
+		)
+	);
+
 };
 
-class ProtoListCell: TreeCell {
+class ProtoSet: public TreeCell, public ProtoObject {
 public:
-	ProtoListCell   *getAt(ProtoContext *context, ProtoObject *index, ProtoObject *value);
-	ProtoListCell   *getFirst(ProtoContext *context);
-	ProtoListCell   *getLast(ProtoContext *context);
-	ProtoListCell   *getKeys(ProtoContext *context);
-	ProtoListCell	*getSlice(ProtoContext *context, ProtoObject *from, ProtoObject *to);
-	unsigned long long getSize(ProtoContext *context);
+	ProtoSet(
+		ProtoObject *hash=NULL,
+		TreeCell *previous=NULL,
+		TreeCell *next=NULL,
+		unsigned long long count=0,
+		unsigned long long height=0,
+		ProtoObject *key=NULL
+	);
+	virtual ~ProtoSet();
 
+	ProtoSet        *removeAt(ProtoContext *context, ProtoObject *value);
 	ProtoObject		*has(ProtoContext *context, ProtoObject* value);
-	ProtoListCell 	*setAt(ProtoContext *context, ProtoObject *index, ProtoObject* value);
-	ProtoListCell 	*removeAt(ProtoContext *context, ProtoObject *index);
-
-	ProtoListCell  	*appendFirst(ProtoContext *context, ProtoObject* value);
-	ProtoListCell  	*appendLast(ProtoContext *context, ProtoObject* value);
-
-	ProtoListCell   *removeAt(ProtoContext *context, ProtoObject *index);
-	ProtoListCell	*removeFirst(ProtoContext *context);
-	ProtoListCell	*removeLast(ProtoContext *context);
-	ProtoListCell	*removeAt(ProtoContext *context, ProtoObject* index);
-	ProtoListCell  	*removeSlice(ProtoContext *context, ProtoObject *from, ProtoObject *to);
-};
-
-class ProtoList: Cell {
-public:
-	ProtoListCell	*root;
-	ProtoObject		*hash;
-
-	ProtoObject  	*getHash(ProtoContext *context);
-	ProtoList		*getAt(ProtoContext *context, ProtoObject *key);
-	ProtoList		*getAt(ProtoContext *context, ProtoObject *index, ProtoObject *value);
-	ProtoList		*getFirst(ProtoContext *context);
-	ProtoList		*getLast(ProtoContext *context);
-	ProtoList		*getKeys(ProtoContext *context);
-	ProtoList		*getSize(ProtoContext *context);
-	ProtoList		*getSlice(ProtoContext *context, ProtoObject *from, ProtoObject *to);
-
-	int				cmp(ProtoContext *context, ProtoList *other);
-
-	ProtoList		*removeAt(ProtoContext *context, ProtoObject *index);
-	ProtoList		*removeFirst(ProtoContext *context);
-	ProtoList		*removeLast(ProtoContext *context);
-	ProtoList		*removeAt(ProtoContext *context, ProtoObject *index);
-	ProtoList		*removeSlice(ProtoContext *context, ProtoObject *from, ProtoObject *to);
-
-	ProtoObject		*has(ProtoContext *context, ProtoObject* value);
-
-	ProtoList		*appendFirst(ProtoContext *context, ProtoObject* value);
-	ProtoList		*appendLast(ProtoContext *context, ProtoObject* value);
-};
-
-class ProtoSetCell: TreeCell {
-public:
-	ProtoSetCell    *removeAt(ProtoContext *context, ProtoObject *value);
-	ProtoObject		*setHas(ProtoContext *context, ProtoObject* value);
 	ProtoObject		*add(ProtoContext *context, ProtoObject* value);
-
-	unsigned long long getSize(ProtoContext *context);
-
-	ProtoList		*asList(ProtoContext *context);
-	ProtoSetCell	*getUnion(ProtoContext *context, ProtoSetCell* otherSet);
-	ProtoSetCell	*getIntersection(ProtoContext *context, ProtoSetCell* otherSet);
-	ProtoSetCell	*getPlus(ProtoContext *context, ProtoSetCell* otherSet);
-	ProtoSetCell	*getLess(ProtoContext *context, ProtoSetCell* otherSet);
-};
-
-class ProtoSet: Cell {
-public:
-	ProtoSetCell	*root;
-	ProtoObject		*hash;
-
-	ProtoObject  	*getHash(ProtoContext *context);
-	ProtoSet		*add(ProtoContext *context, ProtoObject* value);
-	ProtoObject		*has(ProtoContext *context, ProtoObject* value);
 	int				cmp(ProtoContext *context, ProtoSet *other);
 
-	ProtoObject 	*getSize(ProtoContext *context);
+	unsigned long long getSize(ProtoContext *context);
+
 	ProtoList		*asList(ProtoContext *context);
-	ProtoSet		*getUnion(ProtoContext *context, ProtoSet* otherSet);
-	ProtoSet		*getIntersection(ProtoContext *context, ProtoSet* otherSet);
-	ProtoSet		*getPlus(ProtoContext *context, ProtoSet* otherSet);
-	ProtoSet		*getLess(ProtoContext *context, ProtoSet* otherSet);
+	ProtoSet    	*getUnion(ProtoContext *context, ProtoSet* otherSet);
+	ProtoSet    	*getIntersection(ProtoContext *context, ProtoSet* otherSet);
+	ProtoSet    	*getPlus(ProtoContext *context, ProtoSet* otherSet);
+	ProtoSet    	*getLess(ProtoContext *context, ProtoSet* otherSet);
+
+	void			processElements(
+		ProtoContext *context,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			ProtoObject *element
+		)
+	);
 };
 
-class ProtoMemoryBuffer: Cell {
-public:
+class ProtoByteBuffer: public Cell, public ProtoObject {
+protected:
 	char		*buffer;
-	unsigned long long size;
+	unsigned long  size;
 
-	char 		*getBuffer();
-	unsigned long long getSize();
-};
-
-class ObjectCell: Cell {
 public:
-	ParentLink     *parent;
-	ProtoDictCell  *currentValue;
+	ProtoByteBuffer(
+		char		*buffer=NULL,
+		unsigned long size=0
+	);
+	virtual ~ProtoByteBuffer();
+
+	char 				*getBuffer();
+	unsigned long 	    getSize();
 };
 
-class ContextCell: Cell {
-private:
-	Cell		 *firstCell;
-	ProtoContext *previous;
-	ProtoSpace   *space;
-	int			 osThreadId;
+class ProtoObjectCell: public Cell, public ProtoObject {
+protected:
+	ParentLink	*parent;
+	IdentityDict *value;
 
-	ProtoThread	 *getThread();
-};
-
-class ProtoThread: Cell {
 public:
+	ProtoObjectCell(
+		ParentLink	*parent=NULL,
+		IdentityDict *value=NULL
+	);
+	virtual ~ProtoObjectCell();
+
+	void processElements (
+		ProtoContext *context,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			ProtoObject *element
+		)
+	);
+};
+
+class ProtoContextImplementation: public ProtoContext {
+public:
+	ProtoContextImplementation(
+		ProtoContextImplementation *previous = NULL,
+		ProtoSpace *space = NULL,
+		ProtoThread *thread = NULL
+	);
+
+	~ProtoContextImplementation();
+
+	ProtoContextImplementation	*previous;
+	ProtoSpaceImplementation  	*space;
+	ProtoThread					*thread;
+	Cell						*returnChain;
+	ProtoSet					*returnSet;
+	Cell						*lastCellPreviousContext;
+};
+
+class ProtoThread: public Cell, public ProtoObject {
+public:
+	ProtoThread(
+		ProtoObject *name=NULL,
+		Cell		*currentWorkingSet=NULL,
+		Cell		*freeCells=NULL,
+		ProtoSpaceImplementation	*space=NULL
+	);
 	virtual ~ProtoThread();
 
-	ProtoObject			*name;
-
-	virtual void		run(ProtoContext *context, ProtoObject *parameter, ProtoMethod *code);
+	virtual void		run(ProtoContext *context=NULL, ProtoObject *parameter=NULL, ProtoMethod *code=NULL);
 	virtual ProtoObject	*end(ProtoContext *context, ProtoObject *exitCode);
-	virtual ProtoObject *join(ProtoContext *context, ProtoThread *threadToJoin);
+	virtual ProtoObject *join(ProtoContext *context);
 	virtual void        kill(ProtoContext *context);
 
 	virtual void		suspend(long ms);
 	virtual long	    getCPUTimestamp();
 
-	Cell			    *allocCell();
+	virtual Cell	    *allocCell();
+	virtual Cell		*getLastAllocatedCell();
+	virtual void		setLastAllocatedCell(Cell *someCell);
+
+	ProtoObject			*name;
+	Cell				*currentWorkingSet;
+	int					osThreadId;
+	ProtoSpaceImplementation *space;
+	Cell				*freeCells;
 };
+
+class AllocatedSegment {
+public:
+    Cell    *memoryBlock;
+    int     cellsCount;
+    AllocatedSegment *nextBlock;
+};
+
+class DirtySegment {
+public:
+	Cell	*cellChain;
+	DirtySegment *nextSegment;
+};
+
+class ProtoSpaceImplementation : public ProtoSpace {
+protected:
+	AllocatedSegment *segments;
+	int blocksInCurrentSegment;
+	DirtySegment *dirtySegments;
+
+public:
+	ProtoSpaceImplementation();
+	~ProtoSpaceImplementation();
+
+	Cell 		*getFreeCells();
+	void		analyzeUsedCells(Cell *cellChain);
+	void		deallocMemory();
+
+	ProtoSet	*threads;
+	AllocatedSegment *segments;
+	std::atomic<IdentityDict *> mutableRoot;
+};
+
+
+// Used just to compute the number of bytes needed for a Cell at allocation time
+
+union BigCell {
+	Cell	cell;
+	ParentLink parentLink;
+	IdentityDict identityLink;
+	ProtoList protoList;
+	ProtoSet protoSet;
+	ProtoByteBuffer protoMemoryBuffer;
+	ProtoObjectCell protoObjectCell;
+	ProtoThread thread;
+};
+
+// Global literal dictionary
+class LiteralDictionary {
+public:
+	ProtoList	*getFromZeroTerminatedString(ProtoContext *context, const char *name);
+	ProtoList	*getFromString(ProtoContext *context, ProtoObject *string);
+};
+
+std::atomic<LiteralDictionary *> literalRoot;
+
 
 #endif /* PROTO_INTERNAL_H_ */
