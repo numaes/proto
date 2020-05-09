@@ -13,15 +13,11 @@
 #define BLOCKS_PER_MALLOC_REQUEST       8 * BLOCKS_PER_ALLOCATION
 
 
-void * ProtoSpace::operator new(size_t size) {
-    return malloc(sizeof(ProtoSpaceImplementation));
-};
-
 ProtoSpaceImplementation::ProtoSpaceImplementation() {
     Cell *firstCell = this->getFreeCells();
     ProtoThread *firstThread = (ProtoThread *) firstCell;
     firstThread->freeCells = firstCell->nextCell;
-    firstThread->currentWorkingSet = NULL;
+    firstThread->currentWorkingSet = firstThread;
     // Get current thread id from OS
     firstThread->osThreadId = 0;
     firstThread->space = this;
@@ -34,9 +30,10 @@ ProtoSpaceImplementation::ProtoSpaceImplementation() {
         firstThread
     );
     
-    this->threads = new(creationContext) ProtoSet();
+    this->threads = new(creationContext) ProtoSet(creationContext);
     ProtoObject *threadName = creationContext->literalFromString("Main thread");
-    this->threads = (ProtoSet *) this->threads->add(creationContext, firstThread);
+    firstThread->name = threadName;
+    this->threads = (new(creationContext) ProtoSet(creationContext))->add(creationContext, firstThread);
 };
 
 ProtoSpaceImplementation::~ProtoSpaceImplementation() {
@@ -131,5 +128,3 @@ void ProtoSpaceImplementation::deallocMemory(){
     this->segments = NULL;
     this->blocksInCurrentSegment = 0;
 };
-
-

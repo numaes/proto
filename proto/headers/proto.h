@@ -88,13 +88,15 @@ public:
 	ProtoObject *fromDouble(double value);
 	ProtoObject *fromUTF8Char(char *utf8OneCharString);
 	ProtoObject *fromUTF8String(char *zeroTerminatedUtf8String);
-	ProtoObject *fromMethod(ProtoMethod method);
+	ProtoObject *fromMethod(ProtoMethod *method);
+	ProtoObject *fromExternalPointer(void *pointer);
 	ProtoObject *fromBuffer(char *pointer, unsigned long length);
 	ProtoObject *fromBoolean(BOOLEAN value);
 	ProtoObject *fromByte(char c);
 	ProtoObject *literalFromString(char *zeroTerminatedUtf8String);
 
 	ProtoObject *newMutable(ProtoObject *value=PROTO_NONE);
+	ProtoThread *getCurrentThread();
 
 };
 
@@ -145,17 +147,6 @@ public:
 	ProtoObject	*isPointer();
 	ProtoObject	*isBoolean();
 	ProtoObject	*isByte();
-
-	// General processing
-	// Apply method recursivelly to all referenced objects, except itself
-    virtual void 	processReferences(
-		ProtoContext *context, 
-		void (*method)(
-			ProtoContext *context, 
-			void *self,
-			ProtoObject *referencedObject
-		)
-	);
 };
 
 class ProtoMutableObject:ProtoObject {

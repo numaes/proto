@@ -10,11 +10,14 @@
 #include "../headers/proto_internal.h"
 
 ProtoThread::ProtoThread(
-		ProtoObject *name=NULL,
-		Cell		*currentWorkingSet=NULL,
-		Cell		*freeCells=NULL,
-		ProtoSpaceImplementation	*space=NULL
-) : Cell() {
+		ProtoContext *context,
+
+		ProtoObject *name = NULL,
+		Cell		*currentWorkingSet = NULL,
+		Cell		*freeCells = NULL,
+		ProtoSpaceImplementation	*space = NULL
+) : Cell(context, nextCell, CELL_TYPE_PROTO_THREAD) {
+
     this->name = name;
     this->currentWorkingSet = NULL;
     this->freeCells = freeCells;
@@ -79,15 +82,17 @@ long ProtoThread::getCPUTimestamp() {
 Cell *ProtoThread::allocCell() {
     Cell *newCell;
 
-
     if (!this->freeCells) {
         this->freeCells = this->space->getFreeCells();
     }
 
+    // Dealloc first free cell
     newCell = this->freeCells;
     this->freeCells = newCell->nextCell;
 
+    // Add it to current working set
     newCell->nextCell = this->currentWorkingSet;
+    this->currentWorkingSet = newCell;
 
     return newCell;
 };

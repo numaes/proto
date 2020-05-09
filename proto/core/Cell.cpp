@@ -13,19 +13,105 @@ void *Cell::operator new(size_t size, ProtoContext *context) {
     return context->allocCell();
 };
 
-// Apply method recursivelly to all referenced objects, except itself
-void Cell::processReferences(
+Cell::Cell (
     ProtoContext *context, 
-    void (*method)(ProtoContext *context, Cell *cell)
+    Cell *nextCell = NULL,
+    unsigned long type = CELL_TYPE_UNASSIGNED_F,
+    unsigned long height = 0,
+    unsigned long count = 0
 ) {
 
 };
 
-ProtoObject *Cell::getHash(ProtoContext *context) {
+Cell::~Cell() {
 
 };
 
-Cell *Cell::clone(){
+// Apply method recursivelly to all referenced objects, except itself
+void Cell::processReferences(
+    ProtoContext *context, 
+    void *self,
+    void (*method)(
+        ProtoContext *context, 
+        void *self,
+        Cell *cell
+    )
+) {
+    switch (this->type) {
+        case CELL_TYPE_BYTE_BUFFER:
+            ((ProtoByteBuffer *) this)->processReferences(
+                context, 
+                self, 
+                method
+            );
+            break;
+
+        case CELL_TYPE_IDENTITY_DICT:
+            ((IdentityDict *) this)->processReferences(
+                context, 
+                self, 
+                method
+            );
+            break;
+
+        case CELL_TYPE_PARENT_LINK:
+            ((ParentLink *) this)->processReferences(
+                context, 
+                self, 
+                method
+            );
+            break;
+
+        case CELL_TYPE_PROTO_LIST:
+            ((ProtoList *) this)->processReferences(
+                context, 
+                self, 
+                method
+            );
+            break;
+
+        case CELL_TYPE_PROTO_SET:
+            ((ProtoSet *) this)->processReferences(
+                context, 
+                self, 
+                method
+            );
+            break;
+
+        case CELL_TYPE_PROTO_THREAD:
+            ((ProtoThread *) this)->processReferences(
+                context, 
+                self, 
+                method
+            );
+            break;
+
+        case CELL_TYPE_PROTO_OBJECT:
+            ((ProtoObjectCell *) this)->processReferences(
+                context, 
+                self, 
+                method
+            );
+            break;
+
+        case CELL_TYPE_EXTERNAL_POINTER:
+            ((ProtoExternalPointer *) this)->processReferences(
+                context, 
+                self, 
+                method
+            );
+            break;
+
+        case CELL_TYPE_METHOD:
+            ((ProtoMethodCell *) this)->processReferences(
+                context, 
+                self, 
+                method
+            );
+            break;
+    }
 
 };
+
+
 

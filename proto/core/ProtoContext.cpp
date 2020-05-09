@@ -70,11 +70,11 @@ Cell *ProtoContext::allocCell(){
     return self->thread->allocCell();
 };
 
-void collectCells(ProtoContext *context, void *self, ProtoObject *value) {
+void collectCells(ProtoContext *context, void *self, Cell *value) {
     ProtoContextImplementation *target = (ProtoContextImplementation *) self;
 
     ProtoObjectPointer p;
-    p.oid = value;
+    p.oid = (ProtoObject *) value;
 
     if (p.op.pointer_tag == POINTER_TAG_CELL) {
         // It is an object pointer with references
@@ -85,10 +85,16 @@ void collectCells(ProtoContext *context, void *self, ProtoObject *value) {
 void ProtoContext::returnValue(ProtoObject *value=PROTO_NONE){
     ProtoContextImplementation *self = (ProtoContextImplementation *) this;
 
-    if (value != NULL) {
-        self->returnSet = new(self) ProtoSet();
+    if (value != NULL && value != PROTO_NONE) {
+        self->returnSet = new(self) ProtoSet(self);
 
-        value->processReferences(self, collectCells);
+        ProtoObjectPointer p;
+        p.oid = value;
+
+        if (p.op.pointer_tag == POINTER_TAG_CELL) {
+            p.cell->processReferences(self, self, collectCells);
+
+        }
     }
 };
 
@@ -151,7 +157,7 @@ ProtoObject *ProtoContext::fromUTF8String(char *zeroTerminatedUtf8String) {
     ProtoContextImplementation *self = (ProtoContextImplementation *) this;
 
     char *currentChar = zeroTerminatedUtf8String;
-    ProtoList *string = new(self) ProtoList();
+    ProtoList *string = new(self) ProtoList(self);
 
     while (*currentChar) {
         ProtoObject *oneChar = self->fromUTF8Char(currentChar);
@@ -171,26 +177,16 @@ ProtoObject *ProtoContext::fromUTF8String(char *zeroTerminatedUtf8String) {
     return string;
 };
 
-ProtoObject *ProtoContext::fromMethod(ProtoMethod method) {
+ProtoObject *ProtoContext::fromMethod(ProtoMethod *method) {
     ProtoContextImplementation *self = (ProtoContextImplementation *) this;
 
-    ProtoObjectPointer p;
-    p.methodPointer = method;
-    p.op.pointer_tag = POINTER_TAG_METHOD;
-
-    return p.oid;
+    return new(self) ProtoMethodCell(self, method);
 };
 
 ProtoObject *ProtoContext::fromBuffer(char *pointer, unsigned long length) {
     ProtoContextImplementation *self = (ProtoContextImplementation *) this;
 
-    ProtoByteBuffer *buffer = new(self) ProtoByteBuffer(pointer, length);
-
-    ProtoObjectPointer p;
-    p.cell = buffer;
-    p.op.pointer_tag = POINTER_TAG_BYTE_BUFFER;
-
-    return p.oid;
+    return new(self) ProtoByteBuffer(self, pointer, length);
 };
 
 ProtoObject *ProtoContext::fromBoolean(BOOLEAN value) {
@@ -249,3 +245,9 @@ ProtoObject *ProtoContext::newMutable(ProtoObject *value=PROTO_NONE) {
     return p.oid;
 
 };
+
+ProtoThread *ProtoContext::getCurrentThread() {
+    ProtoContextImplementation *self = (ProtoContextImplementation *) this;
+
+    return self->thread;
+}
