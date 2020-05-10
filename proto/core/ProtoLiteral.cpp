@@ -31,10 +31,10 @@ LiteralDictionary::~LiteralDictionary(
 
 
 
-ProtoObject			*LiteralDictionary::get(ProtoObject *newName) {
+ProtoObject	*LiteralDictionary::get(ProtoObject *newName) {
 
 };
 
-LiteralDictionary	*LiteralDictionary::set(ProtoContext *context, ProtoObject *newName) {
+LiteralDictionary *LiteralDictionary::set(ProtoContext *context, ProtoObject *newName) {
 
 };
