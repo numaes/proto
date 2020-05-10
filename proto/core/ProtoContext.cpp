@@ -11,11 +11,13 @@
 #include "malloc.h"
 #include "random"
 
-ProtoContextImplementation::ProtoContextImplementation(
-		ProtoContextImplementation *previous = NULL,
+std::atomic<LiteralDictionary *> *literalRoot;
+
+ProtoContext::ProtoContext(
+		ProtoContext *previous = NULL,
 		ProtoSpace *space = NULL,
 		ProtoThread *thread = NULL
-) : ProtoContext() {
+) {
 
     if (previous) {
         this->previous = previous;
@@ -30,7 +32,7 @@ ProtoContextImplementation::ProtoContextImplementation(
         this->lastCellPreviousContext = this->thread->nextCell;
 };
 
-ProtoContextImplementation::~ProtoContextImplementation() {
+ProtoContext::~ProtoContext() {
     Cell *freeCells = NULL;
 
     // Generate the chain of cells for the return value if needed
@@ -60,47 +62,35 @@ ProtoContextImplementation::~ProtoContextImplementation() {
 
 };
 
-void *ProtoContext::operator new(size_t size) {
-    return malloc(sizeof(ProtoContextImplementation));
-};
-
 Cell *ProtoContext::allocCell(){
-    ProtoContextImplementation *self = (ProtoContextImplementation *) this;
-
-    return self->thread->allocCell();
+    return this->thread->allocCell();
 };
 
 void collectCells(ProtoContext *context, void *self, Cell *value) {
-    ProtoContextImplementation *target = (ProtoContextImplementation *) self;
-
     ProtoObjectPointer p;
     p.oid = (ProtoObject *) value;
 
     if (p.op.pointer_tag == POINTER_TAG_CELL) {
         // It is an object pointer with references
-        target->returnSet->add(context, p.oid);
+        context->returnSet->add(context, p.oid);
     }
 }
 
 void ProtoContext::returnValue(ProtoObject *value=PROTO_NONE){
-    ProtoContextImplementation *self = (ProtoContextImplementation *) this;
-
     if (value != NULL && value != PROTO_NONE) {
-        self->returnSet = new(self) ProtoSet(self);
+        this->returnSet = new(this) ProtoSet(this);
 
         ProtoObjectPointer p;
         p.oid = value;
 
         if (p.op.pointer_tag == POINTER_TAG_CELL) {
-            p.cell->processReferences(self, self, collectCells);
+            p.cell->processReferences(this, this, collectCells);
 
         }
     }
 };
 
 ProtoObject *ProtoContext::fromInteger(int value) {
-    ProtoContextImplementation *self = (ProtoContextImplementation *) this;
-
     ProtoObjectPointer p;
     p.si.pointer_tag = POINTER_TAG_SMALLINT;
     p.si.smallInteger = value;
@@ -109,8 +99,6 @@ ProtoObject *ProtoContext::fromInteger(int value) {
 };
 
 ProtoObject *ProtoContext::fromDouble(double value) {
-    ProtoContextImplementation *self = (ProtoContextImplementation *) this;
-
     ProtoObjectPointer p;
     p.sd.pointer_tag = POINTER_TAG_SMALLDOUBLE;
     p.si.smallInteger = ((unsigned long) value) >> TYPE_SHIFT;
@@ -119,8 +107,6 @@ ProtoObject *ProtoContext::fromDouble(double value) {
 };
 
 ProtoObject *ProtoContext::fromUTF8Char(char *utf8OneCharString) {
-    ProtoContextImplementation *self = (ProtoContextImplementation *) this;
-
     ProtoObjectPointer p;
     p.unicodeChar.pointer_tag = POINTER_TAG_SMALLDOUBLE;
     p.unicodeChar.embedded_type = EMBEDED_TYPE_UNICODECHAR;
@@ -154,13 +140,11 @@ ProtoObject *ProtoContext::fromUTF8Char(char *utf8OneCharString) {
 };
 
 ProtoObject *ProtoContext::fromUTF8String(char *zeroTerminatedUtf8String) {
-    ProtoContextImplementation *self = (ProtoContextImplementation *) this;
-
     char *currentChar = zeroTerminatedUtf8String;
-    ProtoList *string = new(self) ProtoList(self);
+    ProtoList *string = new(this) ProtoList(this);
 
     while (*currentChar) {
-        ProtoObject *oneChar = self->fromUTF8Char(currentChar);
+        ProtoObject *oneChar = this->fromUTF8Char(currentChar);
         if (( currentChar[0] & 0x80 ) == 0 )
             // 0000 0000-0000 007F | 0xxxxxxx
             currentChar += 1;
@@ -177,21 +161,15 @@ ProtoObject *ProtoContext::fromUTF8String(char *zeroTerminatedUtf8String) {
     return string;
 };
 
-ProtoObject *ProtoContext::fromMethod(ProtoMethod *method) {
-    ProtoContextImplementation *self = (ProtoContextImplementation *) this;
-
-    return new(self) ProtoMethodCell(self, method);
+ProtoObject *ProtoContext::fromMethod(ProtoObject *self, ProtoMethod *method) {
+    return new(this) ProtoMethodCell(this, self, method);
 };
 
 ProtoObject *ProtoContext::fromBuffer(char *pointer, unsigned long length) {
-    ProtoContextImplementation *self = (ProtoContextImplementation *) this;
-
-    return new(self) ProtoByteBuffer(self, pointer, length);
+    return new(this) ProtoByteBuffer(this, pointer, length);
 };
 
 ProtoObject *ProtoContext::fromBoolean(BOOLEAN value) {
-    ProtoContextImplementation *self = (ProtoContextImplementation *) this;
-
     ProtoObjectPointer p;
     p.booleanValue.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
     p.booleanValue.embedded_type = EMBEDED_TYPE_BOOLEAN;
@@ -201,8 +179,6 @@ ProtoObject *ProtoContext::fromBoolean(BOOLEAN value) {
 };
 
 ProtoObject *ProtoContext::fromByte(char c) {
-    ProtoContextImplementation *self = (ProtoContextImplementation *) this;
-
     ProtoObjectPointer p;
     p.byteValue.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
     p.byteValue.embedded_type = EMBEDED_TYPE_BYTE;
@@ -212,30 +188,50 @@ ProtoObject *ProtoContext::fromByte(char c) {
 };
 
 ProtoObject *ProtoContext::literalFromString(char *zeroTerminatedUtf8String) {
-    ProtoContextImplementation *self = (ProtoContextImplementation *) this;
+    LiteralDictionary *newRoot, *currentRoot;
 
-    return literalRoot.load()->getFromZeroTerminatedString(
-        self, 
-        zeroTerminatedUtf8String
-    );
+    ProtoObject *literalString = this->fromUTF8String(zeroTerminatedUtf8String);
+
+    do {
+        currentRoot = literalRoot->load();
+
+        ProtoObject *currentLiteral = currentRoot->get(literalString);
+        if (currentLiteral != PROTO_NONE)
+            return currentLiteral;
+
+        newRoot = currentRoot->set(
+            this,
+            literalString);
+    } while (!literalRoot->compare_exchange_strong(
+        currentRoot, 
+        newRoot
+    ));
+
+    return literalString;
 };
 
 ProtoObject *ProtoContext::newMutable(ProtoObject *value=PROTO_NONE) {
-    ProtoContextImplementation *self = (ProtoContextImplementation *) this;
-
-    int randomId;
     IdentityDict *newRoot, *currentRoot;
+    int randomId;
 
     do {
+        currentRoot = (IdentityDict *) this->space->mutableRoot.load();
         randomId = rand();
-        currentRoot = self->space->mutableRoot;
+        ProtoObject *randomIdObject = this->fromInteger(randomId);
+
+        BOOLEAN existingMutable = currentRoot->has(this, randomIdObject);
+        if (existingMutable)
+            continue;
+
         newRoot = currentRoot->setAt(
-            self,
-            self->fromInteger(randomId), 
-            value);
-    } while (!self->space->mutableRoot.compare_exchange_strong(
-        currentRoot, 
-        newRoot
+            this,
+            randomIdObject,
+            value
+        );
+
+    } while (!this->space->mutableRoot.compare_exchange_strong(
+        (Cell *&) currentRoot,
+        (Cell *&) newRoot
     ));
 
     ProtoObjectPointer p;
@@ -243,11 +239,8 @@ ProtoObject *ProtoContext::newMutable(ProtoObject *value=PROTO_NONE) {
     p.mutableObject.mutableID = randomId;
 
     return p.oid;
-
 };
 
 ProtoThread *ProtoContext::getCurrentThread() {
-    ProtoContextImplementation *self = (ProtoContextImplementation *) this;
-
-    return self->thread;
+    return this->thread;
 }

@@ -12,8 +12,7 @@
 #define BLOCKS_PER_ALLOCATION           1024
 #define BLOCKS_PER_MALLOC_REQUEST       8 * BLOCKS_PER_ALLOCATION
 
-
-ProtoSpaceImplementation::ProtoSpaceImplementation() {
+ProtoSpace::ProtoSpace() {
     Cell *firstCell = this->getFreeCells();
     ProtoThread *firstThread = (ProtoThread *) firstCell;
     firstThread->freeCells = firstCell->nextCell;
@@ -24,7 +23,7 @@ ProtoSpaceImplementation::ProtoSpaceImplementation() {
 
     firstCell->nextCell = NULL;
 
-    ProtoContextImplementation *creationContext = new ProtoContextImplementation(
+    ProtoContext *creationContext = new ProtoContext(
         NULL,
         this,
         firstThread
@@ -36,10 +35,10 @@ ProtoSpaceImplementation::ProtoSpaceImplementation() {
     this->threads = (new(creationContext) ProtoSet(creationContext))->add(creationContext, firstThread);
 };
 
-ProtoSpaceImplementation::~ProtoSpaceImplementation() {
-    ProtoContextImplementation *finalContext = new ProtoContextImplementation(NULL);
+ProtoSpace::~ProtoSpace() {
+    ProtoContext *finalContext = new ProtoContext(NULL);
 
-    ProtoList *threads = this->threads->asList(finalContext);
+    ProtoList *threads = ((ProtoSet *)this->threads)->asList(finalContext);
     int threadCount = threads->getSize(finalContext);
 
     // Wait till all threads are ended
@@ -50,36 +49,13 @@ ProtoSpaceImplementation::~ProtoSpaceImplementation() {
         );
         t->join(finalContext);
     }
-
-    this->deallocMemory();
-};
-
-
-ProtoObject *ProtoSpace::getLiteralFromString(
-    ProtoContext *context,
-    char *zeroTerminatedUtf8String
-) {
-    ProtoSpaceImplementation *self = (ProtoSpaceImplementation *) this;
-
-    return literalRoot.load()->getFromZeroTerminatedString(
-        context, 
-        zeroTerminatedUtf8String
-    );
 };
 
 ProtoThread *ProtoSpace::getNewThread() {
-    ProtoSpaceImplementation *self = (ProtoSpaceImplementation *) this;
-
     return NULL;
 };
 
-ProtoObject *ProtoSpace::getThreads() {
-    ProtoSpaceImplementation *self = (ProtoSpaceImplementation *) this;
-
-    return self->threads;
-};
-
-Cell *ProtoSpaceImplementation::getFreeCells(){
+Cell *ProtoSpace::getFreeCells(){
     Cell *freeBlocks = NULL;
     Cell *newBlocks, *newBlock;
     AllocatedSegment *newSegment;
@@ -106,7 +82,7 @@ Cell *ProtoSpaceImplementation::getFreeCells(){
     return freeBlocks;
 };
 
-void ProtoSpaceImplementation::analyzeUsedCells(Cell *cellsChain) {
+void ProtoSpace::analyzeUsedCells(Cell *cellsChain) {
     DirtySegment *newChain;
 
     newChain = new DirtySegment();
@@ -115,7 +91,7 @@ void ProtoSpaceImplementation::analyzeUsedCells(Cell *cellsChain) {
     this->dirtySegments = newChain;
 };
 
-void ProtoSpaceImplementation::deallocMemory(){
+void ProtoSpace::deallocMemory(){
     AllocatedSegment *nextSegment, *currentSegment = this->segments;
 
     while (currentSegment) {
