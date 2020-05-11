@@ -46,6 +46,10 @@
 // There is no other form of allocation for proto objects or scalars
 // 
 
+class ProtoContext;
+class ProtoObject;
+class ProtoThread;
+
 class Cell {
 public:
 	Cell(
@@ -127,21 +131,30 @@ public:
 	LiteralDictionary	*set(ProtoContext *context, ProtoObject *newName);
 };
 
+class AllocatedSegment {
+public:
+    Cell    *memoryBlock;
+    int     cellsCount;
+    AllocatedSegment *nextBlock;
+};
+
+class DirtySegment {
+public:
+	Cell	*cellChain;
+	DirtySegment *nextSegment;
+};
+
 class ProtoSpace {
 protected:
 	int					blocksInCurrentSegment;
 	AllocatedSegment 	*segments;
 	DirtySegment 		*dirtySegments;
 
-	ProtoObject			*threads;
-	AllocatedSegment	*segments;
-
 public:
 	ProtoSpace();
 	virtual ~ProtoSpace();
 
 	ProtoObject	*threads;
-	ProtoList	*memorySegments;
 
 	ProtoObject *getThreads();
 
@@ -168,6 +181,49 @@ public:
 	void 		analyzeUsedCells(Cell *cellsChain);
 	void 		deallocMemory();
 	std::atomic<Cell *> mutableRoot;
+};
+
+typedef struct {
+	ProtoObject *keyword;
+	ProtoObject *value;
+} KeywordParameter;
+
+typedef ProtoObject *(*ProtoMethod)(
+	ProtoContext *, 		// context
+	ProtoObject *, 			// self
+	ProtoObject *, 			// type
+	int, 					// positionalCount
+	int, 					// keywordCount
+	KeywordParameter **, 	// keywordParameters
+	ProtoObject **		 	// positionalParameters
+);
+
+class ProtoObject {
+public:
+	ProtoObject *clone(ProtoContext *c);
+	ProtoObject *newChild(ProtoContext *c);
+
+	ProtoObject *getType(ProtoContext *c);
+	ProtoObject *getAttribute(ProtoContext *c, ProtoObject *name);
+	ProtoObject *hasAttribute(ProtoContext *c, ProtoObject *name);
+	ProtoObject *hasOwnAttribute(ProtoContext *c, ProtoObject *name);
+	ProtoObject *setAttribute(ProtoContext *c, ProtoObject *name, ProtoObject *value);
+
+	ProtoObject *getAttributes(ProtoContext *c);
+	ProtoObject *getOwnAttributes(ProtoContext *c);
+	ProtoObject *getParent(ProtoContext *c);
+
+	ProtoObject *addParent(ProtoContext *c, ProtoObject *newParent);
+	ProtoObject *getHash();
+	ProtoObject *isInstanceOf(ProtoContext *c, ProtoObject *prototype);
+
+	ProtoObject *call(ProtoContext *c,
+					  ProtoObject *method,
+					  ProtoObject *unnamedParametersList,
+			          ProtoObject *keywordParametersDict);
+
+	ProtoObject *currentValue();
+	ProtoObject *setValue(ProtoObject *currentValue, ProtoObject *newValue);
 };
 
 class ProtoThread: public Cell, public ProtoObject {
@@ -212,19 +268,6 @@ public:
 	Cell				*freeCells;
 };
 
-class AllocatedSegment {
-public:
-    Cell    *memoryBlock;
-    int     cellsCount;
-    AllocatedSegment *nextBlock;
-};
-
-class DirtySegment {
-public:
-	Cell	*cellChain;
-	DirtySegment *nextSegment;
-};
-
 class ProtoContext {
 public:
 	ProtoContext(
@@ -239,7 +282,7 @@ public:
 	ProtoSpace		*space;
 	ProtoThread		*thread;
 	Cell			*returnChain;
-	ProtoSet		*returnSet;
+	ProtoObject		*returnSet;
 	Cell			*lastCellPreviousContext;
 	
 	Cell 			*allocCell();
@@ -260,49 +303,6 @@ public:
 	ProtoObject 	*newMutable(ProtoObject *value=PROTO_NONE);
 	ProtoThread 	*getCurrentThread();
 };
-
-class ProtoObject {
-public:
-	ProtoObject *clone(ProtoContext *c);
-	ProtoObject *newChild(ProtoContext *c);
-
-	ProtoObject *getType(ProtoContext *c);
-	ProtoObject *getAttribute(ProtoContext *c, ProtoObject *name);
-	ProtoObject *hasAttribute(ProtoContext *c, ProtoObject *name);
-	ProtoObject *hasOwnAttribute(ProtoContext *c, ProtoObject *name);
-	ProtoObject *setAttribute(ProtoContext *c, ProtoObject *name, ProtoObject *value);
-
-	ProtoObject *getAttributes(ProtoContext *c);
-	ProtoObject *getOwnAttributes(ProtoContext *c);
-	ProtoObject *getParent(ProtoContext *c);
-
-	ProtoObject *addParent(ProtoContext *c, ProtoObject *newParent);
-	ProtoObject *getHash();
-	ProtoObject *isInstanceOf(ProtoContext *c, ProtoObject *prototype);
-
-	ProtoObject *call(ProtoContext *c,
-					  ProtoObject *method,
-					  ProtoObject *unnamedParametersList,
-			          ProtoObject *keywordParametersDict);
-
-	ProtoObject *currentValue();
-	ProtoObject *setValue(ProtoObject *currentValue, ProtoObject *newValue);
-};
-
-typedef struct {
-	ProtoObject *keyword;
-	ProtoObject *value;
-} KeywordParameter;
-
-typedef ProtoObject *(*ProtoMethod)(
-	ProtoContext *, 		// context
-	ProtoObject *, 			// self
-	ProtoObject *, 			// type
-	int, 					// positionalCount
-	int, 					// keywordCount
-	KeywordParameter **, 	// keywordParameters
-	ProtoObject **		 	// positionalParameters
-);
 
 // Usefull constants.
 // ATENTION: They should be kept on synch with proto_internal.h!

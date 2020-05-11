@@ -8,6 +8,7 @@
 
 #include "../headers/proto.h"
 #include "../headers/proto_internal.h"
+#include <stdio.h>
 
 int failedTests = 0;
 
@@ -77,7 +78,7 @@ void test_protoThread() {
 };
 
 
-main(int argc, char *argv) {
+int main(int argc, char **argv) {
  
     test_proto_header();
     test_proto_internal_header();
@@ -94,8 +95,12 @@ main(int argc, char *argv) {
     test_methodCall();
     test_protoObject();
 
-    if (failedTests)
+    if (failedTests) {
+        printf("Some test failed (%d)\n", failedTests);
         return 1;
-    else
+    }
+    else {
+        printf("Everthing OK!\n");
         return 0;
+    }
 }

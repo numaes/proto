@@ -250,12 +250,10 @@ public:
 
 	ProtoObject	*has(ProtoContext *context, ProtoObject* value);
 	ProtoList 	*setAt(ProtoContext *context, ProtoObject *index, ProtoObject* value);
-	ProtoList 	*removeAt(ProtoContext *context, ProtoObject *index);
 
 	ProtoList  	*appendFirst(ProtoContext *context, ProtoObject* value);
 	ProtoList  	*appendLast(ProtoContext *context, ProtoObject* value);
 
-	ProtoList   *removeAt(ProtoContext *context, ProtoObject *index);
 	ProtoList	*removeFirst(ProtoContext *context);
 	ProtoList	*removeLast(ProtoContext *context);
 	ProtoList	*removeAt(ProtoContext *context, ProtoObject* index);
