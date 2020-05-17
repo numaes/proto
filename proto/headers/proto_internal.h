@@ -10,6 +10,67 @@
 
 #include "proto.h"
 
+class Cell {
+public:
+	Cell(
+		ProtoContext *context, 
+		Cell *nextCell = NULL,
+		unsigned long type = 0,
+		unsigned long height = 0,
+		unsigned long count = 0
+	);
+	~Cell();
+
+	void *operator new(size_t size, ProtoContext *context);
+
+	// Apply method recursivelly to all referenced objects, except itself
+    void 	processReferences(
+		ProtoContext *context, 
+		void *self,
+		void (*method)(
+			ProtoContext *context, 
+			void *self,
+			Cell *cell
+		)
+	);
+
+    Cell				*nextCell;
+	ProtoContext		*context;
+
+	unsigned long count:52;
+	unsigned long height:8;
+	unsigned long type:4;
+};
+
+// Base tree structure used by Dictionaries, Sets and Lists
+// Internal use exclusively
+
+class TreeCell: public Cell {
+protected:
+    ProtoObject		*hash;
+	TreeCell		*previous;
+	TreeCell		*next;
+
+	ProtoObject 	*key;
+
+public:
+	TreeCell(
+		ProtoContext *context,
+
+		ProtoObject *key = PROTO_NONE,
+		ProtoObject *hash = PROTO_NONE,
+		TreeCell *previous = NULL,
+		TreeCell *next = NULL,
+		unsigned long type = 0,
+		unsigned long count = 0,
+		unsigned long height = 0,
+
+		Cell *nextCell = NULL
+	);
+
+	~TreeCell();
+};
+
 union ProtoObjectPointer {
 	ProtoObject	*oid;
 	Cell *cell;
@@ -106,7 +167,7 @@ union ProtoObjectPointer {
 #define EMBEDED_TYPE_UNASSIGNED_E ((unsigned long) 0x0E)
 #define EMBEDED_TYPE_UNASSIGNED_F ((unsigned long) 0x0F)
 
-#define CELL_TYPE_UNASSINGED	  	((unsigned long) 0x00)
+#define CELL_TYPE_UNASSIGNED	  	((unsigned long) 0x00)
 #define CELL_TYPE_IDENTITY_DICT   	((unsigned long) 0x01)
 #define CELL_TYPE_PROTO_LIST	  	((unsigned long) 0x02)
 #define CELL_TYPE_PROTO_SET		  	((unsigned long) 0x03)

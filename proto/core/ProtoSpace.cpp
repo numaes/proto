@@ -8,6 +8,8 @@
 #include "../headers/proto.h"
 #include "../headers/proto_internal.h"
 #include <malloc.h>
+#include <stdio.h>
+#include <thread>
 
 #define BLOCKS_PER_ALLOCATION           1024
 #define BLOCKS_PER_MALLOC_REQUEST       8 * BLOCKS_PER_ALLOCATION
@@ -18,7 +20,7 @@ ProtoSpace::ProtoSpace() {
     firstThread->freeCells = firstCell->nextCell;
     firstThread->currentWorkingSet = firstThread;
     // Get current thread id from OS
-    firstThread->osThreadId = 0;
+    firstThread->osThread = NULL;
     firstThread->space = this;
 
     firstCell->nextCell = NULL;
@@ -32,7 +34,9 @@ ProtoSpace::ProtoSpace() {
     this->threads = new(creationContext) ProtoSet(creationContext);
     ProtoObject *threadName = creationContext->literalFromString("Main thread");
     firstThread->name = threadName;
-    this->threads = (new(creationContext) ProtoSet(creationContext))->add(creationContext, firstThread);
+    this->threads = creationContext->newMutable();
+    ProtoSet *threads = new(creationContext) ProtoSet(creationContext);
+    this->threads->setValue(creationContext, threads->add(creationContext, firstThread));
 };
 
 ProtoSpace::~ProtoSpace() {
@@ -51,8 +55,32 @@ ProtoSpace::~ProtoSpace() {
     }
 };
 
-ProtoThread *ProtoSpace::getNewThread() {
-    return NULL;
+ProtoThread *ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread) {
+    while (this->threadsLock.load.compare_exchange_strong(
+        FALSE,
+        TRUE
+    )) std::this_thread::yield();
+
+    this->threads->setValue(
+        context,
+        ((ProtoSet *) this->threads->currentValue())->add(context, thread)
+    );
+
+    this->threadsLock.store(FALSE);
+};
+
+ProtoThread *ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *thread) {
+    while (this->threadsLock.load.compare_exchange_strong(
+        FALSE,
+        TRUE
+    )) std::this_thread::yield();
+
+    this->threads->setValue(
+        context,
+        ((ProtoSet *) this->threads->currentValue())->removeAt(context, thread)
+    );
+
+    this->threadsLock.store(FALSE);
 };
 
 Cell *ProtoSpace::getFreeCells(){
@@ -64,6 +92,17 @@ Cell *ProtoSpace::getFreeCells(){
         if (this->blocksInCurrentSegment <= 0) {
             // Get a new segment from OS
             newBlocks = (Cell *) malloc(sizeof(BigCell) * BLOCKS_PER_MALLOC_REQUEST);
+            if (!newBlocks) {
+                printf("\nPANIC ERROR: Not enough MEMORY! Exiting ...\n");
+                exit(1);
+            }
+
+            // Clear new allocated blocks
+            void **p =(void **) newBlocks;
+            int n = 0;
+            while (n < (BLOCKS_PER_MALLOC_REQUEST * sizeof(BigCell) / sizeof(void *)))
+                *p++ = NULL;
+
             newSegment = new AllocatedSegment();
             newSegment->memoryBlock = newBlocks;
             newSegment->cellsCount = BLOCKS_PER_ALLOCATION;
@@ -75,7 +114,8 @@ Cell *ProtoSpace::getFreeCells(){
 
         newBlock = &(this->segments->memoryBlock[
             this->segments->cellsCount - this->blocksInCurrentSegment--]);
-        newBlock->nextCell = freeBlocks;
+        new(NULL) Cell(NULL, freeBlocks, CELL_TYPE_UNASSIGNED);
+
         freeBlocks = newBlock;
     }
 

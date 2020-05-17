@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <atomic>
+#include <thread>
 
 #ifndef PROTO_H_
 #define PROTO_H_
@@ -49,87 +50,6 @@
 class ProtoContext;
 class ProtoObject;
 class ProtoThread;
-
-class Cell {
-public:
-	Cell(
-		ProtoContext *context, 
-		Cell *nextCell = NULL,
-		unsigned long type = 0,
-		unsigned long height = 0,
-		unsigned long count = 0
-	);
-	~Cell();
-
-	void *operator new(size_t size, ProtoContext *context);
-
-	// Apply method recursivelly to all referenced objects, except itself
-    void 	processReferences(
-		ProtoContext *context, 
-		void *self,
-		void (*method)(
-			ProtoContext *context, 
-			void *self,
-			Cell *cell
-		)
-	);
-
-    Cell				*nextCell;
-	ProtoContext		*context;
-
-	unsigned long count:52;
-	unsigned long height:8;
-	unsigned long type:4;
-};
-
-// Base tree structure used by Dictionaries, Sets and Lists
-// Internal use exclusively
-
-class TreeCell: public Cell {
-protected:
-    ProtoObject		*hash;
-	TreeCell		*previous;
-	TreeCell		*next;
-
-	ProtoObject 	*key;
-
-public:
-	TreeCell(
-		ProtoContext *context,
-
-		ProtoObject *key = PROTO_NONE,
-		ProtoObject *hash = PROTO_NONE,
-		TreeCell *previous = NULL,
-		TreeCell *next = NULL,
-		unsigned long type = 0,
-		unsigned long count = 0,
-		unsigned long height = 0,
-
-		Cell *nextCell = NULL
-	);
-
-	~TreeCell();
-};
-
-// Global literal dictionary
-class LiteralDictionary: public TreeCell {
-public:
-	LiteralDictionary(
-		ProtoContext *context,
-
-		ProtoObject *key = PROTO_NONE,
-		ProtoObject *hash = PROTO_NONE,
-		TreeCell *previous = NULL,
-		TreeCell *next = NULL,
-		unsigned long count = 0,
-		unsigned long height = 0,
-		Cell *nextCell = NULL
-	);
-	~LiteralDictionary();
-
-	ProtoObject			*get(ProtoObject *newName);
-	LiteralDictionary	*set(ProtoContext *context, ProtoObject *newName);
-};
 
 class AllocatedSegment {
 public:
@@ -175,12 +95,17 @@ public:
 
 	ProtoObject *rootObject;
 
-	ProtoThread *getNewThread();
+	ProtoObject *threads;
+	ProtoThread *allocThread(ProtoContext *context, ProtoThread *thread);
+	ProtoThread *deallocThread(ProtoContext *context, ProtoThread *thread);
 
 	Cell 		*getFreeCells();
 	void 		analyzeUsedCells(Cell *cellsChain);
 	void 		deallocMemory();
-	std::atomic<Cell *> mutableRoot;
+
+	std::atomic<Cell *>  mutableRoot;
+	std::atomic<BOOLEAN> mutableLock;
+	std::atomic<BOOLEAN> threadsLock;
 };
 
 typedef struct {
@@ -223,7 +148,9 @@ public:
 			          ProtoObject *keywordParametersDict);
 
 	ProtoObject *currentValue();
-	ProtoObject *setValue(ProtoObject *currentValue, ProtoObject *newValue);
+
+	// Mutables only
+	ProtoObject *setValue(ProtoContext *context, ProtoObject *newValue);
 };
 
 class ProtoThread: public Cell, public ProtoObject {
@@ -231,20 +158,17 @@ public:
 	ProtoThread(
 		ProtoContext *context,
 
-		ProtoObject *name=NULL,
-		Cell		*currentWorkingSet=NULL,
-		Cell		*freeCells=NULL,
-		ProtoSpace	*space=NULL
+		ProtoObject *name,
+		ProtoSpace	*space,
+		ProtoMethod *code = NULL,
+		ProtoObject *args = NULL,
+		ProtoObject *kwargs = NULL
 	);
 	 ~ProtoThread();
 
-	void		run(ProtoContext *context=NULL, ProtoObject *parameter=NULL, ProtoMethod *code=NULL);
-	ProtoObject	*end(ProtoContext *context, ProtoObject *exitCode);
-	ProtoObject *join(ProtoContext *context);
-	void        kill(ProtoContext *context);
-
-	void		suspend(long ms);
-	long	    getCPUTimestamp();
+	void		detach(ProtoContext *context);
+	void 		join(ProtoContext *context);
+	void		exit(ProtoContext *context); // ONLY for current thread!!!
 
 	// Apply method recursivelly to all referenced objects, except itself
     void 	processReferences(
@@ -263,7 +187,7 @@ public:
 
 	ProtoObject			*name;
 	Cell				*currentWorkingSet;
-	int					osThreadId;
+	std::thread			*osThread;
 	ProtoSpace			*space;
 	Cell				*freeCells;
 };
