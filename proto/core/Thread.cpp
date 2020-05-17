@@ -35,13 +35,13 @@ ProtoThread::ProtoThread(
     BigCell *bc;
 
     p.oid = args;
-    if (p.op.pointer_tag == POINTER_TAG_CELL) {
+    if (args && p.op.pointer_tag == POINTER_TAG_CELL) {
         bc = (BigCell *) newContext->allocCell();
         *bc = *((BigCell *) args);
     }
 
     p.oid = kwargs;
-    if (p.op.pointer_tag == POINTER_TAG_CELL) {
+    if (kwargs && p.op.pointer_tag == POINTER_TAG_CELL) {
         bc = (BigCell *) newContext->allocCell();
         *bc = *((BigCell *) kwargs);
     }
