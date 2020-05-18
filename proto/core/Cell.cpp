@@ -110,7 +110,6 @@ void Cell::processReferences(
             );
             break;
     }
-
 };
 
 

@@ -65,11 +65,6 @@ public:
 };
 
 class ProtoSpace {
-protected:
-	int					blocksInCurrentSegment;
-	AllocatedSegment 	*segments;
-	DirtySegment 		*dirtySegments;
-
 public:
 	ProtoSpace();
 	virtual ~ProtoSpace();
@@ -106,6 +101,12 @@ public:
 	std::atomic<Cell *>  mutableRoot;
 	std::atomic<BOOLEAN> mutableLock;
 	std::atomic<BOOLEAN> threadsLock;
+	int					 blocksInCurrentSegment;
+	AllocatedSegment 	*segments;
+	DirtySegment		*freeSegments;
+	DirtySegment 		*dirtySegments;
+	std::atomic<BOOLEAN> gcLock;
+	int					 state;
 };
 
 typedef struct {

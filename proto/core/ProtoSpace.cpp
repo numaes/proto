@@ -14,6 +14,10 @@
 #define BLOCKS_PER_ALLOCATION           1024
 #define BLOCKS_PER_MALLOC_REQUEST       8 * BLOCKS_PER_ALLOCATION
 
+#define SPACE_STATE_RUNNING             0
+#define SPACE_STATE_ENDING              1
+
+
 ProtoSpace::ProtoSpace() {
     Cell *firstCell = this->getFreeCells();
     ProtoThread *firstThread = (ProtoThread *) firstCell;
@@ -44,6 +48,8 @@ ProtoSpace::~ProtoSpace() {
 
     ProtoList *threads = ((ProtoSet *)this->threads)->asList(finalContext);
     int threadCount = threads->getSize(finalContext);
+
+    this->state = SPACE_STATE_ENDING;
 
     // Wait till all threads are ended
     for (int i = 0; i < threadCount; i++) {
@@ -88,36 +94,58 @@ Cell *ProtoSpace::getFreeCells(){
     Cell *newBlocks, *newBlock;
     AllocatedSegment *newSegment;
 
+    while (this->gcLock.load.compare_exchange_strong(
+        FALSE,
+        TRUE
+    )) std::this_thread::yield();
+
     for (int i=0; i < BLOCKS_PER_ALLOCATION; i++) {
-        if (this->blocksInCurrentSegment <= 0) {
-            // Get a new segment from OS
-            newBlocks = (Cell *) malloc(sizeof(BigCell) * BLOCKS_PER_MALLOC_REQUEST);
-            if (!newBlocks) {
-                printf("\nPANIC ERROR: Not enough MEMORY! Exiting ...\n");
-                exit(1);
+        if (this->freeSegments) {
+            Cell *nextBlock = this->freeSegments->cellChain->nextCell;
+            newBlock = this->freeSegments->cellChain;
+            if (nextBlock)
+                this->freeSegments->cellChain = nextBlock;
+            else {
+                this->freeSegments = this->freeSegments->nextSegment;
             }
 
-            // Clear new allocated blocks
-            void **p =(void **) newBlocks;
+            void **p =(void **) newBlock;
             int n = 0;
-            while (n < (BLOCKS_PER_MALLOC_REQUEST * sizeof(BigCell) / sizeof(void *)))
+            while (n < (sizeof(BigCell) / sizeof(void *)))
                 *p++ = NULL;
+        }    
+        else {
+            if (this->blocksInCurrentSegment <= 0) {
+                // Get a new segment from OS
+                newBlocks = (Cell *) malloc(sizeof(BigCell) * BLOCKS_PER_MALLOC_REQUEST);
+                if (!newBlocks) {
+                    printf("\nPANIC ERROR: Not enough MEMORY! Exiting ...\n");
+                    exit(1);
+                }
 
-            newSegment = new AllocatedSegment();
-            newSegment->memoryBlock = newBlocks;
-            newSegment->cellsCount = BLOCKS_PER_ALLOCATION;
-            newSegment->nextBlock = this->segments;
+                // Clear new allocated blocks
+                void **p =(void **) newBlocks;
+                int n = 0;
+                while (n < (BLOCKS_PER_MALLOC_REQUEST * sizeof(BigCell) / sizeof(void *)))
+                    *p++ = NULL;
 
-            this->segments = newSegment;
-            this->blocksInCurrentSegment = BLOCKS_PER_MALLOC_REQUEST;
+                newSegment = new AllocatedSegment();
+                newSegment->memoryBlock = newBlocks;
+                newSegment->cellsCount = BLOCKS_PER_ALLOCATION;
+                newSegment->nextBlock = this->segments;
+
+                this->segments = newSegment;
+                this->blocksInCurrentSegment = BLOCKS_PER_MALLOC_REQUEST;
+            }
+
+            newBlock = &(this->segments->memoryBlock[
+                this->segments->cellsCount - this->blocksInCurrentSegment--]);
         }
-
-        newBlock = &(this->segments->memoryBlock[
-            this->segments->cellsCount - this->blocksInCurrentSegment--]);
-        new(NULL) Cell(NULL, freeBlocks, CELL_TYPE_UNASSIGNED);
 
         freeBlocks = newBlock;
     }
+
+    this->gcLock.store(FALSE);
 
     return freeBlocks;
 };
@@ -125,10 +153,17 @@ Cell *ProtoSpace::getFreeCells(){
 void ProtoSpace::analyzeUsedCells(Cell *cellsChain) {
     DirtySegment *newChain;
 
+    while (this->gcLock.load.compare_exchange_strong(
+        FALSE,
+        TRUE
+    )) std::this_thread::yield();
+
     newChain = new DirtySegment();
     newChain->cellChain = cellsChain;
     newChain->nextSegment = this->dirtySegments;
     this->dirtySegments = newChain;
+
+    this->gcLock.store(FALSE);
 };
 
 void ProtoSpace::deallocMemory(){
@@ -144,3 +179,77 @@ void ProtoSpace::deallocMemory(){
     this->segments = NULL;
     this->blocksInCurrentSegment = 0;
 };
+
+void gcCollectCells(ProtoContext *context, void *self, Cell *value) {
+    ProtoObjectPointer p;
+    p.oid = (ProtoObject *) value;
+
+    ProtoSet *returnSet = (ProtoSet *) context->returnSet;
+
+    // Go further in the scanning only if it is a cell and the cell belongs to current context!
+    if (p.op.pointer_tag == POINTER_TAG_CELL) {
+        // It is an object pointer with references
+        returnSet->add(context, p.oid);
+        p.cell->processReferences(context, context, gcCollectCells);
+    }
+}
+
+void gcScan(ProtoContext *context, ProtoSpace *space) {
+    DirtySegment *toAnalize;
+    IdentityDict *mutables;
+
+    // Convert the dirtyList into the list of cells to analyze
+    // Acquire mutables
+
+    while (space->gcLock.load.compare_exchange_strong(
+        FALSE,
+        TRUE
+    )) std::this_thread::yield();
+
+    toAnalize = space->dirtySegments;
+    space->dirtySegments = NULL;
+    mutables = (IdentityDict *) space->mutableRoot.load();
+
+    space->gcLock.store(FALSE);
+
+    ProtoContext *gcContext = new ProtoContext(context);
+
+    ProtoSet *gcRoots = new(gcContext) ProtoSet(gcContext);
+
+    // Collect all roots
+    gcRoots->processReferences(gcContext, gcRoots, gcCollectCells);
+
+    Cell *freeBlocks = NULL;
+    int freeCount = 0;
+    while (toAnalize) {
+        Cell *block = toAnalize->cellChain;
+
+        while (block) {
+            Cell *nextCell = block->nextCell;
+            if (!gcRoots->has(gcContext, (ProtoObject *) block)) {
+                block->nextCell = freeBlocks;
+                freeBlocks = block;
+                freeCount++;
+            }
+            block = nextCell;
+        }
+
+        DirtySegment *nextToAnalize = toAnalize->nextSegment;
+        delete toAnalize;
+        toAnalize = nextToAnalize;
+    }
+
+
+    while (space->gcLock.load.compare_exchange_strong(
+        FALSE,
+        TRUE
+    )) std::this_thread::yield();
+
+    DirtySegment *newList = new DirtySegment;
+    newList->nextSegment = space->freeSegments;
+    newList->cellChain = freeBlocks;
+
+    space->freeSegments = newList;
+
+    space->gcLock.store(FALSE);
+}
