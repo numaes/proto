@@ -1,317 +1,437 @@
 /*
- * tree.cpp
+ * IdentityDict.cpp
  *
- *  Created on: 5 de ago. de 2017
+ *  Created on: 2017-05-01
  *      Author: gamarino
  */
 
 #include "../headers/proto.h"
 #include "../headers/proto_internal.h"
 
-void setTreeStatistics(TreeCell *self) {
-	if (!self->previous && !self->next) {
-		self->count = 1;
-		self->height = 1;
-	}
-	else if (!self->next) {
-		self->count = self->previous->count + 1;
-		self->height = self->previous->height + 1;
-	}
-	else if (!self->previous) {
-		self->count = self->next->count + 1;
-		self->height = self->next->height + 1;
-	}
-	else {
-		self->count = self->previous->count + self->next->count + 1;
-		self->height = (self->previous->height > self->next->height) ?
-							self->previous->height + 1 :
-							self->next->height + 1;
-	}
-}
 
-int getBalance(TreeCell *self) {
+#ifndef max
+#define max(a, b) (((a) > (b))? (a):(b))
+#endif
+
+IdentityDict::IdentityDict(
+	ProtoContext *context,
+
+	ProtoObject *key = NULL,
+	ProtoObject *value = PROTO_NONE,
+	IdentityDict *previous = NULL,
+	IdentityDict *next = NULL
+) : Cell(
+	context,
+	type = CELL_TYPE_IDENTITY_DICT,
+    height = 1 + max(previous? previous->height : 0, next? next->height : 0),
+    count = (key? 1: 0) + (previous? previous->count : 0) + (next? next->count : 0)
+) {
+	this->key = key;
+	this->value = value;
+	this->previous = previous;
+	this->next = next;
+	this->hash = PROTO_NONE;
+};
+
+IdentityDict::~IdentityDict() {
+
+};
+
+int getBalance(IdentityDict *self) {
 	if (self->next && self->previous)
-		return self->previous->height - self->next->height;
+		return self->next->height - self->previous->height;
 	else if (self->previous)
-		return self->previous->height;
+		return -self->previous->height;
 	else if (self->next)
-		return -self->next->height;
+		return self->next->height;
 	else
 		return 0;
 }
 
 // A utility function to right rotate subtree rooted with y
 // See the diagram given above.
-TreeCell *rightRotate(ProtoContext *context, TreeCell *n)
+IdentityDict *rightRotate(ProtoContext *context, IdentityDict *n)
 {
-	TreeCell *y = n->clone(context);
-    TreeCell *x = y->previous->clone(context);
-    TreeCell *T2 = x->next;
-
-    // Perform rotation
-    x->previous = y;
-    y->next = T2;
-
-    //  Update statistics
-    setTreeStatistics(x);
-    setTreeStatistics(y);
-
-    // Return new root
-    return x;
+    IdentityDict *newRight = new(context) IdentityDict(
+        context,
+        n->key,
+        n->value,
+        n->previous->next,
+        n->next
+    );
+    return new(context) IdentityDict(
+        context,
+        n->previous->key,
+        n->previous->value,
+        n->previous->previous,
+        newRight
+    );
 }
 
 // A utility function to left rotate subtree rooted with x
 // See the diagram given above.
-TreeCell *leftRotate(ProtoContext *context, TreeCell *n)
-{
-	TreeCell *x = n->clone(context);
-    TreeCell *y = x->next->clone(context);
-    TreeCell *T2 = y->previous;
-
-    // Perform rotation
-    y->previous = x;
-    x->next = T2;
-
-    //  Update statistics
-    setTreeStatistics(x);
-    setTreeStatistics(y);
-
-    // Return new root
-    return y;
+IdentityDict *leftRotate(ProtoContext *context, IdentityDict *n) {
+    IdentityDict *newLeft = new(context) IdentityDict(
+        context,
+        n->key,
+        n->value,
+        n->previous,
+        n->next->previous
+    );
+    return new(context) IdentityDict(
+        context,
+        n->next->key,
+        n->next->value,
+        newLeft,
+        n->next->next
+    );
 }
 
-
-TreeCell::TreeCell(
-	ProtoObject *key, 
-	TreeCell *previous = NULL, 
-	TreeCell *next = NULL
-):Cell() {
-	if (key) {
-		this->key = key;
-		this->previous = previous;
-		this->next = next;
-		setTreeStatistics(this);
-	}
-	else {
-		// Empty tree case
-
-		this->key = NULL;
-		this->previous = NULL;
-		this->next = NULL;
-	}
-}
-
-void TreeCell::processReferences(
-	ProtoContext *context, 
-	void (*method)(ProtoContext *context, Cell *cell)) {
-
-	if (this->previous) {
-		this->previous->processReferences(
-			context,
-			method
-		);
-	}
-
-	if (this->next)
-		this->previous->processReferences(
-			context,
-			method
-		);
-
-	TreeCell *thisNode = this;
-
-	method(context, this);
-
-}
-
-int TreeCell::has(ProtoContext *context, ProtoObject *key) {
-	TreeCell *node = this;
-
+BOOLEAN IdentityDict::has(ProtoContext *context, ProtoObject *key) {
 	if (!this->key)
 		return FALSE;
 
+    IdentityDict *node = this;
 	while (node) {
 		if (node->key == key)
 			return TRUE;
-		if (((int) node->key) < ((int) key))
-			node = node->next;
-		else
-			node = node->previous;
+        int cmp = ((int) key) - ((int) this->key);
+        if (cmp < 0)
+            node = node->previous;
+        else if (cmp > 1)
+            node = node->next;
 	}
-	return FALSE;
-}
 
-TreeCell *TreeCell::clone(ProtoContext *context) {
-	return new(context) TreeCell(this->key, this->previous, this->next);
-}
+    if (node)
+        return TRUE;
+    else
+        return NULL;
+};
 
-TreeCell *TreeCell::getAt(ProtoContext *context, ProtoObject *key) {
-	TreeCell *node = this;
-
+ProtoObject *IdentityDict::getAt(ProtoContext *context, ProtoObject *key) {
 	if (!this->key)
-		return NULL;
+		return PROTO_NONE;
 
+    IdentityDict *node = this;
 	while (node) {
 		if (node->key == key)
-			return this;
-		if (((int) node->key) < ((int) key))
-			node = node->next;
-		else
-			node = node->previous;
+			return node->value;
+        int cmp = ((int) key) - ((int) this->key);
+        if (cmp < 0)
+            node = node->previous;
+        else if (cmp > 1)
+            node = node->next;
 	}
-	return NULL;
-}
 
-TreeCell *TreeCell::add(ProtoObject *key) {
-	TreeCell *newNode;
-	TreeCell *newAux;
+    if (node)
+        return node->value;
+    else
+        return PROTO_NONE;
+
+};
+
+IdentityDict *IdentityDict::setAt(ProtoContext *context, ProtoObject *key, ProtoObject *value) {
+	IdentityDict *newNode;
+	IdentityDict *newAux;
 	int cmp;
 
-	newNode = this->clone();
-
 	// Empty tree case
-	if (!this->key) {
-		newNode->key = key;
-		newNode->previous = NULL;
-		newNode->next = NULL;
-		return newNode;
-	}
-
-	if (this->key != key) {
-		cmp = ((int) this->key) < ((int) key);
-		if (cmp && this->next) {
-			newNode->next = this->next->add(key);
-		}
-		else if (!cmp && this->previous) {
-			newNode->previous = this->previous->add(key);
-		}
-		else {
-			newAux = this->clone();
-			newAux->previous = (!cmp) ? newNode->previous:
-										NULL;
-			newAux->next = (cmp) ? newNode->previous:
-							       NULL;
-			newAux->key = key;
-		}
-		setTreeStatistics(newNode);
-		int balance = getBalance(newNode);
-
-		// If this node becomes unbalanced, then
-		// there are 4 cases
-
-		// Left Left Case
-		if (balance > 1 && key < newNode->previous->key)
-			return rightRotate(newNode);
-
-		// Right Right Case
-		if (balance < -1 && key > newNode->next->key)
-			return leftRotate(newNode);
-
-		// Left Right Case
-		if (balance > 1 && key > newNode->previous->key)
-		{
-			newNode->previous = leftRotate(newNode->previous);
-			return rightRotate(newNode);
-		}
-
-		// Right Left Case
-		if (balance < -1 && key < newNode->next->key)
-		{
-			newNode->next = rightRotate(newNode->next);
-			return leftRotate(newNode);
-		}
-	}
-
-	return newNode;
-}
-
-TreeCell *TreeCell::remove(ProtoObject *key) {
-	// STEP 1: PERFORM STANDARD BST DELETE
-
-	TreeCell *newRoot = this;
-
-	// Empty tree?
 	if (!this->key)
-		return this;
+        return new(context) IdentityDict(
+            context,
+            key = key,
+			value = value
+        );
 
-	// If the key to be deleted is smaller than the
-	// root's key, then it lies in left subtree
+    cmp = ((int) key) - ((int)this->key);
+    if (cmp > 0) {
+        if (this->next) {
+            newNode = new(context) IdentityDict(
+                context,
+                key = this->key,
+                previous = this->previous,
+                next = this->next->setAt(context, key, value)
+            );
+        }
+        else {
+            newNode = new(context) IdentityDict(
+                context,
+                key = this->key,
+                previous = this->previous,
+                next = new(context) IdentityDict(
+                    context,
+                    key = this->key
+                )
+            );
+        }
+    }
+    else if (cmp < 0) {
+        if (this->previous) {
+            newNode = new(context) IdentityDict(
+                context,
+                key = this->key,
+                previous = this->previous->setAt(context, key, value),
+                next = this->next
+            );
+        }
+        else {
+            newNode = new(context) IdentityDict(
+                context,
+                key = this->key,
+                previous = new(context) IdentityDict(
+                    context,
+                    key = this->key
+                ),
+                next = this->next
+            );
+        }
+    }
+    else 
+        return this;
 
-	if (key < this->key && this->previous) {
-		newRoot = this->clone();
-		newRoot->previous = this->previous->remove(key);
+    int balance = getBalance(newNode);
+
+    // If this node becomes unbalanced, then
+    // there are 4 cases
+
+    // Left Left Case
+    if (balance < 1 && ((int) key) - ((int) newNode->previous->key) < 0)
+        return rightRotate(context, newNode);
+
+    // Right Right Case
+    if (balance > 1 && ((int) key) - ((int) newNode->previous->key) > 0)
+        return leftRotate(context, newNode);
+
+    // Left Right Case
+    if (balance < 1 && ((int) key) - ((int) newNode->previous->key) > 0) {
+        newNode = new(context) IdentityDict(
+            context,
+            key = newNode->key,
+			value = newNode->value,
+            previous = leftRotate(context, newNode->previous),
+            next = newNode->next
+        );
+        return rightRotate(context, newNode);
+    }
+
+    // Right Left Case
+    if (balance > 1 && ((int) key) - ((int) newNode->previous->key) < 0) {
+        newNode = new(context) IdentityDict(
+            context,
+            key = newNode->key,
+			value = newNode->value,
+            previous = newNode->previous,
+            next = rightRotate(context, newNode->next)
+        );
+        return leftRotate(context, newNode);
+    }
+
+    return newNode;
+
+};
+
+IdentityDict *IdentityDict::removeAt(ProtoContext *context, ProtoObject *key) {
+	if (key == this->key && !this->next && !this->previous)
+		return new(context) IdentityDict(context);
+
+	if (key == this->key) {
+		if (!this->next && this->previous)
+			return this->previous;
+
+		return this->next;
 	}
 
-	// If the key to be deleted is greater than the
-	// root's key, then it lies in right subtree
-	else if (key > this->key && this->next) {
-		newRoot = this->clone();
-		newRoot->next = this->next(key);
+	int cmp = ((int) key) - ((int) this->key);
+	IdentityDict *newNode;
+	if (cmp < 0) {
+		if (!this->previous)
+			return this;
+		newNode = this->previous->removeAt(context, key);
+		if (newNode->getSize(context) == 0)
+			newNode = new(context) IdentityDict(
+				context,
+				key = this->key,
+				value = this->value,
+				previous = NULL,
+				next = this->next
+			);
+	}
+	else {
+		if (!this->next)
+			return this;
+		newNode = this->next->removeAt(context, key);
+		if (newNode->getSize(context) == 0)
+			newNode = new(context) IdentityDict(
+				context,
+				key = this->key,
+				value = this->value,
+				previous = this->previous,
+				next = NULL
+			);
 	}
 
-	// if key is same as root's key, then This is
-	// the node to be deleted
-	else
-	{
-		// node with only one child or no child
-		if (!this->previous || !this->next)
-		{
-			TreeCell *temp = this->previous ? this->previous :
-											  this->next;
-			// No child case
-			if (!temp) {
-				TreeCell *emptyTree = this->clone();
-				emptyTree->key = NULL;
-				emptyTree->previous = NULL;
-				emptyTree->next = NULL;
-				return emptyTree;
-			}
-			else // One child case
-				return temp;
-		}
-		else
-		{
-			// node with two children: Get the inorder
-			// successor (smallest in the right subtree)
-			TreeCell *s = this->next;
-			while (s->previous)
-				s = s->previous;
-			newRoot = s->clone();
+	int balance = getBalance(newNode);
 
-			newRoot->previous = this->previous;
-			newRoot->next = this->next->remove(key);
-		}
+    // If this node becomes unbalanced, then
+    // there are 4 cases
+
+    // Left Left Case
+    if (balance < 1 && ((int) key) - ((int) newNode->previous->key) < 0)
+        return rightRotate(context, newNode);
+
+    // Right Right Case
+    if (balance > 1 && ((int) key) - ((int) newNode->previous->key) > 0)
+        return leftRotate(context, newNode);
+
+    // Left Right Case
+    if (balance < 1 && ((int) key) - ((int) newNode->previous->key) > 0) {
+        newNode = new(context) IdentityDict(
+            context,
+            key = newNode->key,
+			value = newNode->value,
+            previous = leftRotate(context, newNode->previous),
+            next = newNode->next
+        );
+        return rightRotate(context, newNode);
+    }
+
+    // Right Left Case
+    if (balance > 1 && ((int) key) - ((int) newNode->previous->key) < 0) {
+        newNode = new(context) IdentityDict(
+            context,
+            key = newNode->key,
+            previous = newNode->previous,
+            next = rightRotate(context, newNode->next)
+        );
+        return leftRotate(context, newNode);
+    }
+
+    return newNode;
+};
+
+struct matchState {
+	IdentityDict *otherDictionary;
+	BOOLEAN match;
+};
+
+void match(ProtoContext *context, void *self, ProtoObject *key, ProtoObject *value) {
+	struct matchState *state = (struct matchState *) self;
+
+	if (!state->otherDictionary->has(context, key) || 
+	    state->otherDictionary->getAt(context, key) != value)
+		state->match = FALSE;
+
+};
+
+int	IdentityDict::isEqual(ProtoContext *context, IdentityDict *otherDict) {
+	if (this->count != otherDict->count)
+		return FALSE;
+
+	struct matchState state;
+	state.otherDictionary = otherDict;
+	state.match = TRUE;
+
+	this->processElements(context, (void *) &state, match);
+	
+	return state.match;
+};
+
+unsigned long IdentityDict::getSize(ProtoContext *context) {
+	return this->count;
+};
+
+void IdentityDict::processReferences (
+	ProtoContext *context,
+	void *self,
+	void (*method) (
+		ProtoContext *context,
+		void *self,
+		Cell *cell
+	)
+) {
+	if (this->previous)
+		this->previous->processReferences(context, self, method);
+
+	ProtoObjectPointer p;
+
+	if (this->key != NULL) {
+		p.oid = this->key;
+		if (p.op.pointer_tag == POINTER_TAG_CELL)
+			method(context, self, p.cell);
+
+		p.oid = this->value;
+		if (p.op.pointer_tag == POINTER_TAG_CELL)
+			method(context, self, p.cell);
 	}
 
-	// STEP 2: Update statistics of new root
-	setTreeStatistics(newRoot);
+	if (this->next)
+		this->next->processReferences(context, self, method);
+};
 
-	// STEP 3: GET THE BALANCE FACTOR OF THIS NODE (to
-	// check whether this node became unbalanced)
-	int balance = getBalance(newRoot);
+void IdentityDict::processElements (
+	ProtoContext *context,
+	void *self,
+	void (*method) (
+		ProtoContext *context,
+		void *self,
+		ProtoObject *key,
+		ProtoObject *value
+	)
+) {
+	if (this->previous)
+		this->previous->processElements(context, self, method);
 
-	// If this node becomes unbalanced, then there are 4 cases
+	ProtoObjectPointer p;
 
-	// Left Left Case
-	if (balance > 1 && getBalance(newRoot->previous) >= 0)
-		return rightRotate(newRoot);
+	if (this->key != NULL)
+		method(context, self, this->key, this->value);
 
-	// Left Right Case
-	if (balance > 1 && getBalance(newRoot->previous) < 0) {
-		newRoot->previous = leftRotate(newRoot->previous);
-		return rightRotate(newRoot);
-	}
+	if (this->next)
+		this->next->processElements(context, self, method);
 
-	// Right Right Case
-	if (balance < -1 && getBalance(newRoot->next) <= 0)
-		return leftRotate(newRoot);
+};
 
-	// Right Left Case
-	if (balance < -1 && getBalance(newRoot->next) > 0){
-		newRoot->next = rightRotate(newRoot->next);
-		return leftRotate(newRoot);
-	}
+void IdentityDict::processKeys (
+	ProtoContext *context,
+	void *self,
+	void (*method) (
+		ProtoContext *context,
+		void *self,
+		ProtoObject *element
+	)
+) {
+	if (this->previous)
+		this->previous->processKeys(context, self, method);
 
-	return newRoot;
-}
+	ProtoObjectPointer p;
+
+	if (this->key != NULL)
+		method(context, self, this->key);
+
+	if (this->next)
+		this->next->processKeys(context, self, method);
+
+};
+
+void IdentityDict::processValues (
+	ProtoContext *context,
+	void *self,
+	void (*method) (
+		ProtoContext *context,
+		void *self,
+		ProtoObject *element
+	)
+) {
+	if (this->previous)
+		this->previous->processValues(context, self, method);
+
+	ProtoObjectPointer p;
+
+	if (this->key != NULL)
+		method(context, self, this->value);
+
+	if (this->next)
+		this->next->processValues(context, self, method);
+
+};
 

@@ -18,8 +18,10 @@ ProtoThread::ProtoThread(
 		ProtoMethod *code = NULL,
 		ProtoObject *args = NULL,
 		ProtoObject *kwargs = NULL
-) : Cell(context, nextCell, CELL_TYPE_PROTO_THREAD) {
-
+) : Cell(
+    context, 
+    type = CELL_TYPE_PROTO_THREAD
+) {
     this->name = name;
     this->space = space;
     this->currentWorkingSet = NULL;
@@ -106,5 +108,30 @@ void ProtoThread::setLastAllocatedCell(
     Cell *someCell
 ) {
     this->currentWorkingSet = someCell;
+};
+
+void ProtoThread::processReferences(
+		ProtoContext *context, 
+		void *self,
+		void (*method)(
+			ProtoContext *context, 
+			void *self,
+			Cell *cell
+		)
+) {
+    Cell *block = this->currentWorkingSet;
+    while (block) {
+        method(context, self, block);
+        block = block->nextCell;
+    };
+
+    if (this->name) {
+        ProtoObjectPointer p;
+        p.oid = this->name;
+        if (p.op.pointer_tag == POINTER_TAG_CELL)
+            method(context, self, (Cell *) this->name);
+    }
+
+    method(context, self, this);
 };
 

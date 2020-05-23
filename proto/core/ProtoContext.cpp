@@ -13,24 +13,32 @@
 #include <thread>
 #include <stdlib.h>
 
+#ifndef max
+#define max(a, b) (((a) > (b))? (a):(b))
+#endif
 
 // Global literal dictionary
-class LiteralDictionary: public TreeCell {
+class LiteralDictionary: public Cell {
 public:
 	LiteralDictionary(
 		ProtoContext *context,
 
-		ProtoObject *key = PROTO_NONE,
-		ProtoObject *hash = PROTO_NONE,
-		TreeCell *previous = NULL,
-		TreeCell *next = NULL,
-		unsigned long count = 0,
-		unsigned long height = 0,
-		Cell *nextCell = NULL
+		ProtoList *key = NULL,
+		LiteralDictionary *previous = NULL,
+		LiteralDictionary *next = NULL
 	);
 	~LiteralDictionary();
 
-	ProtoObject			*get(char *zeroTerminatedUTF8CharString);
+    ProtoList           *key;
+    ProtoObject         *hash;
+    LiteralDictionary   *previous;
+    LiteralDictionary   *next;
+    unsigned long        count:52;
+    unsigned long        balance:4;
+    unsigned long        height:8;
+
+    ProtoList           *getFromString(ProtoList *string);
+	ProtoList			*get(char *zeroTerminatedUTF8CharString);
 	LiteralDictionary	*set(ProtoList *string);
 };
 
@@ -265,7 +273,7 @@ ProtoObject *ProtoContext::fromByte(char c) {
     return p.oid;
 };
 
-ProtoObject *ProtoContext::literalFromString(char *zeroTerminatedUtf8String) {
+ProtoObject *ProtoContext::literalFromUTF8String(char *zeroTerminatedUtf8String) {
     LiteralDictionary *newRoot, *currentRoot;
     ProtoList *literalString;
 
@@ -291,6 +299,7 @@ ProtoObject *ProtoContext::literalFromString(char *zeroTerminatedUtf8String) {
                 currentChar += 3;
             else if (( currentChar[0] & 0xF8 ) == 0xF0 )
                 currentChar += 4;
+            literalString = literalString->appendLast(&literalContext, protoChar);
         }
 
         newRoot = currentRoot->set(literalString);
@@ -300,6 +309,25 @@ ProtoObject *ProtoContext::literalFromString(char *zeroTerminatedUtf8String) {
     ));
 
     return literalString;
+};
+
+ProtoObject *ProtoContext::literalFromString(ProtoList *string) {
+    LiteralDictionary *newRoot, *currentRoot;
+
+    do {
+        currentRoot = literalRoot->load();
+
+        ProtoList *currentLiteral = currentRoot->getFromString(string);
+        if (currentLiteral)
+            return currentLiteral;
+
+        newRoot = currentRoot->set(string);
+    } while (!literalRoot->compare_exchange_strong(
+        currentRoot, 
+        newRoot
+    ));
+
+    return PROTO_NULL;
 };
 
 ProtoObject *ProtoContext::newMutable(ProtoObject *value=PROTO_NONE) {
@@ -336,3 +364,277 @@ ProtoObject *ProtoContext::newMutable(ProtoObject *value=PROTO_NONE) {
 ProtoThread *ProtoContext::getCurrentThread() {
     return this->thread;
 }
+
+int compareStrings(ProtoList *string1, ProtoList *string2) {
+    int string1Size = string1->getSize(&literalContext);
+    int string2Size = string2->getSize(&literalContext);
+    int cmp = 0;
+    int i;
+    for (i = 0; i <= string1Size && i <= string2Size; i++) {
+        ProtoObjectPointer string1Char;
+        string1Char.oid = string1->getAt(&literalContext, literalContext.fromInteger(i));
+        ProtoObjectPointer string2Char;
+        string2Char.oid = string2->getAt(&literalContext, literalContext.fromInteger(i));
+
+        if (string1Char.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE || 
+            string1Char.op.embedded_type != EMBEDED_TYPE_UNICODECHAR)
+            return -1;
+        
+        if (string2Char.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE || 
+            string2Char.op.embedded_type != EMBEDED_TYPE_UNICODECHAR)
+            return 1;
+        
+        if (string1Char.unicodeChar.unicodeValue < string2Char.unicodeChar.unicodeValue)
+            return -1;
+        else if (string1Char.unicodeChar.unicodeValue > string2Char.unicodeChar.unicodeValue)
+            return 1;
+    }
+    if (i > string1Size)
+        return -1;
+    else if (i > string2Size)
+        return 1;
+    return 0;
+}
+
+ProtoList *LiteralDictionary::getFromString(
+    ProtoList *string
+) {
+	if (!this->key)
+		return NULL;
+
+    LiteralDictionary *node = this;
+	while (node) {
+		if (node->key == key)
+			return node->key;
+        int cmp = compareStrings(string, this->key);
+        if (cmp < 0)
+            node = node->previous;
+        else if (cmp > 1)
+            node = node->next;
+	}
+
+    if (node)
+        return node->key;
+    else
+        return NULL;
+};
+
+ProtoList *LiteralDictionary::get(char *zeroTerminatedUTF8CharString) {
+	if (!this->key)
+		return NULL;
+
+    LiteralDictionary *node = this;
+	while (node) {
+		if (node->key == key)
+			return node->key;
+
+        char *currentChar = zeroTerminatedUTF8CharString;
+        int keySize = node->key->getSize(context);
+        int cmp = 0;
+        int i;
+        for (i = 0; i <= keySize && *currentChar; i++) {
+            ProtoObjectPointer keyChar;
+            keyChar.oid = node->key->getAt(context, context->fromInteger(i));
+            ProtoObjectPointer stringChar;
+            stringChar.oid = context->fromUTF8Char(currentChar);
+            if (( currentChar[0] & 0x80 ) == 0 )
+                // 0000 0000-0000 007F | 0xxxxxxx
+                currentChar += 1;
+            else if (( currentChar[0] & 0xE0 ) == 0xC0 )
+                // 0000 0080-0000 07FF | 110xxxxx 10xxxxxx
+                currentChar += 2;
+            else if (( currentChar[0] & 0xF0 ) == 0xE0 ) 
+                // 0000 0800-0000 FFFF | 1110xxxx 10xxxxxx 10xxxxxx
+                currentChar += 3;
+            else if (( currentChar[0] & 0xF8 ) == 0xF0 )
+                currentChar += 4;
+
+            if (keyChar.unicodeChar.unicodeValue > stringChar.unicodeChar.unicodeValue) {
+                cmp = -1;
+                node = node->previous;
+                break;
+            }
+            else if (keyChar.unicodeChar.unicodeValue < stringChar.unicodeChar.unicodeValue) {
+                cmp = 1;
+                node = node->next;
+                break;
+            }
+        }
+
+        if (cmp == 0 && i > keySize)
+            node = node->previous;
+        else if (cmp == 0 && *currentChar)
+            node = node->next;
+        else if (cmp == 0 && i == keySize && *currentChar)
+            break;
+	}
+
+    if (node)
+        return node->key;
+    else
+        return NULL;
+
+};
+
+LiteralDictionary::LiteralDictionary(
+    ProtoContext *context,
+
+    ProtoList *key = NULL,
+    LiteralDictionary *previous = NULL,
+    LiteralDictionary *next = NULL
+):Cell(
+    context, 
+    type = CELL_TYPE_LITERAL_DICT,
+    height = 1 + max(previous? previous->height : 0, next? next->height : 0),
+    count = (key? 1: 0) + (previous? previous->count : 0) + (next? next->count : 0)
+) {
+    this->key = key;
+    this->previous = previous;
+    this->next = next;
+};
+
+LiteralDictionary::~LiteralDictionary() {
+
+};
+
+int getBalance(LiteralDictionary *self) {
+	if (self->next && self->previous)
+		return self->next->height - self->previous->height;
+	else if (self->previous)
+		return -self->previous->height;
+	else if (self->next)
+		return self->next->height;
+	else
+		return 0;
+}
+
+// A utility function to right rotate subtree rooted with y
+// See the diagram given above.
+LiteralDictionary *rightRotate(LiteralDictionary *n)
+{
+    LiteralDictionary *newRight = new(&literalContext) LiteralDictionary(
+        &literalContext,
+        n->key,
+        n->previous->next,
+        n->next
+    );
+    return new(&literalContext) LiteralDictionary(
+        &literalContext,
+        n->previous->key,
+        n->previous->previous,
+        newRight
+    );
+}
+
+// A utility function to left rotate subtree rooted with x
+// See the diagram given above.
+LiteralDictionary *leftRotate(LiteralDictionary *n) {
+    LiteralDictionary *newLeft = new(&literalContext) LiteralDictionary(
+        &literalContext,
+        n->key,
+        n->previous,
+        n->next->previous
+    );
+    return new(&literalContext) LiteralDictionary(
+        &literalContext,
+        n->next->key,
+        newLeft,
+        n->next->next
+    );
+}
+
+LiteralDictionary *LiteralDictionary::set(ProtoList *string) {
+	LiteralDictionary *newNode;
+	LiteralDictionary *newAux;
+	int cmp;
+
+	// Empty tree case
+	if (!this->key)
+        return new(&literalContext) LiteralDictionary(
+            &literalContext,
+            key = string
+        );
+
+    cmp = compareStrings(string, this->key);
+    if (cmp > 0) {
+        if (this->next) {
+            newNode = new(&literalContext) LiteralDictionary(
+                &literalContext,
+                key = this->key,
+                previous = this->previous,
+                next = this->next->set(string)
+            );
+        }
+        else {
+            newNode = new(&literalContext) LiteralDictionary(
+                &literalContext,
+                key = this->key,
+                previous = this->previous,
+                next = new(&literalContext) LiteralDictionary(
+                    &literalContext,
+                    key = this->key
+                )
+            );
+        }
+    }
+    else if (cmp < 0) {
+        if (this->previous) {
+            newNode = new(&literalContext) LiteralDictionary(
+                &literalContext,
+                key = this->key,
+                previous = this->previous->set(string),
+                next = this->next
+            );
+        }
+        else {
+            newNode = new(&literalContext) LiteralDictionary(
+                &literalContext,
+                key = this->key,
+                previous = new(&literalContext) LiteralDictionary(
+                    &literalContext,
+                    key = this->key
+                ),
+                next = this->next
+            );
+        }
+    }
+    else 
+        return this;
+
+    int balance = getBalance(newNode);
+
+    // If this node becomes unbalanced, then
+    // there are 4 cases
+
+    // Left Left Case
+    if (newNode->balance < 1 && compareStrings(string, newNode->previous->key) < 0)
+        return rightRotate(newNode);
+
+    // Right Right Case
+    if (newNode->balance > 1 && compareStrings(string, newNode->next->key) > 0)
+        return leftRotate(newNode);
+
+    // Left Right Case
+    if (newNode->balance < 1 && compareStrings(string, newNode->previous->key) > 0) {
+        newNode = new(&literalContext) LiteralDictionary(
+            &literalContext,
+            key = newNode->key,
+            previous = leftRotate(newNode->previous),
+            next = newNode->next
+        );
+        return rightRotate(newNode);
+    }
+
+    // Right Left Case
+    if (newNode->balance > 1 && compareStrings(string, newNode->previous->key) < 0) {
+        newNode = new(&literalContext) LiteralDictionary(
+            &literalContext,
+            key = newNode->key,
+            previous = newNode->previous,
+            next = rightRotate(newNode->next)
+        );
+        return leftRotate(newNode);
+    }
+
+    return newNode;
+};

@@ -225,7 +225,8 @@ public:
 	ProtoObject 	*fromBuffer(char *pointer, unsigned long length);
 	ProtoObject 	*fromBoolean(BOOLEAN value);
 	ProtoObject 	*fromByte(char c);
-	ProtoObject 	*literalFromString(char *zeroTerminatedUtf8String);
+	ProtoObject 	*literalFromUTF8String(char *zeroTerminatedUtf8String);
+	ProtoObject 	*literalFromString(ProtoList *string);
 
 	ProtoObject 	*newMutable(ProtoObject *value=PROTO_NONE);
 	ProtoThread 	*getCurrentThread();
