@@ -17,6 +17,8 @@
 #define SPACE_STATE_RUNNING             0
 #define SPACE_STATE_ENDING              1
 
+#define GC_SLEEP_MILLISECONDS           1000
+
 
 ProtoSpace::ProtoSpace() {
     Cell *firstCell = this->getFreeCells();
@@ -34,13 +36,17 @@ ProtoSpace::ProtoSpace() {
         this,
         firstThread
     );
-    
+
+    this->mainThreadId = std::this_thread::get_id();
+
     this->threads = new(creationContext) ProtoSet(creationContext);
     ProtoObject *threadName = creationContext->literalFromString("Main thread");
     firstThread->name = threadName;
     this->threads = creationContext->newMutable();
     ProtoSet *threads = new(creationContext) ProtoSet(creationContext);
     this->threads->setValue(creationContext, threads->add(creationContext, firstThread));
+
+    this->gcThread = new std::thread(gcThread, this);
 };
 
 ProtoSpace::~ProtoSpace() {
@@ -59,6 +65,8 @@ ProtoSpace::~ProtoSpace() {
         );
         t->join(finalContext);
     }
+
+    this->gcThread->join();
 };
 
 ProtoThread *ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread) {
@@ -253,3 +261,16 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
 
     space->gcLock.store(FALSE);
 }
+
+void gcThread(ProtoSpace *space) {
+    ProtoContext gcContext;
+
+    while (space->state == SPACE_STATE_RUNNING) {
+        if (space->dirtySegments) {
+            gcScan(&gcContext, space);
+        }
+        else
+            std::this_thread::sleep_for(std::chrono::milliseconds(GC_SLEEP_MILLISECONDS));
+    }
+}
+

@@ -107,6 +107,8 @@ public:
 	DirtySegment 		*dirtySegments;
 	std::atomic<BOOLEAN> gcLock;
 	int					 state;
+	std::thread::id		 mainThreadId;
+	std::thread			*gcThread;
 };
 
 typedef struct {
