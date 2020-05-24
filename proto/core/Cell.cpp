@@ -7,19 +7,17 @@
 
 
 #include "../headers/proto.h"
-#include "../headers/proto_internal.h"
-
-void *Cell::operator new(size_t size, ProtoContext *context) {
-    return context->allocCell();
-};
 
 Cell::Cell (
     ProtoContext *context, 
-    unsigned long type = CELL_TYPE_UNASSIGNED_F,
-    unsigned long height = 0,
-    unsigned long count = 0
+    unsigned long type = CELL_TYPE_UNASSIGNED,
+    unsigned long height = 0L,
+    unsigned long count = 0L
 ) {
-
+    this->context = context;
+    this->type = type;
+    this->height = height;
+    this->count = count;
 };
 
 Cell::~Cell() {
@@ -60,6 +58,10 @@ Cell::~Cell() {
             ((ProtoMethodCell *) this)->~ProtoMethodCell();
             break;
     }
+};
+
+void *Cell::operator new(size_t size, ProtoContext *context) {
+    return context->allocCell();
 };
 
 // Apply method recursivelly to all referenced objects, except itself

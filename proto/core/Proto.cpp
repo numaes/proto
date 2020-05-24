@@ -6,7 +6,7 @@
  */
 
 #include "../headers/proto.h"
-#include "../headers/proto_internal.h"
+
 
 
 ProtoObjectCell *getBase(ProtoContext *context, ProtoObject *p) {

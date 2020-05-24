@@ -35,8 +35,8 @@ PLATFORM := $(shell uname)
 # | Programs |
 # +----------+
 CPP11_FLAGS := -std=c++11
-CC  := clang
-CXX := clang++
+CC  := gcc
+CXX := gcc
 ifeq ($(PLATFORM),Darwin) # on mac
     CPP11_FLAGS := $(CPP11_FLAGS) -stdlib=libc++ -Wno-c++11-extensions
 endif
@@ -87,7 +87,9 @@ endif
 # +---------------------------------------+
 # OTHER_SRCS   := xxx xxx xxx
 SRCS         := \
-    core 
+    Cell IdentityDict ParentLink Proto ProtoByteBuffer \
+	ProtoContext ProtoEsternalPointer ProtoObject ProtoSet \
+	ProtoSpace Thread
 #    $(addprefix math/,$(OTHER_SRCS))\
 
 # +-----------------------------------+
@@ -95,7 +97,7 @@ SRCS         := \
 # +-----------------------------------+
 # OTHER_HEADERS := xxx.h xxx.h
 HEADERS           := \
-    headers
+    proto.h
 #    $(addprefix math/,$(OTHER_HEADERS))\
 HEADER_COPIES     := $(addprefix include/,$(HEADERS))
 
@@ -119,15 +121,10 @@ DEPENDS := $(addprefix depend/,$(addsuffix .d,$(ALL_SRCS)))
 # | Object Aggregation for Targets |
 # +--------------------------------+
 
-OBJ               := $(addprefix obj/,$(addsuffix .o,$(SRCS))) \
-                     obj/isct/triangle.o
-DEBUG             := $(addprefix debug/,$(addsuffix .o,$(SRCS))) \
-                     obj/isct/triangle.o
-
-MAIN_OBJ          := $(addprefix obj/,$(addsuffix .o,$(MAIN_SRC))) \
-                     obj/isct/triangle.o
-MAIN_DEBUG        := $(addprefix debug/,$(addsuffix .o,$(MAIN_SRC))) \
-                     obj/isct/triangle.o
+OBJ               := $(addprefix obj/,$(addsuffix .o,$(SRCS)))
+DEBUG             := $(addprefix debug/,$(addsuffix .o,$(SRCS)))
+MAIN_OBJ          := $(addprefix obj/,$(addsuffix .o,$(MAIN_SRC)))
+MAIN_DEBUG        := $(addprefix debug/,$(addsuffix .o,$(MAIN_SRC)))
 
 LIB_TARGET_NAME   := proto
 
@@ -159,16 +156,16 @@ bin/test_proto: $(MAIN_OBJ)
 # +------------------------------------+
 # | Generic Source->Object Build Rules |
 # +------------------------------------+
-obj/%.o: src/%.cpp
+obj/%.o: core/%.cpp
 	@echo "Compiling $@"
 	@$(CXX) $(CXXFLAGS) -o $@ -c $<
 
-debug/%.o: src/%.cpp
+debug/%.o: core/%.cpp
 	@echo "Compiling $@"
 	@$(CXX) $(CXXDFLAGS) -o $@ -c $<
 
 # dependency file build rules
-depend/%.d: src/%.cpp
+depend/%.d: core/%.cpp
 	@$(CXX) $(CXXFLAGS) -MM $< | \
         sed -e 's@^\(.*\)\.o:@depend/$*.d debug/$*.o obj/$*.o:@' > $@
 
