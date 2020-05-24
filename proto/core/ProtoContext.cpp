@@ -84,7 +84,7 @@ ProtoContext::~ProtoContext() {
         this->thread->currentWorkingSet = this->lastCellPreviousContext;
 
         while (currentCell && currentCell != this->lastCellPreviousContext) {
-            if (returnSet->has(this, (ProtoObject *) currentCell) != PROTO_TRUE) {
+            if (!returnSet->has(this, (ProtoObject *) currentCell)) {
                 currentCell->nextCell = freeCells;
                 freeCells = currentCell;
             }
@@ -372,9 +372,9 @@ int compareStrings(ProtoList *string1, ProtoList *string2) {
     int i;
     for (i = 0; i <= string1Size && i <= string2Size; i++) {
         ProtoObjectPointer string1Char;
-        string1Char.oid = string1->getAt(&literalContext, literalContext.fromInteger(i));
+        string1Char.oid = string1->getAt(&literalContext, i);
         ProtoObjectPointer string2Char;
-        string2Char.oid = string2->getAt(&literalContext, literalContext.fromInteger(i));
+        string2Char.oid = string2->getAt(&literalContext, i);
 
         if (string1Char.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE || 
             string1Char.op.embedded_type != EMBEDED_TYPE_UNICODECHAR)
@@ -434,7 +434,7 @@ ProtoList *LiteralDictionary::get(char *zeroTerminatedUTF8CharString) {
         int i;
         for (i = 0; i <= keySize && *currentChar; i++) {
             ProtoObjectPointer keyChar;
-            keyChar.oid = node->key->getAt(context, context->fromInteger(i));
+            keyChar.oid = node->key->getAt(context, i);
             ProtoObjectPointer stringChar;
             stringChar.oid = context->fromUTF8Char(currentChar);
             if (( currentChar[0] & 0x80 ) == 0 )

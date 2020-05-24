@@ -94,32 +94,6 @@ public:
 // Base tree structure used by Dictionaries, Sets and Lists
 // Internal use exclusively
 
-class TreeCell: public Cell {
-protected:
-    ProtoObject		*hash;
-	TreeCell		*previous;
-	TreeCell		*next;
-
-	ProtoObject 	*key;
-
-public:
-	TreeCell(
-		ProtoContext *context,
-
-		ProtoObject *key = PROTO_NONE,
-		ProtoObject *hash = PROTO_NONE,
-		TreeCell *previous = NULL,
-		TreeCell *next = NULL,
-		unsigned long type = 0,
-		unsigned long count = 0,
-		unsigned long height = 0,
-
-		Cell *nextCell = NULL
-	);
-
-	~TreeCell();
-};
-
 union ProtoObjectPointer {
 	ProtoObject	*oid;
 	Cell *cell;
@@ -186,16 +160,12 @@ union ProtoObjectPointer {
 // ParentPointers are chains of parent classes used to solve attribute access
 class ParentLink: public Cell {
 protected:
-	ProtoObject *parent;
-	ProtoObject *object;
-
 public:
 	ParentLink(
 		ProtoContext *context,
 
-		Cell *nextCell = NULL,
-		ProtoObject *parent = PROTO_NONE,
-		ProtoObject *object = PROTO_NONE
+		ParentLink *parent,
+		ProtoObject *object
 	);
 
 	~ParentLink();
@@ -210,6 +180,9 @@ public:
 			Cell *cell
 		)
 	);
+
+	ParentLink *parent;
+	ProtoObject *object;
 };
 
 class IdentityDict: public Cell, public ProtoObject {
@@ -279,41 +252,34 @@ public:
 	ProtoObject 	*value;
 };
 
-class ProtoList: public TreeCell, public ProtoObject {
+class ProtoList: public Cell, public ProtoObject {
 public:
 	ProtoList(
 		ProtoContext *context,
 
-		ProtoObject *hash = PROTO_NONE,
-		TreeCell *previous = NULL,
-		TreeCell *next = NULL,
-		unsigned long count = 0,
-		unsigned long height = 0,
-		ProtoObject *key = PROTO_NONE,
-
-		Cell *nextCell = NULL
+		ProtoObject *value = PROTO_NONE,
+		ProtoList *previous = NULL,
+		ProtoList *next = NULL
 	);
 	~ProtoList();
 
-	ProtoList	*clone(ProtoContext *context);
-	
-	ProtoList   *getAt(ProtoContext *context, ProtoObject *index);
-	ProtoList   *getFirst(ProtoContext *context);
-	ProtoList   *getLast(ProtoContext *context);
-	ProtoList   *getKeys(ProtoContext *context);
-	ProtoList	*getSlice(ProtoContext *context, ProtoObject *from, ProtoObject *to);
-	unsigned long getSize(ProtoContext *context);
+	ProtoObject   *getAt(ProtoContext *context, int index);
+	ProtoObject   *getFirst(ProtoContext *context);
+	ProtoObject   *getLast(ProtoContext *context);
+	ProtoList	  *getSlice(ProtoContext *context, int from, int to);
+	unsigned long  getSize(ProtoContext *context);
 
-	ProtoObject	*has(ProtoContext *context, ProtoObject* value);
-	ProtoList 	*setAt(ProtoContext *context, ProtoObject *index, ProtoObject* value);
+	BOOLEAN		   has(ProtoContext *context, ProtoObject* value);
+	ProtoList     *setAt(ProtoContext *context, int index, ProtoObject* value);
+	ProtoList     *insertAt(ProtoContext *context, int index, ProtoObject* value);
 
-	ProtoList  	*appendFirst(ProtoContext *context, ProtoObject* value);
-	ProtoList  	*appendLast(ProtoContext *context, ProtoObject* value);
+	ProtoList  	  *appendFirst(ProtoContext *context, ProtoObject* value);
+	ProtoList  	  *appendLast(ProtoContext *context, ProtoObject* value);
 
-	ProtoList	*removeFirst(ProtoContext *context);
-	ProtoList	*removeLast(ProtoContext *context);
-	ProtoList	*removeAt(ProtoContext *context, ProtoObject* index);
-	ProtoList  	*removeSlice(ProtoContext *context, ProtoObject *from, ProtoObject *to);
+	ProtoList	  *removeFirst(ProtoContext *context);
+	ProtoList	  *removeLast(ProtoContext *context);
+	ProtoList	  *removeAt(ProtoContext *context, int index);
+	ProtoList  	  *removeSlice(ProtoContext *context, int from, int to);
 
 	void		processReferences(
 		ProtoContext *context,
@@ -325,6 +291,11 @@ public:
 		)
 	);
 
+    ProtoObject		*hash;
+	ProtoList		*previous;
+	ProtoList		*next;
+
+	ProtoObject 	*value;
 };
 
 class ProtoSet: public Cell, public ProtoObject {
@@ -377,17 +348,11 @@ public:
 };
 
 class ProtoByteBuffer: public Cell, public ProtoObject {
-protected:
-	char		*buffer;
-	unsigned long  size;
-
 public:
 	ProtoByteBuffer(
 		ProtoContext *context,
 		char		*buffer,
-		unsigned long size,
-
-		Cell *nextCell = NULL
+		unsigned long size
 	);
 	~ProtoByteBuffer();
 
@@ -401,24 +366,19 @@ public:
 		)
 	);
 
-	char 				*getBuffer();
-	unsigned long 	    getSize();
+	char		*buffer;
+	unsigned long  size;
 };
 
 class ProtoExternalPointer: public Cell, public ProtoObject {
-protected:
-	void *pointer;
-
 public:
 	ProtoExternalPointer(
 		ProtoContext *context,
-		void		*pointer,
-
-		Cell *nextCell = NULL
+		void		*pointer
 	);
 	~ProtoExternalPointer();
 
-	void			processReferences(
+	void processReferences(
 		ProtoContext *context,
 		void *self,
 		void (*method) (
@@ -428,7 +388,7 @@ public:
 		)
 	);
 
-	void 				*getPointer();
+	void *pointer;
 };
 
 class ProtoMethodCell: public Cell, public ProtoObject {
@@ -436,9 +396,7 @@ public:
 	ProtoMethodCell(
 		ProtoContext *context,
 		ProtoObject  *self,
-		ProtoMethod	 *method,
-
-		Cell *nextCell = NULL
+		ProtoMethod	 *method
 	);
 	~ProtoMethodCell();
 

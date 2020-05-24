@@ -36,6 +36,8 @@ ProtoSet::~ProtoSet() {
 };
 
 int getBalance(ProtoSet *self) {
+    if (!self)
+        return 0;
 	if (self->next && self->previous)
 		return self->next->height - self->previous->height;
 	else if (self->previous)
@@ -81,6 +83,47 @@ ProtoSet *leftRotate(ProtoContext *context, ProtoSet *n) {
     );
 };
 
+ProtoSet *rebalance(ProtoContext *context, ProtoSet *newNode) {
+    while (TRUE) {
+        int balance = getBalance(newNode);
+
+        // If this node becomes unbalanced, then
+        // there are 4 cases
+
+        // Left Left Case
+        if (balance < 1)
+            newNode = rightRotate(context, newNode);
+
+        // Right Right Case
+        if (balance > 1)
+            newNode = leftRotate(context, newNode);
+
+        // Left Right Case
+        if (balance < 0 && getBalance(newNode->previous) > 0) {
+            newNode = new(context) ProtoSet(
+                context,
+                newNode->value,
+                leftRotate(context, newNode->previous),
+                newNode->next
+            );
+            newNode = rightRotate(context, newNode);
+        }
+
+        // Right Left Case
+        if (balance > 1 && getBalance(newNode->next) < 0) {
+            newNode = new(context) ProtoSet(
+                context,
+                newNode->value,
+                newNode->previous,
+                rightRotate(context, newNode->next)
+            );
+            newNode = leftRotate(context, newNode);
+        }
+        else
+            return newNode;
+    }
+};
+
 BOOLEAN ProtoSet::has(ProtoContext *context, ProtoObject *value) {
 	if (!this->value)
 		return FALSE;
@@ -119,17 +162,17 @@ ProtoSet *ProtoSet::add(ProtoContext *context, ProtoObject *value) {
         if (this->next) {
             newNode = new(context) ProtoSet(
                 context,
-                value = this->value,
-                previous = this->previous,
-                next = this->next->add(context, value)
+                this->value,
+                this->previous,
+                this->next->add(context, value)
             );
         }
         else {
             newNode = new(context) ProtoSet(
                 context,
-                value = this->value,
-                previous = this->previous,
-                next = new(context) ProtoSet(
+                this->value,
+                this->previous,
+                new(context) ProtoSet(
                     context,
                     value = this->value
                 )
@@ -140,63 +183,27 @@ ProtoSet *ProtoSet::add(ProtoContext *context, ProtoObject *value) {
         if (this->previous) {
             newNode = new(context) ProtoSet(
                 context,
-                value = this->value,
-                previous = this->previous->add(context, value),
-                next = this->next
+                this->value,
+                this->previous->add(context, value),
+                this->next
             );
         }
         else {
             newNode = new(context) ProtoSet(
                 context,
-                value = this->value,
-                previous = new(context) ProtoSet(
+                this->value,
+                new(context) ProtoSet(
                     context,
                     value = this->value
                 ),
-                next = this->next
+                this->next
             );
         }
     }
     else 
         return this;
 
-    int balance = getBalance(newNode);
-
-    // If this node becomes unbalanced, then
-    // there are 4 cases
-
-    // Left Left Case
-    if (balance < 1 && ((int) value) - ((int) newNode->previous->value) < 0)
-        return rightRotate(context, newNode);
-
-    // Right Right Case
-    if (balance > 1 && ((int) value) - ((int) newNode->previous->value) > 0)
-        return leftRotate(context, newNode);
-
-    // Left Right Case
-    if (balance < 1 && ((int) value) - ((int) newNode->previous->value) > 0) {
-        newNode = new(context) ProtoSet(
-            context,
-			value = newNode->value,
-            previous = leftRotate(context, newNode->previous),
-            next = newNode->next
-        );
-        return rightRotate(context, newNode);
-    }
-
-    // Right Left Case
-    if (balance > 1 && ((int) value) - ((int) newNode->previous->value) < 0) {
-        newNode = new(context) ProtoSet(
-            context,
-            value = newNode->value,
-            previous = newNode->previous,
-            next = rightRotate(context, newNode->next)
-        );
-        return leftRotate(context, newNode);
-    }
-
-    return newNode;
-
+    return rebalance(context, newNode);
 };
 
 ProtoSet *ProtoSet::removeAt(ProtoContext *context, ProtoObject *value) {
@@ -219,9 +226,9 @@ ProtoSet *ProtoSet::removeAt(ProtoContext *context, ProtoObject *value) {
 		if (newNode->getSize(context) == 0)
 			newNode = new(context) ProtoSet(
 				context,
-				value = this->value,
-				previous = NULL,
-				next = this->next
+				this->value,
+				NULL,
+				this->next
 			);
 	}
 	else {
@@ -231,9 +238,9 @@ ProtoSet *ProtoSet::removeAt(ProtoContext *context, ProtoObject *value) {
 		if (newNode->getSize(context) == 0)
 			newNode = new(context) ProtoSet(
 				context,
-				value = this->value,
-				previous = this->previous,
-				next = NULL
+				this->value,
+				this->previous,
+				NULL
 			);
 	}
 
@@ -254,9 +261,9 @@ ProtoSet *ProtoSet::removeAt(ProtoContext *context, ProtoObject *value) {
     if (balance < 1 && ((int) value) - ((int) newNode->previous->value) > 0) {
         newNode = new(context) ProtoSet(
             context,
-            value = newNode->value,
-            previous = leftRotate(context, newNode->previous),
-            next = newNode->next
+            newNode->value,
+            leftRotate(context, newNode->previous),
+            newNode->next
         );
         return rightRotate(context, newNode);
     }
@@ -265,9 +272,9 @@ ProtoSet *ProtoSet::removeAt(ProtoContext *context, ProtoObject *value) {
     if (balance > 1 && ((int) value) - ((int) newNode->previous->value) < 0) {
         newNode = new(context) ProtoSet(
             context,
-            value = newNode->value,
-            previous = newNode->previous,
-            next = rightRotate(context, newNode->next)
+            newNode->value,
+            newNode->previous,
+            rightRotate(context, newNode->next)
         );
         return leftRotate(context, newNode);
     }
@@ -405,6 +412,8 @@ void ProtoSet::processReferences (
 
 	if (this->next)
 		this->next->processReferences(context, self, method);
+
+    method(context, self, this);
 };
 
 void ProtoSet::processValues (

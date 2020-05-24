@@ -40,7 +40,7 @@ ProtoSpace::ProtoSpace() {
     this->mainThreadId = std::this_thread::get_id();
 
     this->threads = new(creationContext) ProtoSet(creationContext);
-    ProtoObject *threadName = creationContext->literalFromString("Main thread");
+    ProtoObject *threadName = creationContext->literalFromUTF8String("Main thread");
     firstThread->name = threadName;
     this->threads = creationContext->newMutable();
     ProtoSet *threads = new(creationContext) ProtoSet(creationContext);
