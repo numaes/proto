@@ -15,7 +15,7 @@ ParentLink::~ParentLink() {
 ParentLink::ParentLink(
 	ProtoContext *context,
 	ParentLink *parent,
-	ProtoObject *object
+	ProtoObjectCell *object
 ) : Cell(
 	context,
 	type = CELL_TYPE_PARENT_LINK

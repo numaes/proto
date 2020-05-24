@@ -76,6 +76,7 @@ public:
 	ProtoObject	*objectPrototype;
 	ProtoObject *integerPrototype;
 	ProtoObject *charPrototype;
+	ProtoObject *bytePrototype;
 	ProtoObject *nonePrototype;
 	ProtoObject *methodPrototype;
 	ProtoObject *bufferPrototype;
@@ -85,6 +86,10 @@ public:
 	ProtoObject *datePrototype;
 	ProtoObject *timestampPrototype;
 	ProtoObject *timedeltaPrototype;
+	ProtoObject *identityDictPrototype;
+	ProtoObject *protoSetPrototype;
+	ProtoObject *protoListPrototype;
+
 
 	ProtoObject *threadPrototype;
 
@@ -120,10 +125,8 @@ typedef ProtoObject *(*ProtoMethod)(
 	ProtoContext *, 		// context
 	ProtoObject *, 			// self
 	ProtoObject *, 			// type
-	int, 					// positionalCount
-	int, 					// keywordCount
-	KeywordParameter **, 	// keywordParameters
-	ProtoObject **		 	// positionalParameters
+	ProtoObject *, 			// positionalParameters
+	ProtoObject * 			// keywordParameters
 );
 
 class ProtoObject {
@@ -142,7 +145,6 @@ public:
 	ProtoObject *getParent(ProtoContext *c);
 
 	ProtoObject *addParent(ProtoContext *c, ProtoObject *newParent);
-	ProtoObject *getHash();
 	ProtoObject *isInstanceOf(ProtoContext *c, ProtoObject *prototype);
 
 	ProtoObject *call(ProtoContext *c,
@@ -152,8 +154,6 @@ public:
 
 	ProtoObject *currentValue();
 
-	// Mutables only
-	ProtoObject *setValue(ProtoContext *context, ProtoObject *newValue);
 };
 
 class ProtoThread: public Cell, public ProtoObject {

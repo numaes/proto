@@ -165,7 +165,7 @@ public:
 		ProtoContext *context,
 
 		ParentLink *parent,
-		ProtoObject *object
+		ProtoObjectCell *object
 	);
 
 	~ParentLink();
@@ -181,8 +181,8 @@ public:
 		)
 	);
 
-	ParentLink *parent;
-	ProtoObject *object;
+	ParentLink      *parent;
+	ProtoObjectCell *object;
 };
 
 class IdentityDict: public Cell, public ProtoObject {
@@ -418,10 +418,6 @@ public:
 
 
 class ProtoObjectCell: public Cell, public ProtoObject {
-protected:
-	ParentLink	*parent;
-	IdentityDict *attributes;
-
 public:
 	ProtoObjectCell(
 		ProtoContext *context,
@@ -429,6 +425,8 @@ public:
 		IdentityDict *attributes = NULL
 	);
 	 ~ProtoObjectCell();
+
+	ProtoObject *addParent(ProtoContext *context, ProtoObject *object);
 
 	// Apply method recursivelly to all referenced objects, except itself
     void 	processReferences(
@@ -441,6 +439,8 @@ public:
 		)
 	);
 
+	ParentLink	*parent;
+	IdentityDict *attributes;
 };
 
 // Used just to compute the number of bytes needed for a Cell at allocation time
