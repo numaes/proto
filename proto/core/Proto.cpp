@@ -52,7 +52,9 @@ ProtoObjectCell *getBase(ProtoContext *context, ProtoObject *p) {
             return NULL;
         };
     case POINTER_TAG_MUTABLEOBJECT:
-        return (ProtoObjectCell *) context->space->objectPrototype;
+        return (ProtoObjectCell *) ((IdentityDict *) (context->space->mutableRoot.load()))->getAt(
+            context, (ProtoObject *) pa.mutableObject.mutableID
+        );
     case POINTER_TAG_SMALLDOUBLE:
         return (ProtoObjectCell *) context->space->doublePrototype;
     case POINTER_TAG_SMALLINT:
@@ -63,39 +65,30 @@ ProtoObjectCell *getBase(ProtoContext *context, ProtoObject *p) {
 }
 
 ProtoObject *ProtoObject::clone(ProtoContext *context) {
-    ProtoObjectPointer pa;
+	ProtoObjectCell *base = getBase(context, this);
 
-    pa.oid = this;
-
-	if (pa.op.pointer_tag == POINTER_TAG_CELL &&
-        pa.cell->type == CELL_TYPE_PROTO_OBJECT)
-        return new(context) ProtoObjectCell(
-            context,
-            ((ProtoObjectCell *) this)->parent,
-            ((ProtoObjectCell *) this)->attributes
-        );
-
-    return this;
+    return new(context) ProtoObjectCell(
+        context,
+        base->parent,
+        base->attributes
+    );
 }
 
 ProtoObject *ProtoObject::newChild(ProtoContext *context) {
+	ProtoObjectCell *base = getBase(context, this);
     ProtoObjectPointer pa;
 
     pa.oid = this;
 
-	if (pa.op.pointer_tag == POINTER_TAG_CELL &&
-        pa.cell->type == CELL_TYPE_PROTO_OBJECT)
-        return new(context) ProtoObjectCell(
+    return new(context) ProtoObjectCell(
+        context,
+        new(context) ParentLink(
             context,
-            new(context) ParentLink(
-                context,
-                ((ProtoObjectCell *) this)->parent,
-                (ProtoObjectCell *) this
-            ),
-            new(context) IdentityDict(context)
-        );
-
-    return this;
+            base->parent,
+            base
+        ),
+        new(context) IdentityDict(context)
+    );
 }
 
 ProtoObject *ProtoObject::getAttribute(ProtoContext *context, ProtoObject *name) {
@@ -137,16 +130,48 @@ ProtoObject *ProtoObject::setAttribute(ProtoContext *context, ProtoObject *name,
         base->attributes->setAt(context, name, value)
     );
 
+    ProtoObjectPointer p;
+    p.oid = this;
+    if (p.op.pointer_tag == POINTER_TAG_MUTABLEOBJECT) {
+        IdentityDict *mr;
+        do {
+            mr = (IdentityDict *) (context->space->mutableRoot.load());
+        } while (
+            context->space->mutableRoot.compare_exchange_strong(
+                (Cell *&) mr,
+                mr->setAt(context, context->fromInteger(p.mutableObject.mutableID), newValue)
+            )
+        );    
+    }
+
     return newValue;
 }
 
-ProtoObject *ProtoObject::getType(ProtoContext *context) {
-	ProtoObjectCell *base = getBase(context, this);
+ProtoObject *ProtoObject::currentValue(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid = this;
+    if (p.op.pointer_tag == POINTER_TAG_MUTABLEOBJECT)
+        return ((IdentityDict *) context->space->mutableRoot.load())->getAt(
+            context,
+            context->fromInteger(p.mutableObject.mutableID)
+        );
 
-    if (base->parent)
-        return base->parent->object;
+    return this;
+};
 
-    return base;
+BOOLEAN ProtoObject::setValue(ProtoContext *context, ProtoObject *oldValue, ProtoObject *newValue) {
+    ProtoObjectPointer p;
+    p.oid = this;
+    if (p.op.pointer_tag == POINTER_TAG_MUTABLEOBJECT) {
+        IdentityDict *currentRoot = (IdentityDict *) context->space->mutableRoot.load();
+        ProtoObject *mutableId = context->fromInteger(p.mutableObject.mutableID);
+        if (currentRoot->getAt(context, mutableId) == oldValue)
+            return context->space->mutableRoot.compare_exchange_strong(
+                (Cell *&) currentRoot,
+                currentRoot->setAt(context, mutableId, newValue)
+            );
+    }
+    return FALSE;
 };
 
 ProtoObject *ProtoObject::hasOwnAttribute(ProtoContext *context, ProtoObject *name) {
@@ -263,9 +288,5 @@ ProtoObject *ProtoObject::call(
         );
     }
     return PROTO_NONE;
-};
-
-ProtoObject *ProtoObject::currentValue() {
-    return this;
 };
 

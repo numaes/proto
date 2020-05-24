@@ -15,7 +15,6 @@ void *Cell::operator new(size_t size, ProtoContext *context) {
 
 Cell::Cell (
     ProtoContext *context, 
-    Cell *nextCell = NULL,
     unsigned long type = CELL_TYPE_UNASSIGNED_F,
     unsigned long height = 0,
     unsigned long count = 0
@@ -24,7 +23,43 @@ Cell::Cell (
 };
 
 Cell::~Cell() {
+    switch (this->type) {
+        case CELL_TYPE_BYTE_BUFFER:
+            ((ProtoByteBuffer *) this)->~ProtoByteBuffer();
+            break;
 
+        case CELL_TYPE_IDENTITY_DICT:
+            ((IdentityDict *) this)->~IdentityDict();
+            break;
+
+        case CELL_TYPE_PARENT_LINK:
+            ((ParentLink *) this)->~ParentLink();
+            break;
+
+        case CELL_TYPE_PROTO_LIST:
+            ((ProtoList *) this)->~ProtoList();
+            break;
+
+        case CELL_TYPE_PROTO_SET:
+            ((ProtoSet *) this)->~ProtoSet();
+            break;
+
+        case CELL_TYPE_PROTO_THREAD:
+            ((ProtoThread *) this)->~ProtoThread();
+            break;
+
+        case CELL_TYPE_PROTO_OBJECT:
+            ((ProtoObjectCell *) this)->~ProtoObjectCell();
+            break;
+
+        case CELL_TYPE_EXTERNAL_POINTER:
+            ((ProtoExternalPointer *) this)->~ProtoExternalPointer();
+            break;
+
+        case CELL_TYPE_METHOD:
+            ((ProtoMethodCell *) this)->~ProtoMethodCell();
+            break;
+    }
 };
 
 // Apply method recursivelly to all referenced objects, except itself

@@ -7,7 +7,7 @@
 # | Subdirectories |
 # +----------------+
 # declare subdirectories of the source directory
-SUBDIRECTORIES := util file_formats math isct mesh rawmesh accel
+SUBDIRECTORIES := core header
 
 # make sure the subdirectories are mirrored in
 # the obj/ debug/ and depend/ directories
@@ -17,7 +17,7 @@ SHELL_HACK := $(shell mkdir -p $(addprefix obj/,$(SUBDIRECTORIES)))
 SHELL_HACK := $(shell mkdir -p $(addprefix debug/,$(SUBDIRECTORIES)))
 SHELL_HACK := $(shell mkdir -p $(addprefix depend/,$(SUBDIRECTORIES)))
 # also make a directory to expose headers in
-#SHELL_HACK := $(shell mkdir -p $(addprefix include/,$(SUBDIRECTORIES)))
+SHELL_HACK := $(shell mkdir -p $(addprefix include/,$(SUBDIRECTORIES)))
 
 # +----------+
 # | Platform |
@@ -85,50 +85,18 @@ endif
 # ***********************-----------------+
 # | SRCS defines a generic bag of sources |
 # +---------------------------------------+
-MATH_SRCS    := 
-UTIL_SRCS    := timer log
-ISCT_SRCS    := empty3d quantization
-MESH_SRCS    := 
-RAWMESH_SRCS := 
-ACCEL_SRCS   := 
-FILE_SRCS    := files ifs off
+# OTHER_SRCS   := xxx xxx xxx
 SRCS         := \
-    cork \
-    $(addprefix math/,$(MATH_SRCS))\
-    $(addprefix util/,$(UTIL_SRCS))\
-    $(addprefix isct/,$(ISCT_SRCS))\
-    $(addprefix mesh/,$(MESH_SRCS))\
-    $(addprefix rawmesh/,$(RAWMESH_SRCS))\
-    $(addprefix accel/,$(ACCEL_SRCS))\
-    $(addprefix file_formats/,$(FILE_SRCS))
-
+    core 
+#    $(addprefix math/,$(OTHER_SRCS))\
 
 # +-----------------------------------+
 # | HEADERS defines headers to export |
 # +-----------------------------------+
-MATH_HEADERS      := vec.h bbox.h ray.h
-UTIL_HEADERS      := prelude.h memPool.h iterPool.h shortVec.h \
-                     unionFind.h
-ISCT_HEADERS      := unsafeRayTriIsct.h \
-                     ext4.h fixext4.h gmpext4.h absext4.h \
-                     quantization.h fixint.h \
-                     empty3d.h \
-                     triangle.h
-RAWMESH_HEADERS   := rawMesh.h rawMesh.tpp
-MESH_HEADERS      := mesh.h mesh.decl.h \
-                     mesh.tpp mesh.topoCache.tpp \
-                     mesh.remesh.tpp mesh.isct.tpp mesh.bool.tpp
-ACCEL_HEADERS     := aabvh.h
-FILE_HEADERS      := files.h
+# OTHER_HEADERS := xxx.h xxx.h
 HEADERS           := \
-    cork.h
-#    $(addprefix math/,$(MATH_HEADERS))\
-#    $(addprefix util/,$(UTIL_HEADERS))\
-#    $(addprefix isct/,$(ISCT_HEADERS))\
-#    $(addprefix mesh/,$(MESH_HEADERS))\
-#    $(addprefix rawmesh/,$(RAWMESH_HEADERS))\
-#    $(addprefix accel/,$(ACCEL_HEADERS))\
-#    $(addprefix file_formats/,$(FILE_HEADERS))
+    headers
+#    $(addprefix math/,$(OTHER_HEADERS))\
 HEADER_COPIES     := $(addprefix include/,$(HEADERS))
 
 # +-----------------------------+
@@ -136,14 +104,15 @@ HEADER_COPIES     := $(addprefix include/,$(HEADERS))
 # +-----------------------------+
 MAIN_SRC := \
     $(SRCS) \
-    main
+    test/test_proto
 
 # +---------------------------------------+
 # | all sources for dependency generation |
 # +---------------------------------------+
 ALL_SRCS     := \
     $(SRCS)\
-    main
+    test/test_proto
+
 DEPENDS := $(addprefix depend/,$(addsuffix .d,$(ALL_SRCS)))
 
 # +--------------------------------+
@@ -160,7 +129,7 @@ MAIN_OBJ          := $(addprefix obj/,$(addsuffix .o,$(MAIN_SRC))) \
 MAIN_DEBUG        := $(addprefix debug/,$(addsuffix .o,$(MAIN_SRC))) \
                      obj/isct/triangle.o
 
-LIB_TARGET_NAME   := cork
+LIB_TARGET_NAME   := proto
 
 # *********
 # * RULES *
@@ -168,7 +137,7 @@ LIB_TARGET_NAME   := cork
 # | Target Rules |
 # +--------------+
 all: lib/lib$(LIB_TARGET_NAME).a includes \
-     bin/off2obj bin/cork
+     bin/test_proto
 debug: lib/lib$(LIB_TARGET_NAME)debug.a includes
 
 lib/lib$(LIB_TARGET_NAME).a: $(OBJ)
@@ -179,25 +148,13 @@ lib/lib$(LIB_TARGET_NAME)debug.a: $(DEBUG)
 	@echo "Bundling $@"
 	@ar rcs $@ $(DEBUG)
 
-bin/cork: $(MAIN_OBJ)
-	@echo "Linking cork command line tool"
-	@$(CXX) -o bin/cork $(MAIN_OBJ) $(LINK)
-
-bin/off2obj: obj/off2obj.o
-	@echo "Linking off2obj"
-	@$(CXX) -o bin/off2obj obj/off2obj.o $(LINK)
+bin/test_proto: $(MAIN_OBJ)
+	@echo "Linking test_proto command line tool"
+	@$(CXX) -o bin/test_proto $(MAIN_OBJ) $(LINK)
 
 # +------------------------------+
 # | Specialized File Build Rules |
 # +------------------------------+
-
-obj/isct/triangle.o: src/isct/triangle.c
-	@echo "Compiling the Triangle library"
-	@$(CC) -O2 -DNO_TIMER \
-               -DREDUCED \
-               -DCDT_ONLY -DTRILIBRARY \
-               -Wall -DANSI_DECLARATORS \
-               -o obj/isct/triangle.o -c src/isct/triangle.c
 
 # +------------------------------------+
 # | Generic Source->Object Build Rules |
@@ -237,67 +194,9 @@ include/%.tpp: src/%.tpp
 # +---------------+
 clean:
 	-@$(RM) -r obj depend debug include bin lib
-	-@$(RM) bin/off2obj
-#	-@$(RM) gmon.out
+	-@$(RM) bin/test_proto
 	-@$(RM) lib/lib$(LIB_TARGET_NAME).a
 	-@$(RM) lib/lib$(LIB_TARGET_NAME)debug.a
 
 -include $(DEPENDS)
-
-
-
-
-
-
-
-BUILD_TARGET = ./build
-LINK_TARGET = $(BUILD_TARGET)/proto.so
-
-$(BUILD_TARGET) : 
-	mkdir $(BUILD_TARGET)
-
-clean : 
-  rm -f $(BUILD_TARGET)/*.o
-  rm -f $(BUILD_TARGET)/*.so
-  rm -f $(BUILD_TARGET)/*.dep
-  echo Clean done
-
-# The rule for "all" is used to incrementally build your system.
-# It does this by expressing a dependency on the results of that system,
-# which in turn have their own rules and dependencies.
-all : $(LINK_TARGET)
-  echo All done
-
-# Compile all .cpp files
-$(LINK_TARGET) : $(BUILD_TARGET)/*.o
-  g++ -g --shared -o $@ $^
-
-# Here is a Pattern Rule, often used for compile-line.
-# It says how to create a file with a .o suffix, given a file with a .cpp suffix.
-# The rule's command uses some built-in Make Macros:
-# $@ for the pattern-matched target
-# $< for the pattern-matched dependency
-$(BUILD_TARGET)/%.o : core/%.cpp
-  g++ -g -o $@ -c $<
-
-# These are Dependency Rules, which are rules without any command.
-# Dependency Rules indicate that if any file to the right of the colon changes,
-# the target to the left of the colon should be considered out-of-date.
-# The commands for making an out-of-date target up-to-date may be found elsewhere
-# (in this case, by the Pattern Rule above).
-# Dependency Rules are often used to capture header file dependencies.
-$(BUILD_TARGET)/%.dep : core/%.cpp
-	g++ -M $(FLAGS) $< > $@
-include $(OBJS:.o=.dep)
-
-install: $(LINK_TARGET) headers/*.h
-	cp headers/*h /usr/include
-	cp $(LINK_TARGET) /usr/lib
-
-test: $(LINK_TARGET) headers/*.h
-	g++ -c -Iheaders test/test_proto.cpp
-	g++ -g -o test/test_proto test/test_proto.o $(BUILD_TARGET)/*.o
-	test/test_proto
-
-
 

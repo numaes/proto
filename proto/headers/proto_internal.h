@@ -351,7 +351,6 @@ class ProtoByteBuffer: public Cell, public ProtoObject {
 public:
 	ProtoByteBuffer(
 		ProtoContext *context,
-		char		*buffer,
 		unsigned long size
 	);
 	~ProtoByteBuffer();

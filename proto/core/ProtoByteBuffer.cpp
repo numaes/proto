@@ -8,21 +8,23 @@
 #include "../headers/proto.h"
 #include "../headers/proto_internal.h"
 
+#include <malloc.h>
 
 ProtoByteBuffer::ProtoByteBuffer (
     ProtoContext *context,
-    char		*buffer,
     unsigned long size
 ) : Cell (
     context,
     type = CELL_TYPE_BYTE_BUFFER
 ) {
-    this->buffer = buffer;
     this->size = size;
+    this->buffer = (char *) malloc((size_t) size);
 };
 
 ProtoByteBuffer::~ProtoByteBuffer() {
-
+    if (this->buffer)
+        free((void *) this->buffer);
+    this->buffer = NULL;
 };
 
 void ProtoByteBuffer::processReferences(

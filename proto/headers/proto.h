@@ -152,8 +152,8 @@ public:
 					  ProtoObject *unnamedParametersList,
 			          ProtoObject *keywordParametersDict);
 
-	ProtoObject *currentValue();
-
+	ProtoObject		*currentValue(ProtoContext *context);
+	BOOLEAN			 setValue(ProtoContext *context, ProtoObject *currentValue, ProtoObject *value);
 };
 
 class ProtoThread: public Cell, public ProtoObject {
@@ -222,14 +222,16 @@ public:
 	ProtoObject 	*fromUTF8String(char *zeroTerminatedUtf8String);
 	ProtoObject 	*fromMethod(ProtoObject *self, ProtoMethod *method);
 	ProtoObject 	*fromExternalPointer(void *pointer);
-	ProtoObject 	*fromBuffer(char *pointer, unsigned long length);
+	ProtoObject 	*newBuffer(unsigned long length);
 	ProtoObject 	*fromBoolean(BOOLEAN value);
 	ProtoObject 	*fromByte(char c);
 	ProtoObject 	*literalFromUTF8String(char *zeroTerminatedUtf8String);
 	ProtoObject 	*literalFromString(ProtoList *string);
 
-	ProtoObject 	*newMutable(ProtoObject *value=PROTO_NONE);
 	ProtoThread 	*getCurrentThread();
+
+	ProtoObject 	*newMutable(ProtoObject *value=PROTO_NONE);
+	// Only for already created mutables
 };
 
 // Usefull constants.

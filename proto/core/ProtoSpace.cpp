@@ -42,9 +42,9 @@ ProtoSpace::ProtoSpace() {
     this->threads = new(creationContext) ProtoSet(creationContext);
     ProtoObject *threadName = creationContext->literalFromUTF8String("Main thread");
     firstThread->name = threadName;
-    this->threads = creationContext->newMutable();
-    ProtoSet *threads = new(creationContext) ProtoSet(creationContext);
-    this->threads->setValue(creationContext, threads->add(creationContext, firstThread));
+    this->threads = creationContext->newMutable(
+        new(creationContext) ProtoSet(creationContext)
+    );
 
     this->gcThread = new std::thread(gcThread, this);
 };
@@ -61,7 +61,7 @@ ProtoSpace::~ProtoSpace() {
     for (int i = 0; i < threadCount; i++) {
         ProtoThread *t = (ProtoThread *) threads->getAt(
             finalContext,
-            finalContext->fromInteger(i)
+            i
         );
         t->join(finalContext);
     }
@@ -75,9 +75,11 @@ ProtoThread *ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread)
         TRUE
     )) std::this_thread::yield();
 
+    ProtoSet *currentSet = (ProtoSet *) this->threads->currentValue(context);
     this->threads->setValue(
         context,
-        ((ProtoSet *) this->threads->currentValue())->add(context, thread)
+        currentSet,
+        currentSet->add(context, thread)
     );
 
     this->threadsLock.store(FALSE);
@@ -89,9 +91,11 @@ ProtoThread *ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *threa
         TRUE
     )) std::this_thread::yield();
 
+    ProtoSet *currentSet = (ProtoSet *) this->threads->currentValue(context);
     this->threads->setValue(
         context,
-        ((ProtoSet *) this->threads->currentValue())->removeAt(context, thread)
+        currentSet,
+        currentSet->removeAt(context, thread)
     );
 
     this->threadsLock.store(FALSE);
@@ -235,6 +239,12 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
         while (block) {
             Cell *nextCell = block->nextCell;
             if (!gcRoots->has(gcContext, (ProtoObject *) block)) {
+                block->~Cell();
+
+                void **p = (void **) block;
+                for (int i; i < sizeof(BigCell) / sizeof(void *); i++)
+                    *p++ = NULL;
+
                 block->nextCell = freeBlocks;
                 freeBlocks = block;
                 freeCount++;

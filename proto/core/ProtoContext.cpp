@@ -251,8 +251,8 @@ ProtoObject *ProtoContext::fromMethod(ProtoObject *self, ProtoMethod *method) {
     return new(this) ProtoMethodCell(this, self, method);
 };
 
-ProtoObject *ProtoContext::fromBuffer(char *pointer, unsigned long length) {
-    return new(this) ProtoByteBuffer(this, pointer, length);
+ProtoObject *ProtoContext::newBuffer(unsigned long length) {
+    return new(this) ProtoByteBuffer(this, length);
 };
 
 ProtoObject *ProtoContext::fromBoolean(BOOLEAN value) {
@@ -351,7 +351,7 @@ ProtoObject *ProtoContext::newMutable(ProtoObject *value=PROTO_NONE) {
 
     } while (!this->space->mutableRoot.compare_exchange_strong(
         (Cell *&) currentRoot,
-        (Cell *&) newRoot
+        newRoot
     ));
 
     ProtoObjectPointer p;
