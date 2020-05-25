@@ -46,6 +46,7 @@ CP  := cp
 ifeq ($(PLATFORM),Darwin)
   CONFIG  := $(CONFIG) -DMACOSX
 else
+
   CONFIG  := $(CONFIG)
 endif
 
