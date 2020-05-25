@@ -30,9 +30,10 @@ IdentityDict::IdentityDict(
 	this->value = value;
 	this->previous = previous;
 	this->next = next;
-	this->hash = (ProtoObject *) (((long) key) ^ 
-				 (previous? (long) previous->hash : 0L) ^ 
-				 (next? (long) next->hash : 0L));
+    this->hash = context->fromInteger(
+        (((int) value) ^ 
+         (previous? (int) previous->hash : 0L) ^ 
+         (next? (int) next->hash : 0L)));
 };
 
 IdentityDict::~IdentityDict() {
