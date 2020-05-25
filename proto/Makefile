@@ -13,11 +13,7 @@ SUBDIRECTORIES := core header
 # the obj/ debug/ and depend/ directories
 # (HACK: use this dummy variable to get access to shell commands)
 SHELL_HACK := $(shell mkdir -p bin lib include)
-SHELL_HACK := $(shell mkdir -p obj)
-SHELL_HACK := $(shell mkdir -p $(addprefix debug/,$(SUBDIRECTORIES)))
-SHELL_HACK := $(shell mkdir -p $(addprefix depend/,$(SUBDIRECTORIES)))
-# also make a directory to expose headers in
-SHELL_HACK := $(shell mkdir -p $(addprefix include/,$(SUBDIRECTORIES)))
+SHELL_HACK := $(shell mkdir -p obj debug depend)
 
 # +----------+
 # | Platform |
@@ -54,10 +50,7 @@ else
 endif
 
 # include paths (flattens the hierarchy for include directives)
-INC       := -I src/ $(addprefix -I src/,$(SUBDIRECTORIES))
-# get the location of GMP header files from makeConstants include file
-GMPINC    := -I $(GMP_INC_DIR)
-INC       := $(INC) $(GMPINC)
+INC       := -I headers/ 
 
 # use the second line to disable profiling instrumentation
 # PROFILING := -pg
@@ -65,15 +58,10 @@ PROFILING :=
 CCFLAGS   := -Wall $(INC) $(CONFIG) -O2 -DNDEBUG $(PROFILING)
 CXXFLAGS  := $(CCFLAGS) $(CPP11_FLAGS)
 CCDFLAGS  := -Wall $(INC) $(CONFIG) -ggdb 
-CXXDFLAGS := $(CCDFLAGS)
+CXXDFLAGS := $(CCDFLAGS) $(CPP11_FLAGS)
 
-# Place the location of GMP libraries here
-GMPLD     := -L$(GMP_LIB_DIR) -lgmpxx -lgmp
-# static version...
-#GMPLD     := $(GMP_LIB_DIR)/libgmpxx.a $(GMP_LIB_DIR)/libgmp.a
-
-LINK         := $(CXXFLAGS) $(GMPLD)
-LINKD        := $(CXXDFLAGS) $(GMPLD)
+LINK         := $(CXXFLAGS)
+LINKD        := $(CXXDFLAGS)
 ifeq ($(PLATFORM),Darwin)
   LINK  := $(LINK) -Wl,-no_pie
   LINKD := $(LINK) -Wl,-no_pie
@@ -90,30 +78,26 @@ SRCS         := \
     Cell IdentityDict ParentLink Proto ProtoByteBuffer \
 	ProtoContext ProtoExternalPointer ProtoObjectCell ProtoSet \
 	ProtoSpace ProtoList ProtoMethodCell Thread
-#    $(addprefix math/,$(OTHER_SRCS))\
 
 # +-----------------------------------+
 # | HEADERS defines headers to export |
 # +-----------------------------------+
 # OTHER_HEADERS := xxx.h xxx.h
-HEADERS           := \
-    proto.h
-#    $(addprefix math/,$(OTHER_HEADERS))\
-HEADER_COPIES     := $(addprefix include/,$(HEADERS))
+HEADERS           := proto.h
+HEADER_COPIES     := $(addprefix headers/,$(HEADERS))
 
 # +-----------------------------+
 # | stand alone program sources |
 # +-----------------------------+
-MAIN_SRC := \
-    $(SRCS) 
+MAIN_SRC := test_proto
 
 # +---------------------------------------+
 # | all sources for dependency generation |
 # +---------------------------------------+
-ALL_SRCS     := \
-    $(SRCS)
+ALL_SRCS := \
+    $(SRCS) $(MAIN_SRC)
 
-DEPENDS := $(addprefix depend/,$(addsuffix .d,$(ALL_SRCS)))
+DEPENDS := $(addprefix depend/,$(addsuffix .d,$(SRCS)))
 
 # +--------------------------------+
 # | Object Aggregation for Targets |
@@ -121,7 +105,7 @@ DEPENDS := $(addprefix depend/,$(addsuffix .d,$(ALL_SRCS)))
 
 OBJ               := $(addprefix obj/,$(addsuffix .o,$(SRCS)))
 DEBUG             := $(addprefix debug/,$(addsuffix .o,$(SRCS)))
-MAIN_OBJ          := $(addprefix obj/,$(addsuffix .o,$(MAIN_SRC))) obj/test_proto.o
+MAIN_OBJ          := $(addprefix obj/,$(addsuffix .o,$(MAIN_SRC)))
 MAIN_DEBUG        := $(addprefix debug/,$(addsuffix .o,$(MAIN_SRC)))
 
 LIB_TARGET_NAME   := proto
@@ -131,42 +115,39 @@ LIB_TARGET_NAME   := proto
 # *********------+
 # | Target Rules |
 # +--------------+
-all: lib/lib$(LIB_TARGET_NAME).a includes \
-     bin/test_proto
-debug: lib/lib$(LIB_TARGET_NAME)debug.a includes
+all: lib/lib$(LIB_TARGET_NAME).a includes 
+debug: lib/lib$(LIB_TARGET_NAME)-debug.a bin/test_proto includes
 
 lib/lib$(LIB_TARGET_NAME).a: $(OBJ)
 	@echo "Bundling $@"
 	@ar rcs $@ $(OBJ)
 
-lib/lib$(LIB_TARGET_NAME)debug.a: $(DEBUG)
-	@echo "Bundling $@"
+lib/lib$(LIB_TARGET_NAME)-debug.a: $(DEBUG)
+	@echo "Bundling debug $@"
 	@ar rcs $@ $(DEBUG)
 
-bin/test_proto: $(MAIN_OBJ) headers/proto.h
+bin/test_proto: $(MAIN_DEBUG) headers/proto.h lib/lib$(LIB_TARGET_NAME)-debug.a
 	@echo "Linking test_proto command line tool"
-	@$(CXX) -o bin/test_proto -lpthread -pthread $(MAIN_OBJ) $(LINK)
+	@$(CXX) -o bin/test_proto -lpthread -pthread test/test_proto.cpp lib/lib$(LIB_TARGET_NAME)-debug.a $(LINKD)
 
 # +------------------------------+
 # | Specialized File Build Rules |
 # +------------------------------+
-obj/test_proto.o: test/test_proto.cpp
-	@echo "Compiling $@"
-	@$(CXX) $(CXXDFLAGS) -o $@ -c $<
+
 
 # +------------------------------------+
 # | Generic Source->Object Build Rules |
 # +------------------------------------+
-obj/%.o: core/%.cpp
+obj/%.o: $(addprefix core/,$(addsuffix .cpp,$(SRCS)))
 	@echo "Compiling $@"
 	@$(CXX) $(CXXFLAGS) -o $@ -c $<
 
-debug/%.o: core/%.cpp
-	@echo "Compiling $@"
+debug/%.o: $(addprefix core/,$(addsuffix .cpp,$(SRCS)))
+	@echo "Compiling for debug $@"
 	@$(CXX) $(CXXDFLAGS) -o $@ -c $<
 
 # dependency file build rules
-depend/%.d: core/%.cpp
+depend/%.d: $(addprefix core/,$(addsuffix .cpp,$(SRCS)))
 	@$(CXX) $(CXXFLAGS) -MM $< | \
         sed -e 's@^\(.*\)\.o:@depend/$*.d debug/$*.o obj/$*.o:@' > $@
 
@@ -182,10 +163,6 @@ includes: $(HEADER_COPIES)
 include/%.h: src/%.h
 	@echo "updating $@"
 	@cp $< $@
-#also support template implementation files
-include/%.tpp: src/%.tpp
-	@echo "updating $@"
-	@cp $< $@
 
 # +---------------+
 # | cleaning rule |
@@ -194,7 +171,7 @@ clean:
 	-@$(RM) -r obj depend debug include bin lib
 	-@$(RM) bin/test_proto
 	-@$(RM) lib/lib$(LIB_TARGET_NAME).a
-	-@$(RM) lib/lib$(LIB_TARGET_NAME)debug.a
+	-@$(RM) lib/lib$(LIB_TARGET_NAME)-debug.a
 
 -include $(DEPENDS)
 

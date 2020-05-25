@@ -14,7 +14,22 @@
           "kind": "build",
           "isDefault": true
         }
+      },
+      {
+        "type": "shell",
+        "label": "Make",
+        "command": "/usr/bin/make",
+        "args": ["-g", "${file}", "-o", "${fileDirname}/${fileBasenameNoExtension}"],
+        "options": {
+          "cwd": "${workspacedir}"
+        },
+        "problemMatcher": ["$make"],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        }
       }
+
     ]
 }
   

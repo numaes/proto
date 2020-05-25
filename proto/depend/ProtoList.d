@@ -1,1 +1,1 @@
-depend/ProtoList.d debug/ProtoList.o obj/ProtoList.o: core/ProtoList.cpp core/../headers/proto.h
+depend/ProtoList.d debug/ProtoList.o obj/ProtoList.o: core/Cell.cpp core/../headers/proto.h

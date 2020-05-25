@@ -34,7 +34,7 @@
             "name": "(gdb) Iniciar",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${fileDirname}/${fileBasenameNoExtension}",
+            "program": "${workspaceFolder}/bin/test_proto",
             "args": [],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
