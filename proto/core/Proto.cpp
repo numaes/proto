@@ -53,7 +53,7 @@ ProtoObjectCell *getBase(ProtoContext *context, ProtoObject *p) {
         };
     case POINTER_TAG_MUTABLEOBJECT:
         return (ProtoObjectCell *) ((IdentityDict *) (context->space->mutableRoot.load()))->getAt(
-            context, (ProtoObject *) pa.mutableObject.mutableID
+            context, context->fromInteger((int) pa.mutableObject.mutableID)
         );
     case POINTER_TAG_SMALLDOUBLE:
         return (ProtoObjectCell *) context->space->doublePrototype;
@@ -76,9 +76,6 @@ ProtoObject *ProtoObject::clone(ProtoContext *context) {
 
 ProtoObject *ProtoObject::newChild(ProtoContext *context) {
 	ProtoObjectCell *base = getBase(context, this);
-    ProtoObjectPointer pa;
-
-    pa.oid = this;
 
     return new(context) ProtoObjectCell(
         context,
@@ -134,11 +131,13 @@ ProtoObject *ProtoObject::setAttribute(ProtoContext *context, ProtoObject *name,
     p.oid = this;
     if (p.op.pointer_tag == POINTER_TAG_MUTABLEOBJECT) {
         IdentityDict *mr;
+        Cell *oldValue;
         do {
             mr = (IdentityDict *) (context->space->mutableRoot.load());
+            oldValue = mr;
         } while (
             context->space->mutableRoot.compare_exchange_strong(
-                (Cell *&) mr,
+                oldValue,
                 mr->setAt(context, context->fromInteger(p.mutableObject.mutableID), newValue)
             )
         );    
@@ -164,10 +163,11 @@ BOOLEAN ProtoObject::setValue(ProtoContext *context, ProtoObject *oldValue, Prot
     p.oid = this;
     if (p.op.pointer_tag == POINTER_TAG_MUTABLEOBJECT) {
         IdentityDict *currentRoot = (IdentityDict *) context->space->mutableRoot.load();
+        Cell *currentValue = currentRoot;
         ProtoObject *mutableId = context->fromInteger(p.mutableObject.mutableID);
         if (currentRoot->getAt(context, mutableId) == oldValue)
             return context->space->mutableRoot.compare_exchange_strong(
-                (Cell *&) currentRoot,
+                currentValue,
                 currentRoot->setAt(context, mutableId, newValue)
             );
     }
@@ -176,7 +176,6 @@ BOOLEAN ProtoObject::setValue(ProtoContext *context, ProtoObject *oldValue, Prot
 
 ProtoObject *ProtoObject::hasOwnAttribute(ProtoContext *context, ProtoObject *name) {
 	ProtoObjectCell *base = getBase(context, this);
-    ParentLink *pl = base->parent;
 
     if (base->hasAttribute(context, name))
         return PROTO_TRUE;

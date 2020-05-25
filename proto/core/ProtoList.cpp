@@ -5,7 +5,7 @@
  *      Author: gamarino
  */
 
-#include "proto.h"
+#include "../headers/proto.h"
 
 #ifndef max
 #define max(a, b) (((a) > (b))? (a):(b))
@@ -14,9 +14,9 @@
 ProtoList::ProtoList(
     ProtoContext *context,
 
-    ProtoObject *value = NULL,
-    ProtoList *previous = NULL,
-    ProtoList *next = NULL
+    ProtoObject *value,
+    ProtoList *previous,
+    ProtoList *next
 ) : Cell(
     context,
     type = CELL_TYPE_PROTO_LIST,
@@ -33,16 +33,20 @@ ProtoList::~ProtoList() {
 };
 
 int getBalance(ProtoList *self) {
-    if (!self)
+    if (!self) {
         return 0;
+    }
+
 	if (self->next && self->previous)
 		return self->next->height - self->previous->height;
-	else if (self->previous)
-		return -self->previous->height;
-	else if (self->next)
-		return self->next->height;
-	else
-		return 0;
+	else {
+        if (self->previous)
+            return -self->previous->height;
+        else if (self->next)
+            return self->next->height;
+    }
+
+	return 0;
 }
 
 // A utility function to right rotate subtree rooted with y
@@ -121,23 +125,26 @@ ProtoList *rebalance(ProtoContext *context, ProtoList *newNode) {
 }
 
 ProtoObject *ProtoList::getAt(ProtoContext *context, int index) {
-	if (!this->value)
+	if (!this->value) {
 		return PROTO_NONE;
+    }
 
-    if (index < 0)
+    if (index < 0) {
         index = this->count - index;
         if (index < 0)
             index = 0;
+    }
 
-    if (index >= this->count)
+    if (((unsigned) index) >= this->count) {
         return PROTO_NONE;
+    }
 
     ProtoList *node = this;
 	while (node) {
-        int thisIndex = node->previous? node->previous->count : 0;
-		if (thisIndex == index)
+        unsigned long thisIndex = node->previous? node->previous->count : 0;
+		if (((unsigned long) index) == thisIndex)
 			return node->value;
-        if (index < thisIndex)
+        if (((unsigned long) index) < thisIndex)
             node = node->previous;
         else {
             node = node->next;
@@ -185,7 +192,7 @@ unsigned long ProtoList::getSize(ProtoContext *context) {
 };
 
 BOOLEAN	ProtoList::has(ProtoContext *context, ProtoObject* value) {
-    for (int i=0; i <= this->count; i++)
+    for (unsigned long i=0; i <= this->count; i++)
         if (this->getAt(context, i) == value)
             return TRUE;
 
@@ -193,25 +200,29 @@ BOOLEAN	ProtoList::has(ProtoContext *context, ProtoObject* value) {
 };
 
 ProtoList *ProtoList::setAt(ProtoContext *context, int index, ProtoObject* value) {
-	if (!this->value)
+	if (!this->value) {
 		return NULL;
+    }
 
-    if (index < 0)
+    if (index < 0) {
         index = this->count - index;
         if (index < 0)
             index = 0;
+    }
 
-    if (index >= this->count)
+    if (((unsigned long) index) >= this->count) {
         return NULL;
+    }
 
     int thisIndex = this->previous? this->previous->count : 0;
-    if (thisIndex == index)
+    if (thisIndex == index) {
         return new(context) ProtoList(
             context,
             value,
             this->previous,
             this->next
         );
+    }
 
     if (index < thisIndex)
         return new(context) ProtoList(
@@ -236,18 +247,19 @@ ProtoList *ProtoList::insertAt(ProtoContext *context, int index, ProtoObject* va
             value
         );
 
-    if (index < 0)
+    if (index < 0) {
         index = this->count - index;
         if (index < 0)
             index = 0;
+    }
 
-    if (index >= this->count)
+    if (((unsigned long) index) >= this->count)
         index = this->count - 1;
 
-    int thisIndex = this->previous? this->previous->count : 0;
+    unsigned long thisIndex = this->previous? this->previous->count : 0;
     ProtoList *newNode;
 
-    if (thisIndex == index)
+    if (thisIndex == ((unsigned long) index))
         newNode = new(context) ProtoList(
             context,
             value,
@@ -255,7 +267,7 @@ ProtoList *ProtoList::insertAt(ProtoContext *context, int index, ProtoObject* va
             this->next
         );
     else {
-        if (index < thisIndex)
+        if (((unsigned long) index) < thisIndex)
             newNode = new(context) ProtoList(
                 context,
                 value,
@@ -397,23 +409,25 @@ ProtoList *ProtoList::removeLast(ProtoContext *context) {
 };
 
 ProtoList *ProtoList::removeAt(ProtoContext *context, int index) {
-	if (!this->value)
+	if (!this->value) {
 		return new(context) ProtoList(
             context
         );
+    }
 
-    if (index < 0)
+    if (index < 0) {
         index = this->count - index;
         if (index < 0)
             index = 0;
+    }
 
-    if (index >= this->count)
+    if (((unsigned long) index) >= this->count)
         return this;
 
-    int thisIndex = this->previous? this->previous->count : 0;
+    unsigned long thisIndex = this->previous? this->previous->count : 0;
     ProtoList *newNode;
 
-    if (thisIndex == index) {
+    if (thisIndex == ((unsigned long) index)) {
         if (this->next)
             newNode = new(context) ProtoList(
                 context,
@@ -425,7 +439,7 @@ ProtoList *ProtoList::removeAt(ProtoContext *context, int index) {
             return this->previous;
     }
     else {
-        if (index < thisIndex)
+        if (((unsigned long) index) < thisIndex)
             newNode = new(context) ProtoList(
                 context,
                 value,
@@ -459,10 +473,11 @@ ProtoList *ProtoList::removeSlice(ProtoContext *context, int from, int to) {
     }
 
     ProtoList *slice = new(context) ProtoList(context);
-    if (to >= from)
-        for (int i=0; i <= this->count; i++)
-            if (i < from || i >= to)
+    if (to >= from) {
+        for (unsigned long i=0; i <= this->count; i++)
+            if (i < ((unsigned long) from) || i >= ((unsigned long) to))
                 slice = slice->appendLast(context, this->getAt(context, i));
+    }
     else
         return this;
 
@@ -483,8 +498,9 @@ void ProtoList::processReferences(
 
     ProtoObjectPointer p;
     p.oid = this->value;
-    if (p.op.pointer_tag == POINTER_TAG_CELL)
+    if (p.op.pointer_tag == POINTER_TAG_CELL) {
         method(context, self, p.cell);
+    }
 
     if (this->next)
         this->next->processReferences(context, self, method);

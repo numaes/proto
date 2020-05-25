@@ -23,9 +23,9 @@ public:
 	LiteralDictionary(
 		ProtoContext *context,
 
-		ProtoList *key = NULL,
-		LiteralDictionary *previous = NULL,
-		LiteralDictionary *next = NULL
+		ProtoList *key,
+		LiteralDictionary *previous,
+		LiteralDictionary *next
 	);
 	~LiteralDictionary();
 
@@ -46,17 +46,16 @@ std::atomic<LiteralDictionary *> *literalRoot;
 std::atomic<BOOLEAN> literalMutex;
 
 Cell *literalFreeCells = NULL;
-int   literalFreeCellsIndex = 0;
+unsigned   literalFreeCellsIndex = 0;
 ProtoContext literalContext;
 
-#define BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL 1024
+#define BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL 1024U
 
 ProtoContext::ProtoContext(
-		ProtoContext *previous = NULL,
-		ProtoSpace *space = NULL,
-		ProtoThread *thread = NULL
+		ProtoContext *previous,
+		ProtoSpace *space,
+		ProtoThread *thread
 ) {
-
     if (previous) {
         this->previous = previous;
         this->space = this->previous->space;
@@ -65,6 +64,7 @@ ProtoContext::ProtoContext(
 
     this->returnSet = NULL;
     this->returnChain = NULL;
+    this->thread = thread;
 
     if (this->thread)
         this->lastCellPreviousContext = this->thread->nextCell;
@@ -113,9 +113,10 @@ Cell *ProtoContext::allocCell(){
 
         // Get literalLock
         Cell *newCell;
+        BOOLEAN currentLock = FALSE;
 
-        while (literalMutex.load.compare_exchange_strong(
-            FALSE,
+        while (literalMutex.compare_exchange_strong(
+            currentLock,
             TRUE
         )) std::this_thread::yield();
 
@@ -129,14 +130,13 @@ Cell *ProtoContext::allocCell(){
 
             // Clear new allocated blocks
             void **p =(void **) literalFreeCells;
-            int n = 0;
+            unsigned n = 0;
             while (n < (BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL * sizeof(BigCell) / sizeof(void *)))
                 *p++ = NULL;
         }
 
         // Dealloc first free cell
         newCell = &literalFreeCells[literalFreeCellsIndex];
-        new(NULL) Cell(NULL, NULL, CELL_TYPE_UNASSIGNED);
 
         literalFreeCellsIndex++;
         if (literalFreeCellsIndex >= BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL)
@@ -162,7 +162,7 @@ void collectCells(ProtoContext *context, void *self, Cell *value) {
     }
 }
 
-void ProtoContext::returnValue(ProtoObject *value=PROTO_NONE){
+void ProtoContext::returnValue(ProtoObject *value){
     if (value != NULL && value != PROTO_NONE) {
         this->returnSet = new(this) ProtoSet(this);
 
@@ -197,27 +197,27 @@ ProtoObject *ProtoContext::fromUTF8Char(char *utf8OneCharString) {
     p.unicodeChar.pointer_tag = POINTER_TAG_SMALLDOUBLE;
     p.unicodeChar.embedded_type = EMBEDED_TYPE_UNICODECHAR;
 
-    unsigned unicodeValue;
+    unsigned unicodeValue = 0U;
     if (( utf8OneCharString[0] & 0x80 ) == 0 )
         // 0000 0000-0000 007F | 0xxxxxxx
         unicodeValue = utf8OneCharString[0] & 0x7F;
     else if (( utf8OneCharString[0] & 0xE0 ) == 0xC0 )
         // 0000 0080-0000 07FF | 110xxxxx 10xxxxxx
         unicodeValue = 0x80 + 
-                       (utf8OneCharString[0] & 0x1F) << 6 + 
+                       ((utf8OneCharString[0] & 0x1F) << 6) + 
                        (utf8OneCharString[1] & 0x3F);
     else if (( utf8OneCharString[0] & 0xF0 ) == 0xE0 ) 
         // 0000 0800-0000 FFFF | 1110xxxx 10xxxxxx 10xxxxxx
         unicodeValue = 0x800 + 
-                       (utf8OneCharString[0] & 0x0F) << 12 + 
-                       (utf8OneCharString[1] & 0x3F) << 6 + 
+                       ((utf8OneCharString[0] & 0x0F) << 12) + 
+                       ((utf8OneCharString[1] & 0x3F) << 6) + 
                        (utf8OneCharString[2] & 0x3F);
     else if (( utf8OneCharString[0] & 0xF8 ) == 0xF0 )
         // 0001 0000-0010 FFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
         unicodeValue = 0x10000 + 
-                       (utf8OneCharString[0] & 0x07) << 18 + 
-                       (utf8OneCharString[1] & 0x3F) << 12 + 
-                       (utf8OneCharString[1] & 0x3F) << 6 + 
+                       ((utf8OneCharString[0] & 0x07) << 18) + 
+                       ((utf8OneCharString[1] & 0x3F) << 12) + 
+                       ((utf8OneCharString[1] & 0x3F) << 6) + 
                        (utf8OneCharString[2] & 0x3F);
 
     p.unicodeChar.unicodeValue = unicodeValue;
@@ -242,6 +242,8 @@ ProtoObject *ProtoContext::fromUTF8String(char *zeroTerminatedUtf8String) {
             currentChar += 3;
         else if (( currentChar[0] & 0xF8 ) == 0xF0 )
             currentChar += 4;
+
+        string = string->appendLast(this, oneChar);    
     }
 
     return string;
@@ -286,7 +288,7 @@ ProtoObject *ProtoContext::literalFromUTF8String(char *zeroTerminatedUtf8String)
 
         literalString = new(&literalContext) ProtoList(&literalContext);
         char *currentChar = zeroTerminatedUtf8String;
-        while (&currentChar) {
+        while (*currentChar) {
             ProtoObject *protoChar = this->fromUTF8Char(currentChar);
             if (( currentChar[0] & 0x80 ) == 0 )
                 // 0000 0000-0000 007F | 0xxxxxxx
@@ -330,28 +332,30 @@ ProtoObject *ProtoContext::literalFromString(ProtoList *string) {
     return PROTO_NULL;
 };
 
-ProtoObject *ProtoContext::newMutable(ProtoObject *value=PROTO_NONE) {
-    IdentityDict *newRoot, *currentRoot;
+ProtoObject *ProtoContext::newMutable(ProtoObject *value) {
+    IdentityDict *currentRoot;
+    Cell *oldRoot;
+    ProtoObject *randomIdObject;
     int randomId;
 
     do {
         currentRoot = (IdentityDict *) this->space->mutableRoot.load();
+        oldRoot = currentRoot;
+
         randomId = rand();
-        ProtoObject *randomIdObject = this->fromInteger(randomId);
+        randomIdObject = this->fromInteger(randomId);
 
         BOOLEAN existingMutable = currentRoot->has(this, randomIdObject);
         if (existingMutable)
             continue;
 
-        newRoot = currentRoot->setAt(
+    } while (!this->space->mutableRoot.compare_exchange_strong(
+        oldRoot,
+        currentRoot->setAt(
             this,
             randomIdObject,
             value
-        );
-
-    } while (!this->space->mutableRoot.compare_exchange_strong(
-        (Cell *&) currentRoot,
-        newRoot
+        )
     ));
 
     ProtoObjectPointer p;
@@ -368,7 +372,7 @@ ProtoThread *ProtoContext::getCurrentThread() {
 int compareStrings(ProtoList *string1, ProtoList *string2) {
     int string1Size = string1->getSize(&literalContext);
     int string2Size = string2->getSize(&literalContext);
-    int cmp = 0;
+
     int i;
     for (i = 0; i <= string1Size && i <= string2Size; i++) {
         ProtoObjectPointer string1Char;
@@ -543,9 +547,47 @@ LiteralDictionary *leftRotate(LiteralDictionary *n) {
     );
 }
 
+LiteralDictionary *rebalance(LiteralDictionary *newNode) {
+	while (TRUE) {
+		int balance = getBalance(newNode);
+
+		// If this node becomes unbalanced, then
+		// there are 4 cases
+
+		// Left Left Case
+		if (balance < 1)
+			newNode = rightRotate(newNode);
+		else
+		// Right Right Case
+		if (balance > 1)
+			newNode = leftRotate(newNode);
+		// Left Right Case
+		if (balance < 0 && getBalance(newNode->previous) > 0) {
+			newNode = new(&literalContext) LiteralDictionary(
+				&literalContext,
+				newNode->key,
+				leftRotate(newNode->previous),
+				newNode->next
+			);
+			newNode = rightRotate(newNode);
+		}
+		// Right Left Case
+		if (balance > 0 && getBalance(newNode->next) < 0) {
+			newNode = new(&literalContext) LiteralDictionary(
+				&literalContext,
+				newNode->key,
+				newNode->previous,
+				rightRotate(newNode->next)
+			);
+			newNode = leftRotate(newNode);
+		}
+		else
+			return newNode;
+	}
+}
+
 LiteralDictionary *LiteralDictionary::set(ProtoList *string) {
 	LiteralDictionary *newNode;
-	LiteralDictionary *newAux;
 	int cmp;
 
 	// Empty tree case
@@ -601,40 +643,5 @@ LiteralDictionary *LiteralDictionary::set(ProtoList *string) {
     else 
         return this;
 
-    int balance = getBalance(newNode);
-
-    // If this node becomes unbalanced, then
-    // there are 4 cases
-
-    // Left Left Case
-    if (newNode->balance < 1 && compareStrings(string, newNode->previous->key) < 0)
-        return rightRotate(newNode);
-
-    // Right Right Case
-    if (newNode->balance > 1 && compareStrings(string, newNode->next->key) > 0)
-        return leftRotate(newNode);
-
-    // Left Right Case
-    if (newNode->balance < 1 && compareStrings(string, newNode->previous->key) > 0) {
-        newNode = new(&literalContext) LiteralDictionary(
-            &literalContext,
-            key = newNode->key,
-            previous = leftRotate(newNode->previous),
-            next = newNode->next
-        );
-        return rightRotate(newNode);
-    }
-
-    // Right Left Case
-    if (newNode->balance > 1 && compareStrings(string, newNode->previous->key) < 0) {
-        newNode = new(&literalContext) LiteralDictionary(
-            &literalContext,
-            key = newNode->key,
-            previous = newNode->previous,
-            next = rightRotate(newNode->next)
-        );
-        return leftRotate(newNode);
-    }
-
-    return newNode;
+    return rebalance(newNode);
 };

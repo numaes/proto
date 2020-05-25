@@ -13,7 +13,7 @@ SUBDIRECTORIES := core header
 # the obj/ debug/ and depend/ directories
 # (HACK: use this dummy variable to get access to shell commands)
 SHELL_HACK := $(shell mkdir -p bin lib include)
-SHELL_HACK := $(shell mkdir -p $(addprefix obj/,$(SUBDIRECTORIES)))
+SHELL_HACK := $(shell mkdir -p obj)
 SHELL_HACK := $(shell mkdir -p $(addprefix debug/,$(SUBDIRECTORIES)))
 SHELL_HACK := $(shell mkdir -p $(addprefix depend/,$(SUBDIRECTORIES)))
 # also make a directory to expose headers in
@@ -36,7 +36,7 @@ PLATFORM := $(shell uname)
 # +----------+
 CPP11_FLAGS := -std=c++11
 CC  := gcc
-CXX := gcc
+CXX := g++
 ifeq ($(PLATFORM),Darwin) # on mac
     CPP11_FLAGS := $(CPP11_FLAGS) -stdlib=libc++ -Wno-c++11-extensions
 endif
@@ -64,7 +64,7 @@ INC       := $(INC) $(GMPINC)
 PROFILING :=
 CCFLAGS   := -Wall $(INC) $(CONFIG) -O2 -DNDEBUG $(PROFILING)
 CXXFLAGS  := $(CCFLAGS) $(CPP11_FLAGS)
-CCDFLAGS  := -Wall $(INC) $(CONFIG) -ggdb
+CCDFLAGS  := -Wall $(INC) $(CONFIG) -ggdb 
 CXXDFLAGS := $(CCDFLAGS)
 
 # Place the location of GMP libraries here
@@ -88,8 +88,8 @@ endif
 # OTHER_SRCS   := xxx xxx xxx
 SRCS         := \
     Cell IdentityDict ParentLink Proto ProtoByteBuffer \
-	ProtoContext ProtoEsternalPointer ProtoObject ProtoSet \
-	ProtoSpace Thread
+	ProtoContext ProtoExternalPointer ProtoObjectCell ProtoSet \
+	ProtoSpace ProtoList ProtoMethodCell Thread
 #    $(addprefix math/,$(OTHER_SRCS))\
 
 # +-----------------------------------+
@@ -105,15 +105,13 @@ HEADER_COPIES     := $(addprefix include/,$(HEADERS))
 # | stand alone program sources |
 # +-----------------------------+
 MAIN_SRC := \
-    $(SRCS) \
-    test/test_proto
+    $(SRCS) 
 
 # +---------------------------------------+
 # | all sources for dependency generation |
 # +---------------------------------------+
 ALL_SRCS     := \
-    $(SRCS)\
-    test/test_proto
+    $(SRCS)
 
 DEPENDS := $(addprefix depend/,$(addsuffix .d,$(ALL_SRCS)))
 
@@ -123,7 +121,7 @@ DEPENDS := $(addprefix depend/,$(addsuffix .d,$(ALL_SRCS)))
 
 OBJ               := $(addprefix obj/,$(addsuffix .o,$(SRCS)))
 DEBUG             := $(addprefix debug/,$(addsuffix .o,$(SRCS)))
-MAIN_OBJ          := $(addprefix obj/,$(addsuffix .o,$(MAIN_SRC)))
+MAIN_OBJ          := $(addprefix obj/,$(addsuffix .o,$(MAIN_SRC))) obj/test_proto.o
 MAIN_DEBUG        := $(addprefix debug/,$(addsuffix .o,$(MAIN_SRC)))
 
 LIB_TARGET_NAME   := proto
@@ -145,13 +143,16 @@ lib/lib$(LIB_TARGET_NAME)debug.a: $(DEBUG)
 	@echo "Bundling $@"
 	@ar rcs $@ $(DEBUG)
 
-bin/test_proto: $(MAIN_OBJ)
+bin/test_proto: $(MAIN_OBJ) headers/proto.h
 	@echo "Linking test_proto command line tool"
-	@$(CXX) -o bin/test_proto $(MAIN_OBJ) $(LINK)
+	@$(CXX) -o bin/test_proto -lpthread -pthread $(MAIN_OBJ) $(LINK)
 
 # +------------------------------+
 # | Specialized File Build Rules |
 # +------------------------------+
+obj/test_proto.o: test/test_proto.cpp
+	@echo "Compiling $@"
+	@$(CXX) $(CXXDFLAGS) -o $@ -c $<
 
 # +------------------------------------+
 # | Generic Source->Object Build Rules |

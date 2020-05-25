@@ -19,6 +19,96 @@
 
 #define GC_SLEEP_MILLISECONDS           1000
 
+void gcCollectCells(ProtoContext *context, void *self, Cell *value) {
+    ProtoObjectPointer p;
+    p.oid = (ProtoObject *) value;
+
+    ProtoSet *returnSet = (ProtoSet *) context->returnSet;
+
+    // Go further in the scanning only if it is a cell and the cell belongs to current context!
+    if (p.op.pointer_tag == POINTER_TAG_CELL) {
+        // It is an object pointer with references
+        returnSet->add(context, p.oid);
+        p.cell->processReferences(context, context, gcCollectCells);
+    }
+}
+
+void gcScan(ProtoContext *context, ProtoSpace *space) {
+    DirtySegment *toAnalize;
+
+    // Convert the dirtyList into the list of cells to analyze
+    // Acquire mutables
+
+    BOOLEAN oldValue = FALSE;
+    while (space->gcLock.compare_exchange_strong(
+        oldValue,
+        TRUE
+    )) std::this_thread::yield();
+
+    toAnalize = space->dirtySegments;
+    space->dirtySegments = NULL;
+
+    space->gcLock.store(FALSE);
+
+    ProtoContext gcContext(context); 
+
+    ProtoSet *gcRoots = new(&gcContext) ProtoSet(&gcContext);
+
+    // Collect all roots
+    gcRoots->processReferences(&gcContext, gcRoots, gcCollectCells);
+
+    Cell *freeBlocks = NULL;
+    int freeCount = 0;
+    while (toAnalize) {
+        Cell *block = toAnalize->cellChain;
+
+        while (block) {
+            Cell *nextCell = block->nextCell;
+            if (!gcRoots->has(&gcContext, (ProtoObject *) block)) {
+                block->~Cell();
+
+                void **p = (void **) block;
+                for (unsigned i; i < sizeof(BigCell) / sizeof(void *); i++)
+                    *p++ = NULL;
+
+                block->nextCell = freeBlocks;
+                freeBlocks = block;
+                freeCount++;
+            }
+            block = nextCell;
+        }
+
+        DirtySegment *nextToAnalize = toAnalize->nextSegment;
+        delete toAnalize;
+        toAnalize = nextToAnalize;
+    }
+
+    oldValue = FALSE;
+    while (space->gcLock.compare_exchange_strong(
+        oldValue,
+        TRUE
+    )) std::this_thread::yield();
+
+    DirtySegment *newList = new DirtySegment;
+    newList->nextSegment = space->freeSegments;
+    newList->cellChain = freeBlocks;
+
+    space->freeSegments = newList;
+
+    space->gcLock.store(FALSE);
+}
+
+void gcThread(ProtoSpace *space) {
+    ProtoContext gcContext;
+
+    while (space->state == SPACE_STATE_RUNNING) {
+        if (space->dirtySegments) {
+            gcScan(&gcContext, space);
+        }
+        else
+            std::this_thread::sleep_for(std::chrono::milliseconds(GC_SLEEP_MILLISECONDS));
+    }
+}
 
 ProtoSpace::ProtoSpace() {
     Cell *firstCell = this->getFreeCells();
@@ -40,38 +130,38 @@ ProtoSpace::ProtoSpace() {
     this->mainThreadId = std::this_thread::get_id();
 
     this->threads = new(creationContext) ProtoSet(creationContext);
-    ProtoObject *threadName = creationContext->literalFromUTF8String("Main thread");
+    ProtoObject *threadName = creationContext->literalFromUTF8String((char *) "Main thread");
     firstThread->name = threadName;
     this->threads = creationContext->newMutable(
         new(creationContext) ProtoSet(creationContext)
     );
-
-    this->gcThread = new std::thread(gcThread, this);
+    this->gcThread = new std::thread((void (*)(ProtoSpace *)) &gcThread, this);
 };
 
 ProtoSpace::~ProtoSpace() {
-    ProtoContext *finalContext = new ProtoContext(NULL);
+    ProtoContext finalContext;
 
-    ProtoList *threads = ((ProtoSet *)this->threads)->asList(finalContext);
-    int threadCount = threads->getSize(finalContext);
+    ProtoList *threads = ((ProtoSet *)this->threads)->asList(&finalContext);
+    int threadCount = threads->getSize(&finalContext);
 
     this->state = SPACE_STATE_ENDING;
 
     // Wait till all threads are ended
     for (int i = 0; i < threadCount; i++) {
         ProtoThread *t = (ProtoThread *) threads->getAt(
-            finalContext,
+            &finalContext,
             i
         );
-        t->join(finalContext);
+        t->join(&finalContext);
     }
 
     this->gcThread->join();
 };
 
-ProtoThread *ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread) {
-    while (this->threadsLock.load.compare_exchange_strong(
-        FALSE,
+void ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread) {
+    BOOLEAN oldValue = FALSE;
+    while (this->threadsLock.compare_exchange_strong(
+        oldValue,
         TRUE
     )) std::this_thread::yield();
 
@@ -83,11 +173,13 @@ ProtoThread *ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread)
     );
 
     this->threadsLock.store(FALSE);
+
 };
 
-ProtoThread *ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *thread) {
-    while (this->threadsLock.load.compare_exchange_strong(
-        FALSE,
+void ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *thread) {
+    BOOLEAN oldValue = FALSE;
+    while (this->threadsLock.compare_exchange_strong(
+        oldValue,
         TRUE
     )) std::this_thread::yield();
 
@@ -106,8 +198,9 @@ Cell *ProtoSpace::getFreeCells(){
     Cell *newBlocks, *newBlock;
     AllocatedSegment *newSegment;
 
-    while (this->gcLock.load.compare_exchange_strong(
-        FALSE,
+    BOOLEAN oldValue = FALSE;
+    while (this->gcLock.compare_exchange_strong(
+        oldValue,
         TRUE
     )) std::this_thread::yield();
 
@@ -122,7 +215,7 @@ Cell *ProtoSpace::getFreeCells(){
             }
 
             void **p =(void **) newBlock;
-            int n = 0;
+            unsigned n = 0;
             while (n < (sizeof(BigCell) / sizeof(void *)))
                 *p++ = NULL;
         }    
@@ -137,7 +230,7 @@ Cell *ProtoSpace::getFreeCells(){
 
                 // Clear new allocated blocks
                 void **p =(void **) newBlocks;
-                int n = 0;
+                unsigned n = 0;
                 while (n < (BLOCKS_PER_MALLOC_REQUEST * sizeof(BigCell) / sizeof(void *)))
                     *p++ = NULL;
 
@@ -165,8 +258,9 @@ Cell *ProtoSpace::getFreeCells(){
 void ProtoSpace::analyzeUsedCells(Cell *cellsChain) {
     DirtySegment *newChain;
 
-    while (this->gcLock.load.compare_exchange_strong(
-        FALSE,
+    BOOLEAN oldValue = FALSE;
+    while (this->gcLock.compare_exchange_strong(
+        oldValue,
         TRUE
     )) std::this_thread::yield();
 
@@ -191,96 +285,4 @@ void ProtoSpace::deallocMemory(){
     this->segments = NULL;
     this->blocksInCurrentSegment = 0;
 };
-
-void gcCollectCells(ProtoContext *context, void *self, Cell *value) {
-    ProtoObjectPointer p;
-    p.oid = (ProtoObject *) value;
-
-    ProtoSet *returnSet = (ProtoSet *) context->returnSet;
-
-    // Go further in the scanning only if it is a cell and the cell belongs to current context!
-    if (p.op.pointer_tag == POINTER_TAG_CELL) {
-        // It is an object pointer with references
-        returnSet->add(context, p.oid);
-        p.cell->processReferences(context, context, gcCollectCells);
-    }
-}
-
-void gcScan(ProtoContext *context, ProtoSpace *space) {
-    DirtySegment *toAnalize;
-    IdentityDict *mutables;
-
-    // Convert the dirtyList into the list of cells to analyze
-    // Acquire mutables
-
-    while (space->gcLock.load.compare_exchange_strong(
-        FALSE,
-        TRUE
-    )) std::this_thread::yield();
-
-    toAnalize = space->dirtySegments;
-    space->dirtySegments = NULL;
-    mutables = (IdentityDict *) space->mutableRoot.load();
-
-    space->gcLock.store(FALSE);
-
-    ProtoContext *gcContext = new ProtoContext(context);
-
-    ProtoSet *gcRoots = new(gcContext) ProtoSet(gcContext);
-
-    // Collect all roots
-    gcRoots->processReferences(gcContext, gcRoots, gcCollectCells);
-
-    Cell *freeBlocks = NULL;
-    int freeCount = 0;
-    while (toAnalize) {
-        Cell *block = toAnalize->cellChain;
-
-        while (block) {
-            Cell *nextCell = block->nextCell;
-            if (!gcRoots->has(gcContext, (ProtoObject *) block)) {
-                block->~Cell();
-
-                void **p = (void **) block;
-                for (int i; i < sizeof(BigCell) / sizeof(void *); i++)
-                    *p++ = NULL;
-
-                block->nextCell = freeBlocks;
-                freeBlocks = block;
-                freeCount++;
-            }
-            block = nextCell;
-        }
-
-        DirtySegment *nextToAnalize = toAnalize->nextSegment;
-        delete toAnalize;
-        toAnalize = nextToAnalize;
-    }
-
-
-    while (space->gcLock.load.compare_exchange_strong(
-        FALSE,
-        TRUE
-    )) std::this_thread::yield();
-
-    DirtySegment *newList = new DirtySegment;
-    newList->nextSegment = space->freeSegments;
-    newList->cellChain = freeBlocks;
-
-    space->freeSegments = newList;
-
-    space->gcLock.store(FALSE);
-}
-
-void gcThread(ProtoSpace *space) {
-    ProtoContext gcContext;
-
-    while (space->state == SPACE_STATE_RUNNING) {
-        if (space->dirtySegments) {
-            gcScan(&gcContext, space);
-        }
-        else
-            std::this_thread::sleep_for(std::chrono::milliseconds(GC_SLEEP_MILLISECONDS));
-    }
-}
 

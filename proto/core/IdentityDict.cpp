@@ -16,10 +16,10 @@
 IdentityDict::IdentityDict(
 	ProtoContext *context,
 
-	ProtoObject *key = NULL,
-	ProtoObject *value = PROTO_NONE,
-	IdentityDict *previous = NULL,
-	IdentityDict *next = NULL
+	ProtoObject *key,
+	ProtoObject *value,
+	IdentityDict *previous,
+	IdentityDict *next
 ) : Cell(
 	context,
 	type = CELL_TYPE_IDENTITY_DICT,
@@ -138,7 +138,7 @@ BOOLEAN IdentityDict::has(ProtoContext *context, ProtoObject *key) {
 	while (node) {
 		if (node->key == key)
 			return TRUE;
-        int cmp = ((int) key) - ((int) this->key);
+        int cmp = ((long) key) - ((long) this->key);
         if (cmp < 0)
             node = node->previous;
         else if (cmp > 1)
@@ -148,7 +148,7 @@ BOOLEAN IdentityDict::has(ProtoContext *context, ProtoObject *key) {
     if (node)
         return TRUE;
     else
-        return NULL;
+        return FALSE;
 };
 
 ProtoObject *IdentityDict::getAt(ProtoContext *context, ProtoObject *key) {
@@ -159,7 +159,7 @@ ProtoObject *IdentityDict::getAt(ProtoContext *context, ProtoObject *key) {
 	while (node) {
 		if (node->key == key)
 			return node->value;
-        int cmp = ((int) key) - ((int) this->key);
+        int cmp = ((long) key) - ((long) this->key);
         if (cmp < 0)
             node = node->previous;
         else if (cmp > 1)
@@ -175,7 +175,6 @@ ProtoObject *IdentityDict::getAt(ProtoContext *context, ProtoObject *key) {
 
 IdentityDict *IdentityDict::setAt(ProtoContext *context, ProtoObject *key, ProtoObject *value) {
 	IdentityDict *newNode;
-	IdentityDict *newAux;
 	int cmp;
 
 	// Empty tree case
@@ -186,7 +185,7 @@ IdentityDict *IdentityDict::setAt(ProtoContext *context, ProtoObject *key, Proto
 			value
         );
 
-    cmp = ((int) key) - ((int)this->key);
+    cmp = ((long) key) - ((long)this->key);
     if (cmp > 0) {
         if (this->next) {
             newNode = new(context) IdentityDict(
@@ -210,31 +209,33 @@ IdentityDict *IdentityDict::setAt(ProtoContext *context, ProtoObject *key, Proto
             );
         }
     }
-    else if (cmp < 0) {
-        if (this->previous) {
-            newNode = new(context) IdentityDict(
-                context,
-                this->key,
-				this->value,
-                previous = this->previous->setAt(context, key, value),
-                next = this->next
-            );
-        }
-        else {
-            newNode = new(context) IdentityDict(
-                context,
-                this->key,
-				this->value,
-                new(context) IdentityDict(
-                    context,
-                    key = this->key
-                ),
-                this->next
-            );
-        }
-    }
-    else 
-        return this;
+    else {
+		if (cmp < 0) {
+			if (this->previous) {
+				newNode = new(context) IdentityDict(
+					context,
+					this->key,
+					this->value,
+					previous = this->previous->setAt(context, key, value),
+					next = this->next
+				);
+			}
+			else {
+				newNode = new(context) IdentityDict(
+					context,
+					this->key,
+					this->value,
+					new(context) IdentityDict(
+						context,
+						key = this->key
+					),
+					this->next
+				);
+			}
+		}
+		else 
+			return this;
+	}
 
 	return rebalance(context, newNode);
 };
@@ -250,7 +251,7 @@ IdentityDict *IdentityDict::removeAt(ProtoContext *context, ProtoObject *key) {
 		return this->next;
 	}
 
-	int cmp = ((int) key) - ((int) this->key);
+	int cmp = ((long) key) - ((long) this->key);
 	IdentityDict *newNode;
 	if (cmp < 0) {
 		if (!this->previous)
@@ -356,8 +357,6 @@ void IdentityDict::processElements (
 	if (this->previous)
 		this->previous->processElements(context, self, method);
 
-	ProtoObjectPointer p;
-
 	if (this->key != NULL)
 		method(context, self, this->key, this->value);
 
@@ -378,8 +377,6 @@ void IdentityDict::processKeys (
 	if (this->previous)
 		this->previous->processKeys(context, self, method);
 
-	ProtoObjectPointer p;
-
 	if (this->key != NULL)
 		method(context, self, this->key);
 
@@ -399,8 +396,6 @@ void IdentityDict::processValues (
 ) {
 	if (this->previous)
 		this->previous->processValues(context, self, method);
-
-	ProtoObjectPointer p;
 
 	if (this->key != NULL)
 		method(context, self, this->value);

@@ -1,7 +1,7 @@
 /*
  * Cell.cpp
  *
- *  Created on: 2020-5-1
+ *  Created on: 2020-05-01
  *      Author: gamarino
  */
 
@@ -10,9 +10,9 @@
 
 Cell::Cell (
     ProtoContext *context, 
-    unsigned long type = CELL_TYPE_UNASSIGNED,
-    unsigned long height = 0L,
-    unsigned long count = 0L
+    long unsigned type,
+    long unsigned height,
+    long unsigned count
 ) {
     this->context = context;
     this->type = type;

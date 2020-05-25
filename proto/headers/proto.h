@@ -25,7 +25,7 @@
 #endif
 
 #ifndef NULL
-#define NULL 0L
+#define NULL (void *) 0LU
 #endif
 
 #define PROTO_NONE ((ProtoObject *) NULL)
@@ -47,55 +47,55 @@
 // There is no other form of allocation for proto objects or scalars
 // 
 
-#define TAG_MASK				  ((unsigned long) 0x07L)
-#define TYPE_MASK				  ((unsigned long) 0x0fL)
-#define TYPE_SHIFT				  ((unsigned long) 0x03L)
+#define TAG_MASK				  (0x07LU)
+#define TYPE_MASK				  (0x0fLU)
+#define TYPE_SHIFT				  (0x03LU)
 
 #define POINTER_GET_TAG(p)		  (((unsigned long) p) & TAG_MASK)
 #define POINTER_GET_TYPE(p)	  	  ((((unsigned long) p >> TYPE_SHIFT) & TYPE_MASK))	
 
-#define POINTER_TAG_CELL 	      ((unsigned long) 0x00L)
-#define POINTER_TAG_MUTABLEOBJECT ((unsigned long) 0x01L)
-#define POINTER_TAG_SMALLINT      ((unsigned long) 0x02L)
-#define POINTER_TAG_SMALLDOUBLE   ((unsigned long) 0x03L)
-#define POINTER_TAG_EMBEDEDVALUE  ((unsigned long) 0x04L)
-#define POINTER_TAG_UNASSIGNED_5  ((unsigned long) 0x05L)
-#define POINTER_TAG_UNASSIGNED_6  ((unsigned long) 0x06L)
-#define POINTER_TAG_UNASSIGNED_7  ((unsigned long) 0x07L)
+#define POINTER_TAG_CELL 	      (0x00LU)
+#define POINTER_TAG_MUTABLEOBJECT (0x01LU)
+#define POINTER_TAG_SMALLINT      (0x02LU)
+#define POINTER_TAG_SMALLDOUBLE   (0x03LU)
+#define POINTER_TAG_EMBEDEDVALUE  (0x04LU)
+#define POINTER_TAG_UNASSIGNED_5  (0x05LU)
+#define POINTER_TAG_UNASSIGNED_6  (0x06LU)
+#define POINTER_TAG_UNASSIGNED_7  (0x07LU)
 
-#define EMBEDED_TYPE_BOOLEAN      ((unsigned long) 0x00L)
-#define EMBEDED_TYPE_UNICODECHAR  ((unsigned long) 0x01L)
-#define EMBEDED_TYPE_BYTE         ((unsigned long) 0x02L)
-#define EMBEDED_TYPE_TIMESTAMP    ((unsigned long) 0x03L)
-#define EMBEDED_TYPE_DATE         ((unsigned long) 0x04L)
-#define EMBEDED_TYPE_TIMEDELTA    ((unsigned long) 0x05L)
-#define EMBEDED_TYPE_UNASSIGNED_6 ((unsigned long) 0x06L)
-#define EMBEDED_TYPE_UNASSIGNED_7 ((unsigned long) 0x07L)
-#define EMBEDED_TYPE_UNASSIGNED_8 ((unsigned long) 0x08L)
-#define EMBEDED_TYPE_UNASSIGNED_9 ((unsigned long) 0x09L)
-#define EMBEDED_TYPE_UNASSIGNED_A ((unsigned long) 0x0AL)
-#define EMBEDED_TYPE_UNASSIGNED_B ((unsigned long) 0x0BL)
-#define EMBEDED_TYPE_UNASSIGNED_C ((unsigned long) 0x0CL)
-#define EMBEDED_TYPE_UNASSIGNED_D ((unsigned long) 0x0DL)
-#define EMBEDED_TYPE_UNASSIGNED_E ((unsigned long) 0x0EL)
-#define EMBEDED_TYPE_UNASSIGNED_F ((unsigned long) 0x0FL)
+#define EMBEDED_TYPE_BOOLEAN      (0x00LU)
+#define EMBEDED_TYPE_UNICODECHAR  (0x01LU)
+#define EMBEDED_TYPE_BYTE         (0x02LU)
+#define EMBEDED_TYPE_TIMESTAMP    (0x03LU)
+#define EMBEDED_TYPE_DATE         (0x04LU)
+#define EMBEDED_TYPE_TIMEDELTA    (0x05LU)
+#define EMBEDED_TYPE_UNASSIGNED_6 (0x06LU)
+#define EMBEDED_TYPE_UNASSIGNED_7 (0x07LU)
+#define EMBEDED_TYPE_UNASSIGNED_8 (0x08LU)
+#define EMBEDED_TYPE_UNASSIGNED_9 (0x09LU)
+#define EMBEDED_TYPE_UNASSIGNED_A (0x0ALU)
+#define EMBEDED_TYPE_UNASSIGNED_B (0x0BLU)
+#define EMBEDED_TYPE_UNASSIGNED_C (0x0CLU)
+#define EMBEDED_TYPE_UNASSIGNED_D (0x0DLU)
+#define EMBEDED_TYPE_UNASSIGNED_E (0x0ELU)
+#define EMBEDED_TYPE_UNASSIGNED_F (0x0FLU)
 
-#define CELL_TYPE_UNASSIGNED	  	((unsigned long) 0x00L)
-#define CELL_TYPE_IDENTITY_DICT   	((unsigned long) 0x01L)
-#define CELL_TYPE_PROTO_LIST	  	((unsigned long) 0x02L)
-#define CELL_TYPE_PROTO_SET		  	((unsigned long) 0x03L)
-#define CELL_TYPE_BYTE_BUFFER     	((unsigned long) 0x04L)
-#define CELL_TYPE_PROTO_THREAD    	((unsigned long) 0x05L)
-#define CELL_TYPE_PROTO_OBJECT    	((unsigned long) 0x06L)
-#define CELL_TYPE_EXTERNAL_POINTER 	((unsigned long) 0x07L)
-#define CELL_TYPE_METHOD	      	((unsigned long) 0x08L)
-#define CELL_TYPE_PARENT_LINK     	((unsigned long) 0x09L)
-#define CELL_TYPE_LITERAL_DICT    	((unsigned long) 0x0AL)
-#define CELL_TYPE_UNASSIGNED_B    	((unsigned long) 0x0BL)
-#define CELL_TYPE_UNASSIGNED_C    	((unsigned long) 0x0CL)
-#define CELL_TYPE_UNASSIGNED_D    	((unsigned long) 0x0DL)
-#define CELL_TYPE_UNASSIGNED_E    	((unsigned long) 0x0EL)
-#define CELL_TYPE_UNASSIGNED_F    	((unsigned long) 0x0FL)
+#define CELL_TYPE_UNASSIGNED	  	(0x00LU)
+#define CELL_TYPE_IDENTITY_DICT   	(0x01LU)
+#define CELL_TYPE_PROTO_LIST	  	(0x02LU)
+#define CELL_TYPE_PROTO_SET		  	(0x03LU)
+#define CELL_TYPE_BYTE_BUFFER     	(0x04LU)
+#define CELL_TYPE_PROTO_THREAD    	(0x05LU)
+#define CELL_TYPE_PROTO_OBJECT    	(0x06LU)
+#define CELL_TYPE_EXTERNAL_POINTER 	(0x07LU)
+#define CELL_TYPE_METHOD	      	(0x08LU)
+#define CELL_TYPE_PARENT_LINK     	(0x09LU)
+#define CELL_TYPE_LITERAL_DICT    	(0x0ALU)
+#define CELL_TYPE_UNASSIGNED_B    	(0x0BLU)
+#define CELL_TYPE_UNASSIGNED_C    	(0x0CLU)
+#define CELL_TYPE_UNASSIGNED_D    	(0x0DLU)
+#define CELL_TYPE_UNASSIGNED_E    	(0x0ELU)
+#define CELL_TYPE_UNASSIGNED_F    	(0x0FLU)
 
 class ProtoContext;
 class ProtoObject;
@@ -144,8 +144,8 @@ public:
 
 	ProtoObject *rootObject;
 
-	ProtoThread *allocThread(ProtoContext *context, ProtoThread *thread);
-	ProtoThread *deallocThread(ProtoContext *context, ProtoThread *thread);
+	void allocThread(ProtoContext *context, ProtoThread *thread);
+	void deallocThread(ProtoContext *context, ProtoThread *thread);
 
 	Cell 		*getFreeCells();
 	void 		analyzeUsedCells(Cell *cellsChain);
@@ -209,9 +209,9 @@ class Cell {
 public:
 	Cell(
 		ProtoContext *context, 
-		unsigned long type = CELL_TYPE_UNASSIGNED,
-		unsigned long height = 0L,
-		unsigned long count = 0L
+		long unsigned type = CELL_TYPE_UNASSIGNED,
+		long unsigned height = 0LU,
+		long unsigned count = 0LU
 	);
 	~Cell();
 
@@ -683,8 +683,8 @@ public:
 // Usefull constants.
 // ATENTION: They should be kept on synch with proto_internal.h!
 
-#define PROTO_TRUE ((ProtoObject *)  0x0107)
-#define PROTO_FALSE ((ProtoObject *) 0x0007)
+#define PROTO_TRUE ((ProtoObject *)  0x0107L)
+#define PROTO_FALSE ((ProtoObject *) 0x0007L)
 #define PROTO_NULL ((ProtoObject *)  0x00L)
 
 #endif /* PROTO_H_ */

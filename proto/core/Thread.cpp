@@ -15,9 +15,9 @@ ProtoThread::ProtoThread(
 
 		ProtoObject *name,
 		ProtoSpace	*space,
-		ProtoMethod *code = NULL,
-		ProtoObject *args = NULL,
-		ProtoObject *kwargs = NULL
+		ProtoMethod *code,
+		ProtoObject *args,
+		ProtoObject *kwargs
 ) : Cell(
     context, 
     type = CELL_TYPE_PROTO_THREAD
@@ -26,11 +26,7 @@ ProtoThread::ProtoThread(
     this->space = space;
     this->currentWorkingSet = NULL;
     this->freeCells = NULL;
-    ProtoContext *newContext = new ProtoContext(
-        NULL, 
-        context->space,
-        this
-    );
+    ProtoContext newContext(NULL, context->space, this);
 
     // Copy parameters to new context to avoid loosing the references
     ProtoObjectPointer p;
@@ -38,23 +34,23 @@ ProtoThread::ProtoThread(
 
     p.oid = args;
     if (args && p.op.pointer_tag == POINTER_TAG_CELL) {
-        bc = (BigCell *) newContext->allocCell();
+        bc = (BigCell *) newContext.allocCell();
         *bc = *((BigCell *) args);
     }
 
     p.oid = kwargs;
     if (kwargs && p.op.pointer_tag == POINTER_TAG_CELL) {
-        bc = (BigCell *) newContext->allocCell();
+        bc = (BigCell *) newContext.allocCell();
         *bc = *((BigCell *) kwargs);
     }
 
     // register the thread in the corresponding space
-    this->space->allocThread(newContext, this);
+    this->space->allocThread(&newContext, this);
 
     // Create and start the OS Thread
     this->osThread = new std::thread(
         (void (*)(ProtoContext *, ProtoObject *, ProtoObject *)) code, 
-        newContext, 
+        &newContext, 
         args, 
         kwargs
     );

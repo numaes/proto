@@ -23,7 +23,7 @@ ProtoExternalPointer::~ProtoExternalPointer() {
 
 };
 
-void ProtoByteBuffer::processReferences(
+void ProtoExternalPointer::processReferences(
     ProtoContext *context,
     void *self,
     void (*method) (

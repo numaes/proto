@@ -10,13 +10,14 @@
 
 ProtoObjectCell::ProtoObjectCell(
 	ProtoContext *context,
-	ParentLink	*parent = NULL,
-	IdentityDict *attributes = NULL
+	ParentLink	*parent,
+	IdentityDict *attributes
 ) : Cell(
 	context,
 	type = CELL_TYPE_PROTO_OBJECT
 ) {
-
+	this->parent = parent;
+	this->attributes = attributes;
 };
 
 ProtoObjectCell::~ProtoObjectCell() {
@@ -27,7 +28,15 @@ ProtoObject *ProtoObjectCell::addParent(
 	ProtoContext *context, 
 	ProtoObject *object
 ) {
-
+	return new(context) ProtoObjectCell(
+		context,
+		new(context) ParentLink(
+			context,
+			this->parent,
+			(ProtoObjectCell *) object
+		),
+		this->attributes
+	);
 };
 
 // Apply method recursivelly to all referenced objects, except itself

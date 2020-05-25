@@ -15,9 +15,9 @@
 ProtoSet::ProtoSet(
     ProtoContext *context,
 
-    ProtoObject *value = PROTO_NONE,
-    ProtoSet *previous = NULL,
-    ProtoSet *next = NULL
+    ProtoObject *value,
+    ProtoSet *previous,
+    ProtoSet *next
 ) : Cell(
 	context,
 	type = CELL_TYPE_PROTO_SET,
@@ -35,17 +35,23 @@ ProtoSet::~ProtoSet() {
 };
 
 int getBalance(ProtoSet *self) {
-    if (!self)
+    if (!self) {
         return 0;
+    }
+
 	if (self->next && self->previous)
 		return self->next->height - self->previous->height;
-	else if (self->previous)
-		return -self->previous->height;
-	else if (self->next)
-		return self->next->height;
-	else
-		return 0;
-}
+	else {
+        if (self->previous)
+            return -self->previous->height;
+        else {
+            if (self->next)
+                return self->next->height;
+        };
+    };
+
+	return 0;
+};
 
 // A utility function to right rotate subtree rooted with y
 // See the diagram given above.
@@ -131,7 +137,7 @@ BOOLEAN ProtoSet::has(ProtoContext *context, ProtoObject *value) {
 	while (node) {
 		if (node->value == value)
 			return TRUE;
-        int cmp = ((int) value) - ((int) this->value);
+        long cmp = ((long) value) - ((long) this->value);
         if (cmp < 0)
             node = node->previous;
         else if (cmp > 1)
@@ -141,13 +147,12 @@ BOOLEAN ProtoSet::has(ProtoContext *context, ProtoObject *value) {
     if (node)
         return TRUE;
     else
-        return NULL;
+        return FALSE;
 };
 
 ProtoSet *ProtoSet::add(ProtoContext *context, ProtoObject *value) {
 	ProtoSet *newNode;
-	ProtoSet *newAux;
-	int cmp;
+	long cmp;
 
 	// Empty tree case
 	if (!this->value)
@@ -156,7 +161,7 @@ ProtoSet *ProtoSet::add(ProtoContext *context, ProtoObject *value) {
 			value = value
         );
 
-    cmp = ((int) value) - ((int)this->value);
+    cmp = ((long) value) - ((long)this->value);
     if (cmp > 0) {
         if (this->next) {
             newNode = new(context) ProtoSet(
@@ -216,7 +221,7 @@ ProtoSet *ProtoSet::removeAt(ProtoContext *context, ProtoObject *value) {
 		return this->next;
 	}
 
-	int cmp = ((int) value) - ((int) this->value);
+	long cmp = ((long) value) - ((long) this->value);
 	ProtoSet *newNode;
 	if (cmp < 0) {
 		if (!this->previous)
@@ -243,42 +248,7 @@ ProtoSet *ProtoSet::removeAt(ProtoContext *context, ProtoObject *value) {
 			);
 	}
 
-	int balance = getBalance(newNode);
-
-    // If this node becomes unbalanced, then
-    // there are 4 cases
-
-    // Left Left Case
-    if (balance < 1 && ((int) value) - ((int) newNode->previous->value) < 0)
-        return rightRotate(context, newNode);
-
-    // Right Right Case
-    if (balance > 1 && ((int) value) - ((int) newNode->previous->value) > 0)
-        return leftRotate(context, newNode);
-
-    // Left Right Case
-    if (balance < 1 && ((int) value) - ((int) newNode->previous->value) > 0) {
-        newNode = new(context) ProtoSet(
-            context,
-            newNode->value,
-            leftRotate(context, newNode->previous),
-            newNode->next
-        );
-        return rightRotate(context, newNode);
-    }
-
-    // Right Left Case
-    if (balance > 1 && ((int) value) - ((int) newNode->previous->value) < 0) {
-        newNode = new(context) ProtoSet(
-            context,
-            newNode->value,
-            newNode->previous,
-            rightRotate(context, newNode->next)
-        );
-        return leftRotate(context, newNode);
-    }
-
-    return newNode;
+    return rebalance(context, newNode);
 };
 
 struct matchState {
@@ -426,8 +396,6 @@ void ProtoSet::processValues (
 ) {
 	if (this->previous)
 		this->previous->processValues(context, self, method);
-
-	ProtoObjectPointer p;
 
 	if (this->value != NULL)
 		method(context, self, this->value);

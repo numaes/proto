@@ -7,7 +7,7 @@
 
 
 #include "../headers/proto.h"
-#include "../headers/proto_internal.h"
+
 #include <stdio.h>
 
 int failedTests = 0;
