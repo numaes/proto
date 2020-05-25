@@ -85,7 +85,7 @@ SRCS         := \
 # +-----------------------------------+
 # OTHER_HEADERS := xxx.h xxx.h
 HEADERS           := proto.h
-HEADER_COPIES     := $(addprefix headers/,$(HEADERS))
+HEADER_COPIES     := $(addprefix include/,$(HEADERS))
 
 # +-----------------------------+
 # | stand alone program sources |
@@ -154,15 +154,11 @@ depend/%.d: $(addprefix core/,$(addsuffix .cpp,$(SRCS)))
 
 # +-------------------+
 # | include copy rule |
-# +-------------------+---------------------
-# | This rule exists to safely propagate
-# | header file dependencies to other
-# | targets that depend on the common code
-# +-----------------------------------------
+# +-------------------+
 includes: $(HEADER_COPIES)
 
-include/%.h: src/%.h
-	@echo "updating $@"
+include/%.h: headers/%.h
+	@echo "updating header $@"
 	@cp $< $@
 
 # +---------------+
