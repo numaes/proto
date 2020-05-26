@@ -58,7 +58,7 @@ INC       := -I headers/
 PROFILING :=
 CCFLAGS   := -Wall $(INC) $(CONFIG) -O2 -DNDEBUG $(PROFILING)
 CXXFLAGS  := $(CCFLAGS) $(CPP11_FLAGS)
-CCDFLAGS  := -Wall $(INC) $(CONFIG) -ggdb 
+CCDFLAGS  := $(INC) $(CONFIG) -ggdb 
 CXXDFLAGS := $(CCDFLAGS) $(CPP11_FLAGS)
 
 LINK         := -Wall $(INC) $(CONFIG) -O2 -DNDEBUG $(PROFILING)
@@ -128,12 +128,12 @@ lib/lib$(LIB_TARGET_NAME)-debug.a: $(DEBUG)
 	@ar rcs $@ $(DEBUG)
 
 debug/test_proto.o: test/test_proto.cpp
-	@echo "Compiling $@"
-	@$(CXX) $(CXXFLAGS) -o $@ -c $<
+	@echo "Compiling for debug $@"
+	@$(CXX) $(CXXDFLAGS) -o $@ -c $<
 
-bin/test_proto: $(MAIN_DEBUG) headers/proto.h debug/test_proto.o $(DEBUG) 
+bin/test_proto: $(MAIN_DEBUG) headers/proto.h debug/test_proto.o $(DEBUG)
 	@echo "Linking test_proto command line tool"
-	@$(CXX) -o bin/test_proto -lpthread -pthread $(LINKD) debug/*.o
+	@$(CXX) -o bin/test_proto -lpthread -pthread $(LINKD) debug/test_proto.o $(DEBUG)
 
 # +------------------------------+
 # | Specialized File Build Rules |

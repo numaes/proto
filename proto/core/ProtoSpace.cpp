@@ -96,7 +96,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
 
     DirtySegment *newList = new DirtySegment;
     newList->nextSegment = space->freeSegments;
-    newList->cellChain = freeBlocks;
+    newList->cellChain = (BigCell *) freeBlocks;
 
     space->freeSegments = newList;
 
@@ -118,7 +118,8 @@ void gcThread(ProtoSpace *space) {
 ProtoSpace::ProtoSpace() {
     Cell *firstCell = this->getFreeCells();
     ProtoThread *firstThread = (ProtoThread *) firstCell;
-    firstThread->freeCells = firstCell->nextCell;
+    firstThread->freeCells = (BigCell *) firstCell->nextCell;
+    firstThread->nextCell = NULL;
     firstThread->currentWorkingSet = firstThread;
     // Get current thread id from OS
     firstThread->osThread = NULL;
@@ -138,10 +139,15 @@ ProtoSpace::ProtoSpace() {
     this->threads = new(creationContext) ProtoSet(creationContext);
     ProtoObject *threadName = creationContext->literalFromUTF8String((char *) "Main thread");
     firstThread->name = threadName;
+    this->mutableRoot.store(new(creationContext) IdentityDict(creationContext));
     this->threads = creationContext->newMutable(
         new(creationContext) ProtoSet(creationContext)
     );
-    this->gcThread = new std::thread((void (*)(ProtoSpace *)) &gcThread, this);
+    this->param1 = this;
+    this->gcThread = new std::thread(
+        (void (*)(ProtoSpace *)) &gcThread, 
+        this->param1
+    );
 };
 
 ProtoSpace::~ProtoSpace() {
@@ -215,7 +221,7 @@ Cell *ProtoSpace::getFreeCells(){
             Cell *nextBlock = this->freeSegments->cellChain->nextCell;
             newBlock = this->freeSegments->cellChain;
             if (nextBlock)
-                this->freeSegments->cellChain = nextBlock;
+                this->freeSegments->cellChain = (BigCell *) nextBlock;
             else {
                 this->freeSegments = this->freeSegments->nextSegment;
             }
@@ -237,12 +243,12 @@ Cell *ProtoSpace::getFreeCells(){
                 // Clear new allocated blocks
                 void **p =(void **) newBlocks;
                 unsigned n = 0;
-                while (n < (BLOCKS_PER_MALLOC_REQUEST * sizeof(BigCell) / sizeof(void *)))
+                while (n++ < (BLOCKS_PER_MALLOC_REQUEST * sizeof(BigCell) / sizeof(void *)))
                     *p++ = NULL;
 
                 newSegment = new AllocatedSegment();
-                newSegment->memoryBlock = newBlocks;
-                newSegment->cellsCount = BLOCKS_PER_ALLOCATION;
+                newSegment->memoryBlock = (BigCell *) newBlocks;
+                newSegment->cellsCount = BLOCKS_PER_MALLOC_REQUEST;
                 newSegment->nextBlock = this->segments;
 
                 this->segments = newSegment;
@@ -271,7 +277,7 @@ void ProtoSpace::analyzeUsedCells(Cell *cellsChain) {
     )) std::this_thread::yield();
 
     newChain = new DirtySegment();
-    newChain->cellChain = cellsChain;
+    newChain->cellChain = (BigCell *) cellsChain;
     newChain->nextSegment = this->dirtySegments;
     this->dirtySegments = newChain;
 

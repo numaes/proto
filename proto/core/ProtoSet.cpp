@@ -101,36 +101,41 @@ ProtoSet *rebalance(ProtoContext *context, ProtoSet *newNode) {
         // there are 4 cases
 
         // Left Left Case
-        if (balance < 1)
-            newNode = rightRotate(context, newNode);
-
-        // Right Right Case
-        if (balance > 1)
-            newNode = leftRotate(context, newNode);
-
-        // Left Right Case
-        if (balance < 0 && getBalance(newNode->previous) > 0) {
-            newNode = new(context) ProtoSet(
-                context,
-                newNode->value,
-                leftRotate(context, newNode->previous),
-                newNode->next
-            );
+        if (balance < -1) {
             newNode = rightRotate(context, newNode);
         }
-
-        // Right Left Case
-        if (balance > 1 && getBalance(newNode->next) < 0) {
-            newNode = new(context) ProtoSet(
-                context,
-                newNode->value,
-                newNode->previous,
-                rightRotate(context, newNode->next)
-            );
-            newNode = leftRotate(context, newNode);
+        else {
+            // Right Right Case
+            if (balance > 1) {
+                newNode = leftRotate(context, newNode);
+            }
+            // Left Right Case
+            else {
+                if (balance < 0 && getBalance(newNode->previous) > 0) {
+                    newNode = new(context) ProtoSet(
+                        context,
+                        newNode->value,
+                        leftRotate(context, newNode->previous),
+                        newNode->next
+                    );
+                    newNode = rightRotate(context, newNode);
+                }
+                else {
+                    // Right Left Case
+                    if (balance > 0 && getBalance(newNode->next) < 0) {
+                        newNode = new(context) ProtoSet(
+                            context,
+                            newNode->value,
+                            newNode->previous,
+                            rightRotate(context, newNode->next)
+                        );
+                        newNode = leftRotate(context, newNode);
+                    }
+                    else
+                        return newNode;
+                }
+            }
         }
-        else
-            return newNode;
     }
 };
 

@@ -46,12 +46,15 @@ public:
 	LiteralDictionary	*set(ProtoList *string);
 };
 
-std::atomic<LiteralDictionary *> *literalRoot;
-std::atomic<BOOLEAN> literalMutex;
+std::atomic<BOOLEAN> literalMutex(FALSE);
 
-Cell *literalFreeCells = NULL;
+BigCell *literalFreeCells = NULL;
 unsigned   literalFreeCellsIndex = 0;
 ProtoContext literalContext;
+std::atomic<LiteralDictionary *> literalRoot(
+    new(&literalContext) LiteralDictionary(
+            &literalContext, (ProtoList *) NULL, 
+            (LiteralDictionary *) NULL, (LiteralDictionary *) NULL));
 
 #define BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL 1024U
 
@@ -64,6 +67,11 @@ ProtoContext::ProtoContext(
         this->previous = previous;
         this->space = this->previous->space;
         this->thread = this->previous->thread;
+    }
+    else {
+        this->previous = NULL;
+        this->space = space;
+        this->thread = thread;
     }
 
     this->returnSet = NULL;
@@ -122,10 +130,13 @@ Cell *ProtoContext::allocCell(){
         while (literalMutex.compare_exchange_strong(
             currentLock,
             TRUE
-        )) std::this_thread::yield();
+        )) {
+            currentLock = FALSE;
+            std::this_thread::yield();
+        };
 
         if (!literalFreeCells) {
-            literalFreeCells = (Cell *) malloc(sizeof(BigCell) * BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL);
+            literalFreeCells = (BigCell *) malloc(sizeof(BigCell) * BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL);
             if (!literalFreeCells) {
                 printf("\nPANIC ERROR: Not enough MEMORY! Exiting ...\n");
                 exit(1);
@@ -135,12 +146,12 @@ Cell *ProtoContext::allocCell(){
             // Clear new allocated blocks
             void **p =(void **) literalFreeCells;
             unsigned n = 0;
-            while (n < (BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL * sizeof(BigCell) / sizeof(void *)))
+            while (n++ < (BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL * sizeof(BigCell) / sizeof(void *)))
                 *p++ = NULL;
         }
 
         // Dealloc first free cell
-        newCell = &literalFreeCells[literalFreeCellsIndex];
+        newCell = (Cell *) &literalFreeCells[literalFreeCellsIndex];
 
         literalFreeCellsIndex++;
         if (literalFreeCellsIndex >= BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL)
@@ -284,7 +295,7 @@ ProtoObject *ProtoContext::literalFromUTF8String(char *zeroTerminatedUtf8String)
     ProtoList *literalString;
 
     do {
-        currentRoot = literalRoot->load();
+        currentRoot = literalRoot.load();
 
         ProtoObject *currentLiteral = currentRoot->get(zeroTerminatedUtf8String);
         if (currentLiteral != PROTO_NONE)
@@ -309,7 +320,7 @@ ProtoObject *ProtoContext::literalFromUTF8String(char *zeroTerminatedUtf8String)
         }
 
         newRoot = currentRoot->set(literalString);
-    } while (!literalRoot->compare_exchange_strong(
+    } while (!literalRoot.compare_exchange_strong(
         currentRoot, 
         newRoot
     ));
@@ -321,14 +332,14 @@ ProtoObject *ProtoContext::literalFromString(ProtoList *string) {
     LiteralDictionary *newRoot, *currentRoot;
 
     do {
-        currentRoot = literalRoot->load();
+        currentRoot = literalRoot.load();
 
         ProtoList *currentLiteral = currentRoot->getFromString(string);
         if (currentLiteral)
             return currentLiteral;
 
         newRoot = currentRoot->set(string);
-    } while (!literalRoot->compare_exchange_strong(
+    } while (!literalRoot.compare_exchange_strong(
         currentRoot, 
         newRoot
     ));
@@ -552,42 +563,49 @@ LiteralDictionary *leftRotate(LiteralDictionary *n) {
 }
 
 LiteralDictionary *rebalance(LiteralDictionary *newNode) {
-	while (TRUE) {
-		int balance = getBalance(newNode);
+    while (TRUE) {
+        int balance = getBalance(newNode);
 
-		// If this node becomes unbalanced, then
-		// there are 4 cases
+        // If this node becomes unbalanced, then
+        // there are 4 cases
 
-		// Left Left Case
-		if (balance < 1)
-			newNode = rightRotate(newNode);
-		else
-		// Right Right Case
-		if (balance > 1)
-			newNode = leftRotate(newNode);
-		// Left Right Case
-		if (balance < 0 && getBalance(newNode->previous) > 0) {
-			newNode = new(&literalContext) LiteralDictionary(
-				&literalContext,
-				newNode->key,
-				leftRotate(newNode->previous),
-				newNode->next
-			);
-			newNode = rightRotate(newNode);
-		}
-		// Right Left Case
-		if (balance > 0 && getBalance(newNode->next) < 0) {
-			newNode = new(&literalContext) LiteralDictionary(
-				&literalContext,
-				newNode->key,
-				newNode->previous,
-				rightRotate(newNode->next)
-			);
-			newNode = leftRotate(newNode);
-		}
-		else
-			return newNode;
-	}
+        // Left Left Case
+        if (balance < -1) {
+            newNode = rightRotate(newNode);
+        }
+        else {
+            // Right Right Case
+            if (balance > 1) {
+                newNode = leftRotate(newNode);
+            }
+            // Left Right Case
+            else {
+                if (balance < 0 && getBalance(newNode->previous) > 0) {
+                    newNode = new(&literalContext) LiteralDictionary(
+                        &literalContext,
+                        newNode->key,
+                        leftRotate(newNode->previous),
+                        newNode->next
+                    );
+                    newNode = rightRotate(newNode);
+                }
+                else {
+                    // Right Left Case
+                    if (balance > 0 && getBalance(newNode->next) < 0) {
+                        newNode = new(&literalContext) LiteralDictionary(
+                            &literalContext,
+                            newNode->key,
+                            newNode->previous,
+                            rightRotate(newNode->next)
+                        );
+                        newNode = leftRotate(newNode);
+                    }
+                    else
+                        return newNode;
+                }
+            }
+        }
+    }
 }
 
 LiteralDictionary *LiteralDictionary::set(ProtoList *string) {

@@ -93,44 +93,51 @@ IdentityDict *leftRotate(ProtoContext *context, IdentityDict *n) {
 };
 
 IdentityDict *rebalance(ProtoContext *context, IdentityDict *newNode) {
-	while (TRUE) {
-		int balance = getBalance(newNode);
+    while (TRUE) {
+        int balance = getBalance(newNode);
 
-		// If this node becomes unbalanced, then
-		// there are 4 cases
+        // If this node becomes unbalanced, then
+        // there are 4 cases
 
-		// Left Left Case
-		if (balance < 1)
-			newNode = rightRotate(context, newNode);
-		else
-		// Right Right Case
-		if (balance > 1)
-			newNode = leftRotate(context, newNode);
-		// Left Right Case
-		if (balance < 0 && getBalance(newNode->previous) > 0) {
-			newNode = new(context) IdentityDict(
-				context,
-				newNode->key,
-				newNode->value,
-				leftRotate(context, newNode->previous),
-				newNode->next
-			);
-			newNode = rightRotate(context, newNode);
-		}
-		// Right Left Case
-		if (balance > 0 && getBalance(newNode->next) < 0) {
-			newNode = new(context) IdentityDict(
-				context,
-				newNode->key,
-				newNode->value,
-				newNode->previous,
-				rightRotate(context, newNode->next)
-			);
-			newNode = leftRotate(context, newNode);
-		}
-		else
-			return newNode;
-	}
+        // Left Left Case
+        if (balance < -1) {
+            newNode = rightRotate(context, newNode);
+        }
+        else {
+            // Right Right Case
+            if (balance > 1) {
+                newNode = leftRotate(context, newNode);
+            }
+            // Left Right Case
+            else {
+                if (balance < 0 && getBalance(newNode->previous) > 0) {
+                    newNode = new(context) IdentityDict(
+                        context,
+						newNode->key,
+                        newNode->value,
+                        leftRotate(context, newNode->previous),
+                        newNode->next
+                    );
+                    newNode = rightRotate(context, newNode);
+                }
+                else {
+                    // Right Left Case
+                    if (balance > 0 && getBalance(newNode->next) < 0) {
+                        newNode = new(context) IdentityDict(
+                            context,
+							newNode->key,
+                            newNode->value,
+                            newNode->previous,
+                            rightRotate(context, newNode->next)
+                        );
+                        newNode = leftRotate(context, newNode);
+                    }
+                    else
+                        return newNode;
+                }
+            }
+        }
+    }
 }
 
 BOOLEAN IdentityDict::has(ProtoContext *context, ProtoObject *key) {

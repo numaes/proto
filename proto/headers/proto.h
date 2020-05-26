@@ -106,17 +106,18 @@ class ProtoObjectCell;
 class ProtoSpace;
 class ProtoList;
 class Cell;
+class BigCell;
 
 class AllocatedSegment {
 public:
-    Cell    *memoryBlock;
+    BigCell *memoryBlock;
     int     cellsCount;
     AllocatedSegment *nextBlock;
 };
 
 class DirtySegment {
 public:
-	Cell	*cellChain;
+	BigCell	 *cellChain;
 	DirtySegment *nextSegment;
 };
 
@@ -213,6 +214,7 @@ public:
 	std::thread::id		 mainThreadId;
 	std::thread			*gcThread;
 	ProtoContext		*creationContext;
+	ProtoSpace			*param1;
 };
 
 class ProtoObject {
@@ -272,6 +274,22 @@ public:
 	unsigned long height:8;
 	unsigned long type:4;
 };
+
+
+// Used only for block allocations
+// The maximun number of pointers is 8
+// per Cell.
+// Cell itsef uses 3, so only 5 are available
+// The biggest is IdentityDict
+class BigCell : public Cell {
+private:
+	Cell *p1;
+	Cell *p2;
+	Cell *p3;
+	Cell *p4;
+	Cell *p5;
+};
+
 
 // Base tree structure used by Dictionaries, Sets and Lists
 // Internal use exclusively
@@ -660,21 +678,10 @@ public:
 	Cell				*currentWorkingSet;
 	std::thread			*osThread;
 	ProtoSpace			*space;
-	Cell				*freeCells;
+	BigCell				*freeCells;
 };
 
 // Used just to compute the number of bytes needed for a Cell at allocation time
-
-union BigCell {
-	Cell	cell;
-	ParentLink parentLink;
-	IdentityDict identityLink;
-	ProtoList protoList;
-	ProtoSet protoSet;
-	ProtoByteBuffer protoMemoryBuffer;
-	ProtoObjectCell protoObjectCell;
-	ProtoThread thread;
-};
 
 static_assert (sizeof(IdentityDict) == 64);
 

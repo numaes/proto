@@ -85,12 +85,12 @@ Cell *ProtoThread::allocCell() {
     Cell *newCell;
 
     if (!this->freeCells) {
-        this->freeCells = this->space->getFreeCells();
+        this->freeCells = (BigCell *) this->space->getFreeCells();
     }
 
     // Dealloc first free cell
     newCell = this->freeCells;
-    this->freeCells = newCell->nextCell;
+    this->freeCells = (BigCell *) newCell->nextCell;
 
     // Add it to current working set
     newCell->nextCell = this->currentWorkingSet;
