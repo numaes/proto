@@ -15,6 +15,54 @@ using namespace proto;
 int failedTests = 0;
 
 
+void printString(ProtoContext *context, ProtoObject *string) {
+    ProtoList *s = (ProtoList *) string;
+    int size = (int) s->getSize(context);
+
+    for (int i = 0; i < size; i++) {
+        ProtoObject *unicodeChar = s->getAt(context, i);
+        ProtoObjectPointer p;
+        p.oid.oid = unicodeChar;
+        if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
+            p.op.embedded_type == EMBEDED_TYPE_UNICODECHAR) {
+            char buffer[8];
+
+            if (p.unicodeChar.unicodeValue <= 0x7f) {
+                buffer[0] = (char) p.unicodeChar.unicodeValue;
+                buffer[1] = 0;
+            }
+            else {
+                if (p.unicodeChar.unicodeValue >= 0x80 &&
+                    p.unicodeChar.unicodeValue <= 0x7ff) {
+                    long u = p.unicodeChar.unicodeValue - 0x80;
+                    buffer[0] = (char) (u >> 6) & 0x07;
+                    buffer[1] = (char) u & 0x3F;
+                    buffer[2] = 0;
+                }
+                else {
+                    if (p.unicodeChar.unicodeValue >= 0x800 &&
+                        p.unicodeChar.unicodeValue <=0x10ffff) {
+                        long u = p.unicodeChar.unicodeValue - 0x800;
+                        buffer[0] = (char) (u >> 12) & 0x07;
+                        buffer[1] = (char) (u >> 6) & 0x3F;
+                        buffer[2] = (char) u & 0x3F;
+                        buffer[3] = 0;
+                    }
+                    else {
+                        long u = p.unicodeChar.unicodeValue - 0x10000;
+                        buffer[0] = (char) (u >> 18) & 0x07;
+                        buffer[1] = (char) (u >> 12) & 0x3F;
+                        buffer[2] = (char) (u >> 12) & 0x3F;
+                        buffer[3] = (char) u & 0x3F;
+                        buffer[4] = 0;
+                    }
+                }
+            }
+            cout << buffer;
+        }
+    }
+}
+
 BOOLEAN test_proto_header() {
     cout << "\nTesting headers";
 
@@ -50,7 +98,7 @@ BOOLEAN test_parentLink() {
 };
 
 BOOLEAN test_byteBuffer() {
-    printf("\nTesting ByteBuffer");
+    cout << "\nTesting ByteBuffer";
 
     return FALSE;
 };
@@ -58,6 +106,22 @@ BOOLEAN test_byteBuffer() {
 BOOLEAN test_protoContext() {
     cout << "\nTesting ProtoContext";
 
+    cout << "\nStep 01 - ProtoContext basic";
+
+    ProtoSpace *s = new ProtoSpace();
+    s->~ProtoSpace();
+
+    ProtoContext *c = new ProtoContext(
+        s->creationContext
+    );
+
+    cout << "\nStep 02 - UTF8 String";
+
+    cout << "\nEsta es una prueba --- ";
+    printString(c, c->fromUTF8String((char*) "Esta es una prueba"));
+
+    cout << "\nCoño, äáíñ --- ";
+    printString(c, c->fromUTF8String((char *)"Coño, äáíñ"));
 
     return FALSE;
 };
