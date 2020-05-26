@@ -162,7 +162,7 @@ void collectCells(ProtoContext *context, void *self, Cell *value) {
     }
 }
 
-void ProtoContext::returnValue(ProtoObject *value){
+void ProtoContext::setReturnValue(ProtoObject *value){
     if (value != NULL && value != PROTO_NONE) {
         this->returnSet = new(this) ProtoSet(this);
 

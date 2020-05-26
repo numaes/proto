@@ -117,6 +117,53 @@ public:
 	DirtySegment *nextSegment;
 };
 
+typedef ProtoObject *(*ProtoMethod)(
+	ProtoContext *, 		// context
+	ProtoObject *, 			// self
+	ProtoObject *, 			// prototype
+	ProtoObject *, 			// positionalParameters
+	ProtoObject * 			// keywordParameters
+);
+
+class ProtoContext {
+public:
+	ProtoContext(
+		ProtoContext *previous = NULL,
+		ProtoSpace *space = NULL,
+		ProtoThread *thread = NULL
+	);
+
+	~ProtoContext();
+
+	ProtoContext	*previous;
+	ProtoSpace		*space;
+	ProtoThread		*thread;
+	Cell			*returnChain;
+	ProtoObject		*returnSet;
+	Cell			*lastCellPreviousContext;
+	
+	Cell 			*allocCell();
+	void 			setReturnValue(ProtoObject *value=PROTO_NONE);
+
+	// Constructors for base types, here to get the right context on invoke
+	ProtoObject 	*fromInteger(int value);
+	ProtoObject 	*fromDouble(double value);
+	ProtoObject 	*fromUTF8Char(char *utf8OneCharString);
+	ProtoObject 	*fromUTF8String(char *zeroTerminatedUtf8String);
+	ProtoObject 	*fromMethod(ProtoObject *self, ProtoMethod *method);
+	ProtoObject 	*fromExternalPointer(void *pointer);
+	ProtoObject 	*newBuffer(unsigned long length);
+	ProtoObject 	*fromBoolean(BOOLEAN value);
+	ProtoObject 	*fromByte(char c);
+	ProtoObject 	*literalFromUTF8String(char *zeroTerminatedUtf8String);
+	ProtoObject 	*literalFromString(ProtoList *string);
+
+	ProtoThread 	*getCurrentThread();
+
+	ProtoObject 	*newMutable(ProtoObject *value=PROTO_NONE);
+	// Only for already created mutables
+};
+
 class ProtoSpace {
 public:
 	ProtoSpace();
@@ -163,20 +210,8 @@ public:
 	int					 state;
 	std::thread::id		 mainThreadId;
 	std::thread			*gcThread;
+	ProtoContext		*creationContext;
 };
-
-typedef struct {
-	ProtoObject *keyword;
-	ProtoObject *value;
-} KeywordParameter;
-
-typedef ProtoObject *(*ProtoMethod)(
-	ProtoContext *, 		// context
-	ProtoObject *, 			// self
-	ProtoObject *, 			// type
-	ProtoObject *, 			// positionalParameters
-	ProtoObject * 			// keywordParameters
-);
 
 class ProtoObject {
 public:
@@ -640,45 +675,6 @@ union BigCell {
 };
 
 static_assert (sizeof(IdentityDict) == 64);
-
-class ProtoContext {
-public:
-	ProtoContext(
-		ProtoContext *previous = NULL,
-		ProtoSpace *space = NULL,
-		ProtoThread *thread = NULL
-	);
-
-	~ProtoContext();
-
-	ProtoContext	*previous;
-	ProtoSpace		*space;
-	ProtoThread		*thread;
-	Cell			*returnChain;
-	ProtoObject		*returnSet;
-	Cell			*lastCellPreviousContext;
-	
-	Cell 			*allocCell();
-	void returnValue(ProtoObject *value=PROTO_NONE);
-
-	// Constructors for base types, here to get the right context on invoke
-	ProtoObject 	*fromInteger(int value);
-	ProtoObject 	*fromDouble(double value);
-	ProtoObject 	*fromUTF8Char(char *utf8OneCharString);
-	ProtoObject 	*fromUTF8String(char *zeroTerminatedUtf8String);
-	ProtoObject 	*fromMethod(ProtoObject *self, ProtoMethod *method);
-	ProtoObject 	*fromExternalPointer(void *pointer);
-	ProtoObject 	*newBuffer(unsigned long length);
-	ProtoObject 	*fromBoolean(BOOLEAN value);
-	ProtoObject 	*fromByte(char c);
-	ProtoObject 	*literalFromUTF8String(char *zeroTerminatedUtf8String);
-	ProtoObject 	*literalFromString(ProtoList *string);
-
-	ProtoThread 	*getCurrentThread();
-
-	ProtoObject 	*newMutable(ProtoObject *value=PROTO_NONE);
-	// Only for already created mutables
-};
 
 // Usefull constants.
 // ATENTION: They should be kept on synch with proto_internal.h!

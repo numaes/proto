@@ -126,6 +126,7 @@ ProtoSpace::ProtoSpace() {
         this,
         firstThread
     );
+    this->creationContext = creationContext;
 
     this->mainThreadId = std::this_thread::get_id();
 

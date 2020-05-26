@@ -13,90 +13,175 @@
 int failedTests = 0;
 
 
-void test_proto_header() {
+BOOLEAN test_proto_header() {
+    printf("\nTesting headers");
 
+
+    return FALSE;
 };
 
-void test_proto_internal_header() {
+BOOLEAN test_cell() {
+    printf("\nTesting Cell");
 
+
+    return FALSE;
 };
 
-void test_cell() {
+BOOLEAN test_identityDict() {
+    printf("\nTesting IdentitySet");
 
+    return FALSE;
 };
 
-void test_identityDict() {
+BOOLEAN test_protoSet() {
+    printf("\nTesting ProtoSet");
 
+
+    return FALSE;
 };
 
-void test_protoSet() {
+BOOLEAN test_parentLink() {
+    printf("\nTesting ParentLink");
 
+
+    return FALSE;
 };
 
-void test_parentLink() {
+BOOLEAN test_byteBuffer() {
+    printf("\nTesting ByteBuffer");
 
+    return FALSE;
 };
 
-void test_byteBuffer() {
+BOOLEAN test_protoContext() {
+    printf("\nTesting ProtoContext");
 
+
+    return FALSE;
 };
 
-void test_protoContext() {
+BOOLEAN test_externalPointer() {
+    printf("\nTesting ExternalPointer");
 
+    return FALSE;
 };
 
-void test_externalPointer() {
+BOOLEAN test_protoList() {
+    printf("\nTesting ProtoList");
 
+
+    return FALSE;
 };
 
-void test_protoList() {
+BOOLEAN test_protoLiteral() {
+    printf("\nTesting ProtoLiteral");
 
+
+    return FALSE;
 };
 
-void test_protoLiteral() {
+BOOLEAN test_memoryBuffer() {
+    printf("\nTesting ByteBuffer");
 
+
+    return FALSE;
 };
 
-void test_memoryBuffer() {
+BOOLEAN test_methodCall() {
+    printf("\nTesting MethodCall");
 
+
+    return FALSE;
 };
 
-void test_methodCall() {
+BOOLEAN test_protoObject() {
+    printf("\nTesting Proto");
 
+
+    return FALSE;
 };
 
-void test_protoObject() {
+BOOLEAN test_protoSpace() {
+    printf("\nTesting ProtoSpace");
 
+    printf("\nStep 01 - Creating and deleting");
+    ProtoSpace *s = new ProtoSpace();
+    s->~ProtoSpace();
+
+    printf("\nStep 02 - Creating with context");
+    s = new ProtoSpace();
+    ProtoContext *c = new ProtoContext(
+        s->creationContext
+    );
+    c->~ProtoContext();
+    s->~ProtoSpace();
+    
+    return FALSE;
 };
 
-void test_protoSpace() {
+BOOLEAN test_protoThread() {
+    printf("\nTesting Thread");
 
+
+    return FALSE;
 };
 
-void test_protoThread() {
 
-};
+BOOLEAN main(BOOLEAN argc, char **argv) {
 
+    int phase;
+    int error;
 
-int main(int argc, char **argv) {
- 
-    test_proto_header();
-    test_proto_internal_header();
-    test_protoSpace();
-    test_protoContext();
-    test_protoThread();
-    test_cell();
-    test_identityDict();
-    test_protoSet();
-    test_protoList();
-    test_parentLink();
-    test_byteBuffer();
-    test_memoryBuffer();
-    test_methodCall();
-    test_protoObject();
+    for (phase = 1; phase <= 13; phase++) {
+        switch(phase) {
+            case 1:
+                error = test_proto_header();
+                break;
+            case 2:
+                error = test_protoSpace();
+                break;
+            case 3:
+                error = test_protoContext();
+                break;
+            case 4:
+                error = test_protoThread();
+                break;
+            case 5:
+                error = test_cell();
+                break;
+            case 6:
+                error = test_identityDict();
+                break;
+            case 7:
+                error = test_protoSet();
+                break;
+            case 8:
+                error = test_protoList();
+                break;
+            case 9:
+                error = test_parentLink();
+                break;
+            case 10:
+                error = test_byteBuffer();
+                break;
+            case 11:
+                error = test_memoryBuffer();
+                break;
+            case 12:
+                error = test_methodCall();
+                break;
+            case 13:
+                error = test_protoObject();
+                break;
+        }
+        if (error) {
+            printf("Error running test %d", phase);
+            failedTests++;
+        }
+    }
 
     if (failedTests) {
-        printf("Some test failed (%d)\n", failedTests);
+        printf("Some test failed (%d with errors)\n", failedTests);
         return 1;
     }
     else {
