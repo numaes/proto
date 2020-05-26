@@ -27,15 +27,15 @@ namespace proto {
 
 void gcCollectCells(ProtoContext *context, void *self, Cell *value) {
     ProtoObjectPointer p;
-    p.oid = (ProtoObject *) value;
+    p.oid.oid = (ProtoObject *) value;
 
     ProtoSet *returnSet = (ProtoSet *) context->returnSet;
 
     // Go further in the scanning only if it is a cell and the cell belongs to current context!
     if (p.op.pointer_tag == POINTER_TAG_CELL) {
         // It is an object pointer with references
-        returnSet->add(context, p.oid);
-        p.cell->processReferences(context, context, gcCollectCells);
+        returnSet->add(context, p.oid.oid);
+        p.cell.cell->processReferences(context, context, gcCollectCells);
     }
 }
 

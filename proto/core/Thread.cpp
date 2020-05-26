@@ -35,13 +35,13 @@ ProtoThread::ProtoThread(
     ProtoObjectPointer p;
     BigCell *bc;
 
-    p.oid = args;
+    p.oid.oid = args;
     if (args && p.op.pointer_tag == POINTER_TAG_CELL) {
         bc = (BigCell *) newContext->allocCell();
         *bc = *((BigCell *) args);
     }
 
-    p.oid = kwargs;
+    p.oid.oid = kwargs;
     if (kwargs && p.op.pointer_tag == POINTER_TAG_CELL) {
         bc = (BigCell *) newContext->allocCell();
         *bc = *((BigCell *) kwargs);
@@ -126,7 +126,7 @@ void ProtoThread::processReferences(
 
     if (this->name) {
         ProtoObjectPointer p;
-        p.oid = this->name;
+        p.oid.oid = this->name;
         if (p.op.pointer_tag == POINTER_TAG_CELL)
             method(context, self, (Cell *) this->name);
     }

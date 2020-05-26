@@ -76,10 +76,9 @@ ProtoContext::ProtoContext(
 
     this->returnSet = NULL;
     this->returnChain = NULL;
-    this->thread = thread;
 
     if (this->thread)
-        this->lastCellPreviousContext = this->thread->nextCell;
+        this->lastCellPreviousContext = this->thread->currentWorkingSet;
 };
 
 ProtoContext::~ProtoContext() {
@@ -165,16 +164,16 @@ Cell *ProtoContext::allocCell(){
 
 void collectCells(ProtoContext *context, void *self, Cell *value) {
     ProtoObjectPointer p;
-    p.oid = (ProtoObject *) value;
+    p.oid.oid = (ProtoObject *) value;
 
     ProtoSet *returnSet = (ProtoSet *) context->returnSet;
 
     // Go further in the scanning only if it is a cell and the cell belongs to current context!
-    if (p.op.pointer_tag == POINTER_TAG_CELL && p.cell->context == context) {
+    if (p.op.pointer_tag == POINTER_TAG_CELL && p.cell.cell->context == context) {
         // It is an object pointer with references
-        if (!returnSet->has(context, p.oid)) {
-            context->returnSet = returnSet->add(context, p.oid);
-            p.cell->processReferences(context, context, collectCells);
+        if (!returnSet->has(context, p.oid.oid)) {
+            context->returnSet = returnSet->add(context, p.oid.oid);
+            p.cell.cell->processReferences(context, context, collectCells);
         }
     }
 }
@@ -184,10 +183,10 @@ void ProtoContext::setReturnValue(ProtoObject *value){
         this->returnSet = new(this) ProtoSet(this);
 
         ProtoObjectPointer p;
-        p.oid = value;
+        p.oid.oid = value;
 
         if (p.op.pointer_tag == POINTER_TAG_CELL) {
-            p.cell->processReferences(this, this, collectCells);
+            p.cell.cell->processReferences(this, this, collectCells);
 
         }
     }
@@ -198,7 +197,7 @@ ProtoObject *ProtoContext::fromInteger(int value) {
     p.si.pointer_tag = POINTER_TAG_SMALLINT;
     p.si.smallInteger = value;
 
-    return p.oid; 
+    return p.oid.oid; 
 };
 
 ProtoObject *ProtoContext::fromDouble(double value) {
@@ -206,14 +205,15 @@ ProtoObject *ProtoContext::fromDouble(double value) {
     p.sd.pointer_tag = POINTER_TAG_SMALLDOUBLE;
     p.si.smallInteger = ((unsigned long) value) >> TYPE_SHIFT;
 
-    return p.oid; 
+    return p.oid.oid; 
 };
 
 ProtoObject *ProtoContext::fromUTF8Char(char *utf8OneCharString) {
     ProtoObjectPointer p;
-    p.unicodeChar.pointer_tag = POINTER_TAG_SMALLDOUBLE;
+    p.unicodeChar.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
     p.unicodeChar.embedded_type = EMBEDED_TYPE_UNICODECHAR;
 
+    p.op.value = 0U;
     unsigned unicodeValue = 0U;
     if (( utf8OneCharString[0] & 0x80 ) == 0 )
         // 0000 0000-0000 007F | 0xxxxxxx
@@ -239,7 +239,7 @@ ProtoObject *ProtoContext::fromUTF8Char(char *utf8OneCharString) {
 
     p.unicodeChar.unicodeValue = unicodeValue;
 
-    return p.oid; 
+    return p.oid.oid; 
 };
 
 ProtoObject *ProtoContext::fromUTF8String(char *zeroTerminatedUtf8String) {
@@ -280,7 +280,7 @@ ProtoObject *ProtoContext::fromBoolean(BOOLEAN value) {
     p.booleanValue.embedded_type = EMBEDED_TYPE_BOOLEAN;
     p.booleanValue.booleanValue = value;
 
-    return p.oid;
+    return p.oid.oid;
 };
 
 ProtoObject *ProtoContext::fromByte(char c) {
@@ -289,7 +289,7 @@ ProtoObject *ProtoContext::fromByte(char c) {
     p.byteValue.embedded_type = EMBEDED_TYPE_BYTE;
     p.byteValue.byteData = c;
 
-    return p.oid;
+    return p.oid.oid;
 };
 
 ProtoObject *ProtoContext::literalFromUTF8String(char *zeroTerminatedUtf8String) {
@@ -379,7 +379,7 @@ ProtoObject *ProtoContext::newMutable(ProtoObject *value) {
     p.mutableObject.pointer_tag = POINTER_TAG_MUTABLEOBJECT;
     p.mutableObject.mutableID = randomId;
 
-    return p.oid;
+    return p.oid.oid;
 };
 
 ProtoThread *ProtoContext::getCurrentThread() {
@@ -393,9 +393,9 @@ int compareStrings(ProtoList *string1, ProtoList *string2) {
     int i;
     for (i = 0; i <= string1Size && i <= string2Size; i++) {
         ProtoObjectPointer string1Char;
-        string1Char.oid = string1->getAt(&literalContext, i);
+        string1Char.oid.oid = string1->getAt(&literalContext, i);
         ProtoObjectPointer string2Char;
-        string2Char.oid = string2->getAt(&literalContext, i);
+        string2Char.oid.oid = string2->getAt(&literalContext, i);
 
         if (string1Char.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE || 
             string1Char.op.embedded_type != EMBEDED_TYPE_UNICODECHAR)
@@ -455,9 +455,9 @@ ProtoList *LiteralDictionary::get(char *zeroTerminatedUTF8CharString) {
         int i;
         for (i = 0; i <= keySize && *currentChar; i++) {
             ProtoObjectPointer keyChar;
-            keyChar.oid = node->key->getAt(context, i);
+            keyChar.oid.oid = node->key->getAt(context, i);
             ProtoObjectPointer stringChar;
-            stringChar.oid = context->fromUTF8Char(currentChar);
+            stringChar.oid.oid = context->fromUTF8Char(currentChar);
             if (( currentChar[0] & 0x80 ) == 0 )
                 // 0000 0000-0000 007F | 0xxxxxxx
                 currentChar += 1;

@@ -294,8 +294,13 @@ private:
 // Internal use exclusively
 
 union ProtoObjectPointer {
-	ProtoObject	*oid;
-	Cell *cell;
+	struct {
+		ProtoObject	*oid;
+	} oid;
+	
+	struct {
+		Cell *cell;
+	} cell;
 
 	struct {
 		unsigned long pointer_tag:3;
@@ -305,8 +310,8 @@ union ProtoObjectPointer {
 
 	// Pointer tag dependent values
 	struct {
-		unsigned long pointer_tag:3;
-		signed long smallInteger:61;
+		long pointer_tag:3;
+		long smallInteger:61;
 	} si;
 	struct {
 		unsigned long pointer_tag:3;
@@ -321,36 +326,36 @@ union ProtoObjectPointer {
 	struct {
 		unsigned long pointer_tag:3;
 		unsigned long embedded_type:5;
-		unsigned int unicodeValue:32;
+		unsigned long unicodeValue:32;
 	} unicodeChar;
 	struct {
 		unsigned long pointer_tag:3;
 		unsigned long embedded_type:5;
-		unsigned booleanValue:1;
+		unsigned long booleanValue:1;
 	} booleanValue;
 	struct {
 		unsigned long pointer_tag:3;
 		unsigned long embedded_type:5;
-		unsigned char byteData;
+		unsigned long byteData:8;
 	} byteValue;
 
 	struct {
 		unsigned long pointer_tag:3;
 		unsigned long embedded_type:5;
-		unsigned long timestamp;
+		unsigned long timestamp:56;
 	} timestampValue;
 
 	struct {
 		unsigned long pointer_tag:3;
 		unsigned long embedded_type:5;
-		unsigned day:8;
-		unsigned month:8;
-		unsigned year:8;
+		unsigned long day:8;
+		unsigned long month:8;
+		unsigned long year:8;
 	} date;
 
 	struct {
-		unsigned long pointer_tag:3;
-		unsigned long embedded_type:5;
+		long pointer_tag:3;
+		long embedded_type:5;
 		long timedelta:56;
 	} timedeltaValue;
 

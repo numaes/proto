@@ -339,13 +339,13 @@ void IdentityDict::processReferences (
 	ProtoObjectPointer p;
 
 	if (this->key != NULL) {
-		p.oid = this->key;
+		p.oid.oid = this->key;
 		if (p.op.pointer_tag == POINTER_TAG_CELL)
-			method(context, self, p.cell);
+			method(context, self, p.cell.cell);
 
-		p.oid = this->value;
+		p.oid.oid = this->value;
 		if (p.op.pointer_tag == POINTER_TAG_CELL)
-			method(context, self, p.cell);
+			method(context, self, p.cell.cell);
 	}
 
 	if (this->next)

@@ -15,11 +15,11 @@ namespace proto {
 ProtoObjectCell *getBase(ProtoContext *context, ProtoObject *p) {
     ProtoObjectPointer pa;
 
-    pa.oid = p;
+    pa.oid.oid = p;
 
 	switch (pa.op.pointer_tag) {
 	case POINTER_TAG_CELL:
-        switch (pa.cell->type) {
+        switch (pa.cell.cell->type) {
         case CELL_TYPE_PROTO_OBJECT:
             return (ProtoObjectCell *) p;
         case CELL_TYPE_BYTE_BUFFER:
@@ -131,7 +131,7 @@ ProtoObject *ProtoObject::setAttribute(ProtoContext *context, ProtoObject *name,
     );
 
     ProtoObjectPointer p;
-    p.oid = this;
+    p.oid.oid = this;
     if (p.op.pointer_tag == POINTER_TAG_MUTABLEOBJECT) {
         IdentityDict *mr;
         Cell *oldValue;
@@ -151,7 +151,7 @@ ProtoObject *ProtoObject::setAttribute(ProtoContext *context, ProtoObject *name,
 
 ProtoObject *ProtoObject::currentValue(ProtoContext *context) {
     ProtoObjectPointer p;
-    p.oid = this;
+    p.oid.oid = this;
     if (p.op.pointer_tag == POINTER_TAG_MUTABLEOBJECT) {
         IdentityDict *currentRoot = (IdentityDict *) (context->space->mutableRoot.load()); 
         return currentRoot->getAt(
@@ -165,7 +165,7 @@ ProtoObject *ProtoObject::currentValue(ProtoContext *context) {
 
 BOOLEAN ProtoObject::setValue(ProtoContext *context, ProtoObject *oldValue, ProtoObject *newValue) {
     ProtoObjectPointer p;
-    p.oid = this;
+    p.oid.oid = this;
     if (p.op.pointer_tag == POINTER_TAG_MUTABLEOBJECT) {
         IdentityDict *currentRoot = (IdentityDict *) context->space->mutableRoot.load();
         Cell *currentValue = currentRoot;
@@ -279,10 +279,10 @@ ProtoObject *ProtoObject::call(
     ProtoObject *methodValue = this->getAttribute(context, methodName);
 
     ProtoObjectPointer p;
-    p.oid = methodValue;
+    p.oid.oid = methodValue;
     if (methodValue != PROTO_NONE && 
-        p.cell->type == CELL_TYPE_METHOD) {
-        ProtoMethodCell *mc = (ProtoMethodCell *) p.cell;
+        p.cell.cell->type == CELL_TYPE_METHOD) {
+        ProtoMethodCell *mc = (ProtoMethodCell *) p.cell.cell;
         return (*(mc->method))(
             context,
             this, 

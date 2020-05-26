@@ -384,9 +384,9 @@ void ProtoSet::processReferences (
 	ProtoObjectPointer p;
 
 	if (this->value != NULL) {
-		p.oid = this->value;
+		p.oid.oid = this->value;
 		if (p.op.pointer_tag == POINTER_TAG_CELL)
-			method(context, self, p.cell);
+			method(context, self, p.cell.cell);
 	}
 
 	if (this->next)
