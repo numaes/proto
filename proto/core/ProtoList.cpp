@@ -7,6 +7,10 @@
 
 #include "../headers/proto.h"
 
+using namespace std;
+namespace proto {
+
+
 #ifndef max
 #define max(a, b) (((a) > (b))? (a):(b))
 #endif
@@ -27,9 +31,9 @@ ProtoList::ProtoList(
     this->previous = previous;
     this->next = next;
     this->hash = context->fromInteger(
-        (((int) value) ^ 
-         (previous? (int) previous->hash : 0L) ^ 
-         (next? (int) next->hash : 0L)));
+        (((long) value) ^ 
+         (previous? (long) previous->hash : 0L) ^ 
+         (next? (long) next->hash : 0L)));
 };
 
 ProtoList::~ProtoList() {
@@ -512,3 +516,4 @@ void ProtoList::processReferences(
     method(context, self, this);
 };
 
+};

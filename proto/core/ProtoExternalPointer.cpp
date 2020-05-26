@@ -7,7 +7,7 @@
 
 #include "../headers/proto.h"
 
-
+namespace proto {
 
 ProtoExternalPointer::ProtoExternalPointer (
     ProtoContext *context,
@@ -35,3 +35,4 @@ void ProtoExternalPointer::processReferences(
     method(context, self, this);
 };
 
+};

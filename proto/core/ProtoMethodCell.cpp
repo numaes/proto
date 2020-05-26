@@ -7,6 +7,8 @@
 
 #include "../headers/proto.h"
 
+namespace proto {
+
 
 ProtoMethodCell::~ProtoMethodCell() {
 
@@ -36,4 +38,5 @@ void ProtoMethodCell::processReferences(
 	method(context, self, this);
 }
 
+};
 

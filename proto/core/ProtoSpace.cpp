@@ -11,6 +11,11 @@
 #include <stdio.h>
 #include <thread>
 
+using namespace std;
+
+namespace proto {
+
+
 #define BLOCKS_PER_ALLOCATION           1024
 #define BLOCKS_PER_MALLOC_REQUEST       8 * BLOCKS_PER_ALLOCATION
 
@@ -287,3 +292,4 @@ void ProtoSpace::deallocMemory(){
     this->blocksInCurrentSegment = 0;
 };
 
+};

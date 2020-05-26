@@ -7,8 +7,10 @@
 
 #include "../headers/proto.h"
 
-
 #include <malloc.h>
+
+namespace proto {
+
 
 ProtoByteBuffer::ProtoByteBuffer (
     ProtoContext *context,
@@ -39,3 +41,4 @@ void ProtoByteBuffer::processReferences(
     method(context, self, this);
 };
 
+};

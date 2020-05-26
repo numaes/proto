@@ -61,8 +61,8 @@ CXXFLAGS  := $(CCFLAGS) $(CPP11_FLAGS)
 CCDFLAGS  := -Wall $(INC) $(CONFIG) -ggdb 
 CXXDFLAGS := $(CCDFLAGS) $(CPP11_FLAGS)
 
-LINK         := $(CXXFLAGS)
-LINKD        := $(CXXDFLAGS)
+LINK         := -Wall $(INC) $(CONFIG) -O2 -DNDEBUG $(PROFILING)
+LINKD        := -Wall $(INC) $(CONFIG) -ggdb 
 ifeq ($(PLATFORM),Darwin)
   LINK  := $(LINK) -Wl,-no_pie
   LINKD := $(LINK) -Wl,-no_pie
@@ -103,7 +103,7 @@ DEPENDS := $(addprefix depend/,$(addsuffix .d,$(SRCS)))
 # +--------------------------------+
 # | Object Aggregation for Targets |
 # +--------------------------------+
-
+FULL_SRC		  := $(addprefix core/,$(addsuffix .cpp,$(SRCS)))	
 OBJ               := $(addprefix obj/,$(addsuffix .o,$(SRCS)))
 DEBUG             := $(addprefix debug/,$(addsuffix .o,$(SRCS)))
 MAIN_OBJ          := $(addprefix obj/,$(addsuffix .o,$(MAIN_SRC)))
@@ -127,9 +127,13 @@ lib/lib$(LIB_TARGET_NAME)-debug.a: $(DEBUG)
 	@echo "Bundling debug $@"
 	@ar rcs $@ $(DEBUG)
 
-bin/test_proto: $(MAIN_DEBUG) headers/proto.h lib/lib$(LIB_TARGET_NAME)-debug.a
+debug/test_proto.o: test/test_proto.cpp
+	@echo "Compiling $@"
+	@$(CXX) $(CXXFLAGS) -o $@ -c $<
+
+bin/test_proto: $(MAIN_DEBUG) headers/proto.h debug/test_proto.o $(DEBUG) 
 	@echo "Linking test_proto command line tool"
-	@$(CXX) -o bin/test_proto -lpthread -pthread test/test_proto.cpp lib/lib$(LIB_TARGET_NAME)-debug.a $(LINKD)
+	@$(CXX) -o bin/test_proto -lpthread -pthread $(LINKD) debug/*.o
 
 # +------------------------------+
 # | Specialized File Build Rules |
@@ -139,11 +143,11 @@ bin/test_proto: $(MAIN_DEBUG) headers/proto.h lib/lib$(LIB_TARGET_NAME)-debug.a
 # +------------------------------------+
 # | Generic Source->Object Build Rules |
 # +------------------------------------+
-obj/%.o: $(addprefix core/,$(addsuffix .cpp,$(SRCS)))
+obj/%.o: core/%.cpp
 	@echo "Compiling $@"
 	@$(CXX) $(CXXFLAGS) -o $@ -c $<
 
-debug/%.o: $(addprefix core/,$(addsuffix .cpp,$(SRCS)))
+debug/%.o: core/%.cpp
 	@echo "Compiling for debug $@"
 	@$(CXX) $(CXXDFLAGS) -o $@ -c $<
 

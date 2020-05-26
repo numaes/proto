@@ -7,6 +7,8 @@
 
 #include "../headers/proto.h"
 
+namespace proto {
+
 
 ParentLink::~ParentLink() {
 
@@ -40,3 +42,4 @@ void ParentLink::processReferences(
 }
 
 
+};

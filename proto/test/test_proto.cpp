@@ -8,40 +8,42 @@
 
 #include "../headers/proto.h"
 
-#include <stdio.h>
+#include <iostream>
+using namespace std;
+using namespace proto;
 
 int failedTests = 0;
 
 
 BOOLEAN test_proto_header() {
-    printf("\nTesting headers");
+    cout << "\nTesting headers";
 
 
     return FALSE;
 };
 
 BOOLEAN test_cell() {
-    printf("\nTesting Cell");
+    cout << "\nTesting Cell";
 
 
     return FALSE;
 };
 
 BOOLEAN test_identityDict() {
-    printf("\nTesting IdentitySet");
+    cout << "\nTesting IdentitySet";
 
     return FALSE;
 };
 
 BOOLEAN test_protoSet() {
-    printf("\nTesting ProtoSet");
+    cout << "\nTesting ProtoSet";
 
 
     return FALSE;
 };
 
 BOOLEAN test_parentLink() {
-    printf("\nTesting ParentLink");
+    cout << "\nTesting ParentLink";
 
 
     return FALSE;
@@ -54,61 +56,61 @@ BOOLEAN test_byteBuffer() {
 };
 
 BOOLEAN test_protoContext() {
-    printf("\nTesting ProtoContext");
+    cout << "\nTesting ProtoContext";
 
 
     return FALSE;
 };
 
 BOOLEAN test_externalPointer() {
-    printf("\nTesting ExternalPointer");
+    cout << "\nTesting ExternalPointer";
 
     return FALSE;
 };
 
 BOOLEAN test_protoList() {
-    printf("\nTesting ProtoList");
+    cout << "\nTesting ProtoList";
 
 
     return FALSE;
 };
 
 BOOLEAN test_protoLiteral() {
-    printf("\nTesting ProtoLiteral");
+    cout << "\nTesting ProtoLiteral";
 
 
     return FALSE;
 };
 
 BOOLEAN test_memoryBuffer() {
-    printf("\nTesting ByteBuffer");
+    cout << "\nTesting ByteBuffer";
 
 
     return FALSE;
 };
 
 BOOLEAN test_methodCall() {
-    printf("\nTesting MethodCall");
+    cout << "\nTesting MethodCall";
 
 
     return FALSE;
 };
 
 BOOLEAN test_protoObject() {
-    printf("\nTesting Proto");
+    cout << "\nTesting Proto";
 
 
     return FALSE;
 };
 
 BOOLEAN test_protoSpace() {
-    printf("\nTesting ProtoSpace");
+    cout << "\nTesting ProtoSpace";
 
-    printf("\nStep 01 - Creating and deleting");
+    cout << "\nStep 01 - Creating and deleting";
     ProtoSpace *s = new ProtoSpace();
     s->~ProtoSpace();
 
-    printf("\nStep 02 - Creating with context");
+    cout << "\nStep 02 - Creating with context";
     s = new ProtoSpace();
     ProtoContext *c = new ProtoContext(
         s->creationContext
@@ -116,11 +118,23 @@ BOOLEAN test_protoSpace() {
     c->~ProtoContext();
     s->~ProtoSpace();
     
+    cout << "\nStep 03 - Creating with context and return value";
+    s = new ProtoSpace();
+    *c = new ProtoContext(
+        s->creationContext
+    );
+
+    ProtoSet *set = new(c) ProtoSet(c);
+    c->setReturnValue(set);
+
+    c->~ProtoContext();
+    s->~ProtoSpace();
+    
     return FALSE;
 };
 
 BOOLEAN test_protoThread() {
-    printf("\nTesting Thread");
+    cout << "\nTesting Thread";
 
 
     return FALSE;
@@ -175,17 +189,17 @@ BOOLEAN main(BOOLEAN argc, char **argv) {
                 break;
         }
         if (error) {
-            printf("Error running test %d", phase);
+            cout << "\nError running test " << phase;
             failedTests++;
         }
     }
 
     if (failedTests) {
-        printf("Some test failed (%d with errors)\n", failedTests);
+        cout << "\nSome test failed (" << failedTests << " with errors)\n";
         return 1;
     }
     else {
-        printf("Everthing OK!\n");
+        cout << "\nEverthing OK!\n";
         return 0;
     }
 }

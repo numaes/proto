@@ -8,6 +8,9 @@
 #include "../headers/proto.h"
 
 
+using namespace std;
+
+namespace proto {
 
 ProtoObjectCell *getBase(ProtoContext *context, ProtoObject *p) {
     ProtoObjectPointer pa;
@@ -289,3 +292,4 @@ ProtoObject *ProtoObject::call(
     return PROTO_NONE;
 };
 
+};

@@ -10,6 +10,9 @@
 
 #include <thread>
 
+using namespace std;
+namespace proto {
+
 ProtoThread::ProtoThread(
 		ProtoContext *context,
 
@@ -131,3 +134,4 @@ void ProtoThread::processReferences(
     method(context, self, this);
 };
 
+};

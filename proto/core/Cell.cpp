@@ -8,6 +8,8 @@
 
 #include "../headers/proto.h"
 
+namespace proto {
+
 Cell::Cell (
     ProtoContext *context, 
     long unsigned type,
@@ -149,5 +151,6 @@ void Cell::processReferences(
     }
 };
 
+};
 
 

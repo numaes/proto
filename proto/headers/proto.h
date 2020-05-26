@@ -9,6 +9,8 @@
 #include <atomic>
 #include <thread>
 
+namespace proto {
+
 #ifndef PROTO_H_
 #define PROTO_H_
 
@@ -102,6 +104,7 @@ class ProtoObject;
 class ProtoThread;
 class ProtoObjectCell;
 class ProtoSpace;
+class ProtoList;
 class Cell;
 
 class AllocatedSegment {
@@ -161,7 +164,6 @@ public:
 	ProtoThread 	*getCurrentThread();
 
 	ProtoObject 	*newMutable(ProtoObject *value=PROTO_NONE);
-	// Only for already created mutables
 };
 
 class ProtoSpace {
@@ -682,5 +684,7 @@ static_assert (sizeof(IdentityDict) == 64);
 #define PROTO_TRUE ((ProtoObject *)  0x0107L)
 #define PROTO_FALSE ((ProtoObject *) 0x0007L)
 #define PROTO_NULL ((ProtoObject *)  0x00L)
+
+};
 
 #endif /* PROTO_H_ */

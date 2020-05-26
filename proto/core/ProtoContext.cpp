@@ -13,6 +13,10 @@
 #include <thread>
 #include <stdlib.h>
 
+
+using namespace std;
+namespace proto {
+
 #ifndef max
 #define max(a, b) (((a) > (b))? (a):(b))
 #endif
@@ -644,4 +648,6 @@ LiteralDictionary *LiteralDictionary::set(ProtoList *string) {
         return this;
 
     return rebalance(newNode);
+};
+
 };
