@@ -152,11 +152,13 @@ ProtoObject *ProtoObject::setAttribute(ProtoContext *context, ProtoObject *name,
 ProtoObject *ProtoObject::currentValue(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid = this;
-    if (p.op.pointer_tag == POINTER_TAG_MUTABLEOBJECT)
-        return ((IdentityDict *) context->space->mutableRoot.load())->getAt(
+    if (p.op.pointer_tag == POINTER_TAG_MUTABLEOBJECT) {
+        IdentityDict *currentRoot = (IdentityDict *) (context->space->mutableRoot.load()); 
+        return currentRoot->getAt(
             context,
             context->fromInteger(p.mutableObject.mutableID)
         );
+    }
 
     return this;
 };

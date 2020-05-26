@@ -214,7 +214,6 @@ public:
 	std::thread::id		 mainThreadId;
 	std::thread			*gcThread;
 	ProtoContext		*creationContext;
-	ProtoSpace			*param1;
 };
 
 class ProtoObject {

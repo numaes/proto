@@ -10,6 +10,7 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <thread>
+#include <functional>
 
 using namespace std;
 
@@ -103,7 +104,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
     space->gcLock.store(FALSE);
 }
 
-void gcThread(ProtoSpace *space) {
+void gcThreadLoop(ProtoSpace *space) {
     ProtoContext gcContext;
 
     while (space->state == SPACE_STATE_RUNNING) {
@@ -113,6 +114,8 @@ void gcThread(ProtoSpace *space) {
         else
             std::this_thread::sleep_for(std::chrono::milliseconds(GC_SLEEP_MILLISECONDS));
     }
+
+    std:this_thread::yield();
 }
 
 ProtoSpace::ProtoSpace() {
@@ -139,21 +142,23 @@ ProtoSpace::ProtoSpace() {
     this->threads = new(creationContext) ProtoSet(creationContext);
     ProtoObject *threadName = creationContext->literalFromUTF8String((char *) "Main thread");
     firstThread->name = threadName;
+    this->mutableLock.store(FALSE);
+    this->threadsLock.store(FALSE);
+    this->gcLock.store(FALSE);
     this->mutableRoot.store(new(creationContext) IdentityDict(creationContext));
     this->threads = creationContext->newMutable(
         new(creationContext) ProtoSet(creationContext)
     );
-    this->param1 = this;
     this->gcThread = new std::thread(
-        (void (*)(ProtoSpace *)) &gcThread, 
-        this->param1
+        (void (*)(ProtoSpace *)) (&gcThreadLoop), 
+        this
     );
 };
 
 ProtoSpace::~ProtoSpace() {
-    ProtoContext finalContext;
+    ProtoContext finalContext(NULL, this);
 
-    ProtoList *threads = ((ProtoSet *)this->threads)->asList(&finalContext);
+    ProtoList *threads = ((ProtoSet *) (this->threads->currentValue(&finalContext)))->asList(&finalContext);
     int threadCount = threads->getSize(&finalContext);
 
     this->state = SPACE_STATE_ENDING;

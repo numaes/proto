@@ -172,8 +172,10 @@ void collectCells(ProtoContext *context, void *self, Cell *value) {
     // Go further in the scanning only if it is a cell and the cell belongs to current context!
     if (p.op.pointer_tag == POINTER_TAG_CELL && p.cell->context == context) {
         // It is an object pointer with references
-        returnSet->add(context, p.oid);
-        p.cell->processReferences(context, context, collectCells);
+        if (!returnSet->has(context, p.oid)) {
+            context->returnSet = returnSet->add(context, p.oid);
+            p.cell->processReferences(context, context, collectCells);
+        }
     }
 }
 
