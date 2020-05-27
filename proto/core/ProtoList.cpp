@@ -162,7 +162,7 @@ ProtoObject *ProtoList::getAt(ProtoContext *context, int index) {
             node = node->previous;
         else {
             node = node->next;
-            index -= thisIndex;
+            index -= thisIndex + 1;
         }
 	}
 
@@ -250,7 +250,7 @@ ProtoList *ProtoList::setAt(ProtoContext *context, int index, ProtoObject* value
             context,
             value,
             this->previous,
-            this->next->setAt(context, index - thisIndex, value)
+            this->next->setAt(context, index - thisIndex - 1, value)
         );
 };
 
@@ -293,7 +293,7 @@ ProtoList *ProtoList::insertAt(ProtoContext *context, int index, ProtoObject* va
                 context,
                 value,
                 this->previous,
-                this->next->insertAt(context, index - thisIndex, value)
+                this->next->insertAt(context, index - thisIndex - 1, value)
             );
     }
 
@@ -312,14 +312,14 @@ ProtoList *ProtoList::appendFirst(ProtoContext *context, ProtoObject* value) {
     if (this->previous)
         newNode = new(context) ProtoList(
             context,
-            value,
+            this->value,
             this->previous->appendFirst(context, value),
             this->next
         );
     else {
         newNode = new(context) ProtoList(
             context,
-            value,
+            this->value,
             new(context) ProtoList(
                 context,
                 value
@@ -344,7 +344,7 @@ ProtoList *ProtoList::appendLast(ProtoContext *context, ProtoObject* value) {
     if (this->next) {
         newNode = new(context) ProtoList(
             context,
-            value,
+            this->value,
             this->previous,
             this->next->appendLast(context, value)
         );
@@ -352,7 +352,7 @@ ProtoList *ProtoList::appendLast(ProtoContext *context, ProtoObject* value) {
     else {
         newNode = new(context) ProtoList(
             context,
-            value,
+            this->value,
             this->previous,
             new(context) ProtoList(
                 context,

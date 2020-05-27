@@ -154,11 +154,14 @@ public:
 	ProtoObject 	*fromDouble(double value);
 	ProtoObject 	*fromUTF8Char(char *utf8OneCharString);
 	ProtoObject 	*fromUTF8String(char *zeroTerminatedUtf8String);
-	ProtoObject 	*fromMethod(ProtoObject *self, ProtoMethod *method);
+	ProtoObject 	*fromMethod(ProtoObject *self, ProtoMethod method);
 	ProtoObject 	*fromExternalPointer(void *pointer);
 	ProtoObject 	*newBuffer(unsigned long length);
 	ProtoObject 	*fromBoolean(BOOLEAN value);
 	ProtoObject 	*fromByte(char c);
+	ProtoObject     *fromDate(unsigned year, unsigned month, unsigned day);
+	ProtoObject     *fromTimestamp(unsigned long timestamp);
+	ProtoObject     *fromTimeDelta(long timedelta);
 	ProtoObject 	*literalFromUTF8String(char *zeroTerminatedUtf8String);
 	ProtoObject 	*literalFromString(ProtoList *string);
 
@@ -252,6 +255,8 @@ public:
 		long unsigned count = 0LU
 	);
 	~Cell();
+
+	void finalize();
 
 	void *operator new(size_t size, ProtoContext *context);
 
@@ -350,7 +355,7 @@ union ProtoObjectPointer {
 		unsigned long embedded_type:5;
 		unsigned long day:8;
 		unsigned long month:8;
-		unsigned long year:8;
+		unsigned long year:16;
 	} date;
 
 	struct {
@@ -599,7 +604,7 @@ public:
 	ProtoMethodCell(
 		ProtoContext *context,
 		ProtoObject  *self,
-		ProtoMethod	 *method
+		ProtoMethod	 method
 	);
 	~ProtoMethodCell();
 
@@ -615,7 +620,7 @@ public:
 
 	ProtoMethod	*getMethod();
 
-	ProtoMethod	*method;
+	ProtoMethod	method;
 	ProtoObject *self;
 };
 

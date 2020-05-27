@@ -194,6 +194,7 @@ void ProtoContext::setReturnValue(ProtoObject *value){
 
 ProtoObject *ProtoContext::fromInteger(int value) {
     ProtoObjectPointer p;
+    p.oid.oid = NULL;
     p.si.pointer_tag = POINTER_TAG_SMALLINT;
     p.si.smallInteger = value;
 
@@ -202,14 +203,22 @@ ProtoObject *ProtoContext::fromInteger(int value) {
 
 ProtoObject *ProtoContext::fromDouble(double value) {
     ProtoObjectPointer p;
-    p.sd.pointer_tag = POINTER_TAG_SMALLDOUBLE;
-    p.si.smallInteger = ((unsigned long) value) >> TYPE_SHIFT;
+    p.oid.oid = NULL;
+    p.op.pointer_tag = POINTER_TAG_SMALLDOUBLE;
+
+    union {
+        unsigned long lv;
+        double dv;
+    } u;
+    u.dv = value;
+    p.sd.smallDouble = u.lv >> TYPE_SHIFT;
 
     return p.oid.oid; 
 };
 
 ProtoObject *ProtoContext::fromUTF8Char(char *utf8OneCharString) {
     ProtoObjectPointer p;
+    p.oid.oid = NULL;
     p.unicodeChar.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
     p.unicodeChar.embedded_type = EMBEDED_TYPE_UNICODECHAR;
 
@@ -242,6 +251,38 @@ ProtoObject *ProtoContext::fromUTF8Char(char *utf8OneCharString) {
     return p.oid.oid; 
 };
 
+ProtoObject *ProtoContext::fromDate(unsigned year, unsigned month, unsigned day) {
+    ProtoObjectPointer p;
+    p.oid.oid = NULL;
+    p.op.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
+    p.op.embedded_type = EMBEDED_TYPE_DATE;
+    p.date.year = year;
+    p.date.month = month;
+    p.date.day = day;
+
+    return p.oid.oid; 
+};
+
+ProtoObject *ProtoContext::fromTimestamp(unsigned long timestamp) {
+    ProtoObjectPointer p;
+    p.oid.oid = NULL;
+    p.op.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
+    p.op.embedded_type = EMBEDED_TYPE_TIMESTAMP;
+    p.timestampValue.timestamp = timestamp;
+
+    return p.oid.oid; 
+};
+
+ProtoObject *ProtoContext::fromTimeDelta(long timedelta) {
+    ProtoObjectPointer p;
+    p.oid.oid = NULL;
+    p.sd.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
+    p.op.embedded_type = EMBEDED_TYPE_TIMEDELTA;
+    p.timedeltaValue.timedelta = timedelta;
+
+    return p.oid.oid; 
+};
+
 ProtoObject *ProtoContext::fromUTF8String(char *zeroTerminatedUtf8String) {
     char *currentChar = zeroTerminatedUtf8String;
     ProtoList *string = new(this) ProtoList(this);
@@ -266,8 +307,12 @@ ProtoObject *ProtoContext::fromUTF8String(char *zeroTerminatedUtf8String) {
     return string;
 };
 
-ProtoObject *ProtoContext::fromMethod(ProtoObject *self, ProtoMethod *method) {
+ProtoObject *ProtoContext::fromMethod(ProtoObject *self, ProtoMethod method) {
     return new(this) ProtoMethodCell(this, self, method);
+};
+
+ProtoObject *ProtoContext::fromExternalPointer(void *pointer) {
+    return new(this) ProtoExternalPointer(this, pointer);
 };
 
 ProtoObject *ProtoContext::newBuffer(unsigned long length) {
@@ -276,6 +321,7 @@ ProtoObject *ProtoContext::newBuffer(unsigned long length) {
 
 ProtoObject *ProtoContext::fromBoolean(BOOLEAN value) {
     ProtoObjectPointer p;
+    p.oid.oid = NULL;
     p.booleanValue.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
     p.booleanValue.embedded_type = EMBEDED_TYPE_BOOLEAN;
     p.booleanValue.booleanValue = value;
@@ -285,6 +331,7 @@ ProtoObject *ProtoContext::fromBoolean(BOOLEAN value) {
 
 ProtoObject *ProtoContext::fromByte(char c) {
     ProtoObjectPointer p;
+    p.oid.oid = NULL;
     p.byteValue.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
     p.byteValue.embedded_type = EMBEDED_TYPE_BYTE;
     p.byteValue.byteData = c;
@@ -376,6 +423,7 @@ ProtoObject *ProtoContext::newMutable(ProtoObject *value) {
     ));
 
     ProtoObjectPointer p;
+    p.oid.oid = NULL;
     p.mutableObject.pointer_tag = POINTER_TAG_MUTABLEOBJECT;
     p.mutableObject.mutableID = randomId;
 

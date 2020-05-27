@@ -63,9 +63,45 @@ void printString(ProtoContext *context, ProtoObject *string) {
     }
 }
 
+ProtoObject *testMethod(
+    ProtoContext *context, 
+    ProtoObject *self, 
+    ProtoObject *base, 
+    ProtoObject *args, 
+    ProtoObject *kwargs) {
+    return PROTO_NONE;
+};
+
 BOOLEAN test_proto_header() {
     cout << "\nTesting headers";
 
+    cout << "\nStep 01 - ProtoObjectPointer";
+
+    if (sizeof(ProtoObjectPointer) != 8) {
+        cout << "ProtoObjectPointer size is " 
+             << sizeof(ProtoObjectPointer) 
+             << "! Please check it";
+        return TRUE;
+    }
+
+    if (sizeof(BigCell) != 64) {
+        cout << "BigCell should be 64 bytes long!";
+        return TRUE;
+    }
+
+    if (sizeof(BigCell) < sizeof(ProtoThread)) {
+        cout << "ProtoThread is bigger than BigCell" 
+             << sizeof(ProtoThread) 
+             << "! Please check it";
+        return TRUE;
+    }
+
+    if (sizeof(BigCell) < sizeof(IdentityDict)) {
+        cout << "IdentityDict is bigger than BigCell" 
+             << sizeof(IdentityDict) 
+             << "! Please check it";
+        return TRUE;
+    }
 
     return FALSE;
 };
@@ -115,13 +151,169 @@ BOOLEAN test_protoContext() {
         s->creationContext
     );
 
-    cout << "\nStep 02 - UTF8 String";
+    ProtoObjectPointer p;
+    ProtoObject *o, *o2, *o3;
+    
+    cout << "\nStep 02 - Embedded types - Integer";
+    o = c->fromInteger(37);
 
-    cout << "\nEsta es una prueba --- ";
-    printString(c, c->fromUTF8String((char*) "Esta es una prueba"));
+    p.oid.oid = o;
+    if (p.op.pointer_tag != POINTER_TAG_SMALLINT ||
+        p.si.smallInteger != 37) {
+        cout << "\nError on Integer representation";
+        return TRUE;
+    }
 
-    cout << "\nCoño, äáíñ --- ";
-    printString(c, c->fromUTF8String((char *)"Coño, äáíñ"));
+    cout << "\nStep 03 - Embedded types - Doubles";
+    o = c->fromDouble(45.78898387777);
+
+    p.oid.oid = o;
+    union {
+        unsigned long lv;
+        double dv;
+    } u;
+    u.lv = p.sd.smallDouble << TYPE_SHIFT;
+
+    if (p.op.pointer_tag != POINTER_TAG_SMALLDOUBLE ||
+        abs(u.dv - 45.78898387777) > 0.0000000001) {
+        cout << "\nError on Double representation";
+        return TRUE;
+    }
+
+    cout << "\nStep 03 - Embedded types - Boolean";
+    o = c->fromBoolean(FALSE);
+
+    p.oid.oid = o;
+    if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE ||
+        p.op.embedded_type != EMBEDED_TYPE_BOOLEAN ||  
+        p.booleanValue.booleanValue != FALSE) {
+        cout << "\nError on Boolean representation";
+        return TRUE;
+    }
+
+    o = c->fromBoolean(TRUE);
+
+    p.oid.oid = o;
+    if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE ||
+        p.op.embedded_type != EMBEDED_TYPE_BOOLEAN ||  
+        p.booleanValue.booleanValue != TRUE) {
+        cout << "\nError on Boolean representation";
+        return TRUE;
+    }
+
+    cout << "\nStep 03 - Embedded types - BYTE";
+    o = c->fromByte(38);
+
+    p.oid.oid = o;
+    if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE ||
+        p.op.embedded_type != EMBEDED_TYPE_BYTE ||  
+        p.byteValue.byteData != 38) {
+        cout << "\nError on Byte representation";
+        return TRUE;
+    }
+
+    cout << "\nStep 03 - Embedded types - Date";
+    o = c->fromDate(2020, 05, 01);
+
+    p.oid.oid = o;
+    if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE ||
+        p.op.embedded_type != EMBEDED_TYPE_DATE ||  
+        p.date.year != 2020 ||
+        p.date.month != 05 ||
+        p.date.day != 01) {
+        cout << "\nError on Date representation";
+        return TRUE;
+    }
+
+    cout << "\nStep 03 - Embedded types - Timestamp";
+    o = c->fromTimestamp(2993948);
+
+    p.oid.oid = o;
+    if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE ||
+        p.op.embedded_type != EMBEDED_TYPE_TIMESTAMP ||  
+        p.timestampValue.timestamp != 2993948) {
+        cout << "\nError on Timestamp representation";
+        return TRUE;
+    }
+
+    cout << "\nStep 03 - Embedded types - UTF8Char";
+    o = c->fromUTF8Char((char *) "Ñ");
+
+    p.oid.oid = o;
+    if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE ||
+        p.op.embedded_type != EMBEDED_TYPE_UNICODECHAR ||  
+        p.unicodeChar.unicodeValue != 337) {
+        cout << "\nError on UTF8 char representation";
+        return TRUE;
+    }
+
+    cout << "\nStep 03 - Embedded types - Timedelta";
+    o = c->fromTimeDelta(3834848);
+
+    p.oid.oid = o;
+    if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE ||
+        p.op.embedded_type != EMBEDED_TYPE_TIMEDELTA ||  
+        p.timedeltaValue.timedelta != 3834848) {
+        cout << "\nError on Timedelta representation";
+        return TRUE;
+    }
+
+    cout << "\nStep 04 - Cell types - External Pointers";
+    o = c->fromExternalPointer(&o);
+
+    p.oid.oid = o;
+    if (p.op.pointer_tag != POINTER_TAG_CELL ||
+        p.cell.cell->type != CELL_TYPE_EXTERNAL_POINTER ||  
+        ((ProtoExternalPointer *) p.cell.cell)->pointer != &o) {
+        cout << "\nError on Pointer cell";
+        return TRUE;
+    }
+
+    cout << "\nStep 04 - Cell types - Byte buffer";
+    o = c->newBuffer(10);
+
+    p.oid.oid = o;
+    if (p.op.pointer_tag != POINTER_TAG_CELL ||
+        p.cell.cell->type != CELL_TYPE_BYTE_BUFFER ||  
+        ((ProtoByteBuffer *) p.cell.cell)->size != 10 ||
+        ((ProtoByteBuffer *) p.cell.cell)->buffer == NULL) {
+        cout << "\nError on Byte buffer";
+        return TRUE;
+    }
+
+    ((ProtoByteBuffer *) p.cell.cell)->~ProtoByteBuffer();
+
+    cout << "\nStep 04 - Cell types - Method call";
+    ProtoObject *self = c->fromByte(22);
+    o = c->fromMethod(self, &testMethod);
+
+    p.oid.oid = o;
+    if (p.op.pointer_tag != POINTER_TAG_CELL ||
+        p.cell.cell->type != CELL_TYPE_METHOD ||  
+        ((ProtoMethodCell *) p.cell.cell)->self != self ||
+        ((ProtoMethodCell *) p.cell.cell)->method != &testMethod) {
+        cout << "\nError on Method";
+        return TRUE;
+    }
+
+    cout << "\nStep 04 - Cell types - UTF8String";
+    o = c->fromUTF8String((char *) "Ñoño");
+
+    p.oid.oid = o;
+    if (p.op.pointer_tag != POINTER_TAG_CELL ||
+        p.cell.cell->type != CELL_TYPE_PROTO_LIST ||  
+        ((ProtoList *) p.cell.cell)->count != 4) {
+        cout << "\nError on UTF8 String";
+        return TRUE;
+    }
+
+    if (((ProtoList *) p.cell.cell)->getAt(c, 0) != c->fromUTF8Char((char *) "Ñ") ||
+        ((ProtoList *) p.cell.cell)->getAt(c, 1) != c->fromUTF8Char((char *) "o") ||
+        ((ProtoList *) p.cell.cell)->getAt(c, 2) != c->fromUTF8Char((char *) "ñ") ||
+        ((ProtoList *) p.cell.cell)->getAt(c, 3) != c->fromUTF8Char((char *) "o")) {
+        cout << "\nError on UTF8 String content";
+        return TRUE;
+    }
 
     return FALSE;
 };

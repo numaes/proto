@@ -23,6 +23,10 @@ Cell::Cell (
 };
 
 Cell::~Cell() {
+
+};
+
+void Cell::finalize() {
     switch (this->type) {
         case CELL_TYPE_BYTE_BUFFER:
             ((ProtoByteBuffer *) this)->~ProtoByteBuffer();

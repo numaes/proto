@@ -17,7 +17,7 @@ ProtoMethodCell::~ProtoMethodCell() {
 ProtoMethodCell::ProtoMethodCell(
     ProtoContext *context,
     ProtoObject  *self,
-    ProtoMethod	 *method
+    ProtoMethod	 method
 ) : Cell(
 	context,
 	type = CELL_TYPE_METHOD
