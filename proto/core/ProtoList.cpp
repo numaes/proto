@@ -466,7 +466,7 @@ ProtoList *ProtoList::removeAt(ProtoContext *context, int index) {
                 context,
                 value,
                 this->previous,
-                this->next->removeAt(context, index - thisIndex)
+                this->next->removeAt(context, index - thisIndex - 1)
             );
     }
 
