@@ -139,6 +139,15 @@ BOOLEAN test_byteBuffer() {
     return FALSE;
 };
 
+int countBlocks(Cell *cell) {
+    int count = 0;
+    while (cell) {
+        count++;
+        cell = cell->nextCell;
+    }
+    return count;
+}
+
 BOOLEAN test_protoContext() {
     cout << "\nTesting ProtoContext";
 
@@ -314,6 +323,66 @@ BOOLEAN test_protoContext() {
         cout << "\nError on UTF8 String content";
         return TRUE;
     }
+
+    cout << "\nStep 05 - Proto.h as* and is* methods";
+
+    if (c->fromBoolean(TRUE)->asBoolean() != TRUE ||
+        c->fromBoolean(FALSE)->asBoolean() != FALSE ||
+        c->fromBoolean(FALSE)->isBoolean() != TRUE) {
+        cout << "\nError on asBoolean or isBoolean";
+        return TRUE;
+    };
+
+    if (c->fromInteger(64744)->asInteger() != 64744 ||
+        c->fromBoolean(FALSE)->asInteger() != 0 ||
+        c->fromInteger(3999)->isInteger() != TRUE) {
+        cout << "\nError on asInteger or isInteger";
+        return TRUE;
+    };
+
+    if (c->fromDouble(1.0)->asDouble() != 1.0 ||
+        c->fromBoolean(FALSE)->asDouble() != 0.0 ||
+        c->fromDouble(3.4848548484)->isDouble() != TRUE) {
+        cout << "\nError on asDouble or isDouble";
+        return TRUE;
+    };
+
+    if (c->fromByte(45)->asByte() != 45 ||
+        c->fromBoolean(FALSE)->asByte() != 0 ||
+        c->fromByte(38)->isByte() != TRUE) {
+        cout << "\nError on asByte or isByte";
+        return TRUE;
+    };
+
+    cout << "\nStep 06 - Context go and return";
+
+    int currentCount = countBlocks(c->thread->currentWorkingSet);
+
+    ProtoContext *newContext = new ProtoContext(c);
+    newContext->~ProtoContext();
+
+    if (currentCount != countBlocks(c->thread->currentWorkingSet)) {
+        cout << "\nUnbalanced count on subcontext";
+        return TRUE;
+    }
+
+    newContext = new ProtoContext(c);
+    new(newContext) ProtoSet(newContext);
+    if (countBlocks(c->thread->currentWorkingSet) != (currentCount + 1)) {
+        cout << "\nWorkingSet incorrect";
+        return TRUE;
+    }
+    newContext->setReturnValue(new(newContext) ProtoSet(newContext));
+    newContext->~ProtoContext();
+
+    if ((currentCount + 1) != countBlocks(c->thread->currentWorkingSet)) {
+        cout << "\nUnbalanced count on subcontext after return";
+        return TRUE;
+    }
+
+    newContext->~ProtoContext();
+
+    newContext = NULL;
 
     return FALSE;
 };

@@ -294,4 +294,87 @@ ProtoObject *ProtoObject::call(
     return PROTO_NONE;
 };
 
+BOOLEAN	ProtoObject::asBoolean() {
+    ProtoObjectPointer p;
+    p.oid.oid = this;
+    if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
+        p.op.embedded_type == EMBEDED_TYPE_BOOLEAN) 
+        return p.booleanValue.booleanValue;
+    else
+        return FALSE;
+};
+
+int ProtoObject::asInteger() {
+    ProtoObjectPointer p;
+    p.oid.oid = this;
+    if (p.op.pointer_tag == POINTER_TAG_SMALLINT) 
+        return p.si.smallInteger;
+    else
+        return 0;
+};
+
+double ProtoObject::asDouble() {
+    ProtoObjectPointer p;
+    p.oid.oid = this;
+    if (p.op.pointer_tag == POINTER_TAG_SMALLDOUBLE) {
+        union {
+            double d;
+            unsigned long l;
+        } v;
+        v.l = p.sd.smallDouble << TYPE_SHIFT;
+
+        return v.d;
+    }
+    else
+        return 0.0;
+};
+
+char ProtoObject::asByte() {
+    ProtoObjectPointer p;
+    p.oid.oid = this;
+    if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
+        p.op.embedded_type == EMBEDED_TYPE_BYTE) 
+        return p.byteValue.byteData;
+    else
+        return 0;
+};
+
+BOOLEAN	ProtoObject::isBoolean() {
+    ProtoObjectPointer p;
+    p.oid.oid = this;
+    if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
+        p.op.embedded_type == EMBEDED_TYPE_BOOLEAN) 
+        return TRUE;
+    else
+        return FALSE;
+};
+
+BOOLEAN	ProtoObject::isInteger() {
+    ProtoObjectPointer p;
+    p.oid.oid = this;
+    if (p.op.pointer_tag == POINTER_TAG_SMALLINT)
+        return TRUE;
+    else
+        return FALSE;
+};
+
+BOOLEAN ProtoObject::isDouble() {
+    ProtoObjectPointer p;
+    p.oid.oid = this;
+    if (p.op.pointer_tag == POINTER_TAG_SMALLDOUBLE)
+        return TRUE;
+    else
+        return FALSE;
+};
+
+BOOLEAN ProtoObject::isByte() {
+    ProtoObjectPointer p;
+    p.oid.oid = this;
+    if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
+        p.op.embedded_type == EMBEDED_TYPE_BYTE)
+        return TRUE;
+    else
+        return FALSE;
+};
+
 };

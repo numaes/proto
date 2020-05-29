@@ -115,7 +115,7 @@ void gcThreadLoop(ProtoSpace *space) {
             std::this_thread::sleep_for(std::chrono::milliseconds(GC_SLEEP_MILLISECONDS));
     }
 
-    std:this_thread::yield();
+    std::this_thread::yield();
 }
 
 ProtoSpace::ProtoSpace() {

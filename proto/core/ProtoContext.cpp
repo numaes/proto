@@ -88,13 +88,15 @@ ProtoContext::~ProtoContext() {
 
     if (this->thread && this->returnSet) {
         Cell *returnChain = this->lastCellPreviousContext;
-        Cell *currentCell = this->thread->nextCell;
+        Cell *oldContextWorkingSet = this->lastCellPreviousContext;
+        Cell *currentCell = this->thread->currentWorkingSet;
         ProtoSet *returnSet = (ProtoSet *) this->returnSet;
 
         // Ensure currentWorkingSet is allways consistent, even when adding return value cells
         this->thread->currentWorkingSet = this->lastCellPreviousContext;
 
-        while (currentCell && currentCell != this->lastCellPreviousContext) {
+        while (currentCell && currentCell != oldContextWorkingSet) {
+            Cell *nextCell = currentCell->nextCell;
             if (!returnSet->has(this, (ProtoObject *) currentCell)) {
                 currentCell->nextCell = freeCells;
                 freeCells = currentCell;
@@ -103,6 +105,7 @@ ProtoContext::~ProtoContext() {
                 currentCell->nextCell = returnChain;
                 returnChain = currentCell;
             }
+            currentCell = nextCell;
         }
 
         this->thread->currentWorkingSet = returnChain;

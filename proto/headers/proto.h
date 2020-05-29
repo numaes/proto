@@ -244,6 +244,17 @@ public:
 
 	ProtoObject		*currentValue(ProtoContext *context);
 	BOOLEAN			 setValue(ProtoContext *context, ProtoObject *currentValue, ProtoObject *value);
+
+	BOOLEAN			 asBoolean();
+	int				 asInteger();
+	double			 asDouble();
+	char			 asByte();
+
+	BOOLEAN			 isBoolean();
+	BOOLEAN			 isInteger();
+	BOOLEAN			 isDouble();
+	BOOLEAN			 isByte();
+
 };
 
 class Cell {
