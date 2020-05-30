@@ -127,14 +127,14 @@ BOOLEAN test_protoSet() {
 };
 
 BOOLEAN test_parentLink() {
-    cout << "\nTesting ParentLink";
+    cout << "\n\nTesting ParentLink";
 
 
     return FALSE;
 };
 
 BOOLEAN test_byteBuffer() {
-    cout << "\nTesting ByteBuffer";
+    cout << "\n\nTesting ByteBuffer";
 
     return FALSE;
 };
