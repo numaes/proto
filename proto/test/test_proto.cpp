@@ -396,6 +396,130 @@ BOOLEAN test_externalPointer() {
 BOOLEAN test_protoList() {
     cout << "\nTesting ProtoList";
 
+    ProtoSpace *s = new ProtoSpace();
+    s->~ProtoSpace();
+
+    ProtoContext *c = new ProtoContext(
+        s->creationContext
+    );
+
+    cout << "\nStep 01 Creating";
+
+    int i, j;
+
+    ProtoList *l = new(c) ProtoList(c);
+
+    if (l->getSize(c) != 0) {
+        cout << "\nWrong size on creation";
+        return TRUE;
+    }    
+
+    cout << "\nStep 02 Appends";
+
+    for (i = 0; i < 100; i++)
+        l = l->appendLast(c, c->fromInteger(i));
+
+    for (i = 0; i < 100; i++) {
+        if (l->getAt(c, i) != c->fromInteger(i)) {
+            cout << "\nSequence error on appendLast";
+            return TRUE;
+        }
+    }
+
+    for (i = -1; i >= -100; i--) {
+        l = l->appendFirst(c, c->fromInteger(i));
+    }
+
+    i = 0;
+
+    j = -100;
+
+    while (i < 200) {
+        if (l->getAt(c, i) != c->fromInteger(j)) {
+            cout << "\nSequence error on appendFirst";
+            return TRUE;
+        }
+        i++;
+        j++;
+    };
+
+    if (l->getAt(c, -1) != c->fromInteger(99)) {
+        cout << "\nGet (negative index) failed";
+        return TRUE;
+    }
+
+    cout << "\nStep 03 Remove";
+
+    l = l->removeFirst(c);
+    if (l->getAt(c, 0) != c->fromInteger(-99)) {
+        cout << "\nSomething wrong in removeFirst";
+        return TRUE;
+    }
+
+    l = l->removeLast(c);
+    if (l->getAt(c, 197) != c->fromInteger(98)) {
+        cout << "\nSomething wrong in removeLast";
+        return TRUE;
+    }
+
+    l = l->removeAt(c, 4);
+    if (l->getAt(c, 3) != c->fromInteger(-96) && 
+        l->getAt(c, 4) != c->fromInteger(-94)) {
+        cout << "\nSomething wrong in removeAt";
+        return TRUE;
+    }
+
+    cout << "\nStep 04 Set";
+
+    l = l->setAt(c, 4, c->fromInteger(201));
+    if (l->getAt(c, 4) != c->fromInteger(201)) {
+        cout << "\nSomething wrong in setAt";
+        return TRUE;
+    }
+
+    cout << "\nStep 05 Has";
+
+    if (!l->has(c, c->fromInteger(201))) {
+        cout << "\nSomething went wrong in has";
+        return TRUE;
+    }
+
+    cout << "\nStep 06 InsertAt";
+
+    l = l->insertAt(c, 4, c->fromInteger(202));
+    if (l->getAt(c, 3) != c->fromInteger(-97) && 
+        l->getAt(c, 4) != c->fromInteger(202) &&
+        l->getAt(c, 5) != c->fromInteger(201)) {
+        cout << "\nSomething wrong in insertAt";
+        return TRUE;
+    }
+
+    cout << "\nStep 07 Get";
+
+    if (l->getFirst(c) != c->fromInteger(-99)) {
+        cout << "\nSomething wrong in getFirst";
+        return TRUE;
+    }
+
+    if (l->getLast(c) != c->fromInteger(98)) {
+        cout << "\nSomething wrong in getLast";
+        return TRUE;
+    }
+
+    l = new(c) ProtoList(c);
+
+    for (i = 0; i < 100; i++)
+        l = l->appendLast(c, c->fromInteger(i));
+
+    cout << "\nStep 08 getSlice";
+
+    ProtoList *l2 = l->getSlice(c, 30, 39);
+    for (i = 30; i < 40; i++) {
+        if (l2->getAt(c, i-30) != c->fromInteger(i)) {
+            cout << "\nSomething wrong in getLast";
+            return TRUE;
+        };
+    }
 
     return FALSE;
 };

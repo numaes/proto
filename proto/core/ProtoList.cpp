@@ -144,7 +144,7 @@ ProtoObject *ProtoList::getAt(ProtoContext *context, int index) {
     }
 
     if (index < 0) {
-        index = this->count - index;
+        index = this->count + index;
         if (index < 0)
             index = 0;
     }
@@ -182,13 +182,13 @@ ProtoObject *ProtoList::getLast(ProtoContext *context) {
 
 ProtoList *ProtoList::getSlice(ProtoContext *context, int from, int to) {
     if (from < 0) {
-        from = this->count - from;
+        from = this->count + from;
         if (from < 0)
             from = 0;
     }
 
     if (to < 0) {
-        to = this->count - to;
+        to = this->count + to;
         if (to < 0)
             to = 0;
     }
@@ -219,7 +219,7 @@ ProtoList *ProtoList::setAt(ProtoContext *context, int index, ProtoObject* value
     }
 
     if (index < 0) {
-        index = this->count - index;
+        index = this->count + index;
         if (index < 0)
             index = 0;
     }
@@ -262,7 +262,7 @@ ProtoList *ProtoList::insertAt(ProtoContext *context, int index, ProtoObject* va
         );
 
     if (index < 0) {
-        index = this->count - index;
+        index = this->count + index;
         if (index < 0)
             index = 0;
     }
@@ -382,11 +382,14 @@ ProtoList *ProtoList::removeFirst(ProtoContext *context) {
         );
     }
     else {
+        if (this->next)
+            return this->next;
+        
         newNode = new(context) ProtoList(
             context,
-            this->next? this->next->getFirst(context) : NULL,
             NULL,
-            this->next->removeFirst(context)
+            NULL,
+            NULL
         );
     }
 
@@ -411,11 +414,14 @@ ProtoList *ProtoList::removeLast(ProtoContext *context) {
         );
     }
     else {
+        if (this->previous)
+            return this->previous;
+        
         newNode = new(context) ProtoList(
             context,
-            this->previous? this->previous->getLast(context) : NULL,
             NULL,
-            this->next->removeLast(context)
+            NULL,
+            NULL
         );
     }
 
@@ -431,7 +437,7 @@ ProtoList *ProtoList::removeAt(ProtoContext *context, int index) {
     }
 
     if (index < 0) {
-        index = this->count - index;
+        index = this->count + index;
         if (index < 0)
             index = 0;
     }
@@ -476,13 +482,13 @@ ProtoList *ProtoList::removeAt(ProtoContext *context, int index) {
 
 ProtoList *ProtoList::removeSlice(ProtoContext *context, int from, int to) {
     if (from < 0) {
-        from = this->count - from;
+        from = this->count + from;
         if (from < 0)
             from = 0;
     }
 
     if (to < 0) {
-        to = this->count - to;
+        to = this->count + to;
         if (to < 0)
             to = 0;
     }
