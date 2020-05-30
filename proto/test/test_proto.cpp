@@ -149,7 +149,7 @@ int countBlocks(Cell *cell) {
 }
 
 BOOLEAN test_protoContext() {
-    cout << "\nTesting ProtoContext";
+    cout << "\n\nTesting ProtoContext";
 
     cout << "\nStep 01 - ProtoContext basic";
 
@@ -388,13 +388,13 @@ BOOLEAN test_protoContext() {
 };
 
 BOOLEAN test_externalPointer() {
-    cout << "\nTesting ExternalPointer";
+    cout << "\n\nTesting ExternalPointer";
 
     return FALSE;
 };
 
 BOOLEAN test_protoList() {
-    cout << "\nTesting ProtoList";
+    cout << "\n\nTesting ProtoList";
 
     ProtoSpace *s = new ProtoSpace();
     s->~ProtoSpace();
@@ -525,35 +525,35 @@ BOOLEAN test_protoList() {
 };
 
 BOOLEAN test_protoLiteral() {
-    cout << "\nTesting ProtoLiteral";
+    cout << "\n\nTesting ProtoLiteral";
 
 
     return FALSE;
 };
 
 BOOLEAN test_memoryBuffer() {
-    cout << "\nTesting ByteBuffer";
+    cout << "\n\nTesting ByteBuffer";
 
 
     return FALSE;
 };
 
 BOOLEAN test_methodCall() {
-    cout << "\nTesting MethodCall";
+    cout << "\n\nTesting MethodCall";
 
 
     return FALSE;
 };
 
 BOOLEAN test_protoObject() {
-    cout << "\nTesting Proto";
+    cout << "\n\nTesting Proto";
 
 
     return FALSE;
 };
 
 BOOLEAN test_protoSpace() {
-    cout << "\nTesting ProtoSpace";
+    cout << "\n\nTesting ProtoSpace";
 
     cout << "\nStep 01 - Creating and deleting";
     ProtoSpace *s = new ProtoSpace();
@@ -583,7 +583,7 @@ BOOLEAN test_protoSpace() {
 };
 
 BOOLEAN test_protoThread() {
-    cout << "\nTesting Thread";
+    cout << "\n\nTesting Thread";
 
 
     return FALSE;
