@@ -26,16 +26,34 @@ namespace proto {
 #define GC_SLEEP_MILLISECONDS           1000
 
 void gcCollectCells(ProtoContext *context, void *self, Cell *value) {
-    ProtoObjectPointer p;
+     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) value;
 
-    ProtoSet *returnSet = (ProtoSet *) context->returnSet;
+    ProtoSet *&cellSet = (ProtoSet *&) self;
 
     // Go further in the scanning only if it is a cell and the cell belongs to current context!
     if (p.op.pointer_tag == POINTER_TAG_CELL) {
         // It is an object pointer with references
-        returnSet->add(context, p.oid.oid);
-        p.cell.cell->processReferences(context, context, gcCollectCells);
+        if (! cellSet->has(context, p.oid.oid)) {
+            cellSet = cellSet->add(context, p.oid.oid);
+            p.cell.cell->processReferences(context, (void *) cellSet, gcCollectCells);
+        }
+    }
+}
+
+void gcCollectObjects(ProtoContext *context, void *self, ProtoObject *value) {
+     ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) value;
+
+    ProtoSet *&cellSet = (ProtoSet *&) self;
+
+    // Go further in the scanning only if it is a cell and the cell belongs to current context!
+    if (p.op.pointer_tag == POINTER_TAG_CELL) {
+        // It is an object pointer with references
+        if (! cellSet->has(context, p.oid.oid)) {
+            cellSet = cellSet->add(context, p.oid.oid);
+            p.cell.cell->processReferences(context, (void *) cellSet, gcCollectCells);
+        }
     }
 }
 
@@ -58,11 +76,16 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
 
     ProtoContext gcContext(context); 
 
-    ProtoSet *gcRoots = new(&gcContext) ProtoSet(&gcContext);
+    ProtoSet *cellSet = new(&gcContext) ProtoSet(&gcContext);
+
+    ((IdentityDict *) space->mutableRoot.load())->processValues(
+        &gcContext,
+        &cellSet,
+        gcCollectObjects
+    );
 
     // Collect all roots
-    gcRoots->processReferences(&gcContext, gcRoots, gcCollectCells);
-
+    
     Cell *freeBlocks = NULL;
     int freeCount = 0;
     while (toAnalize) {
@@ -70,7 +93,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
 
         while (block) {
             Cell *nextCell = block->nextCell;
-            if (!gcRoots->has(&gcContext, (ProtoObject *) block)) {
+            if (!cellSet->has(&gcContext, (ProtoObject *) block)) {
                 block->~Cell();
 
                 void **p = (void **) block;
@@ -139,33 +162,45 @@ ProtoSpace::ProtoSpace() {
 
     this->mainThreadId = std::this_thread::get_id();
 
-    this->threads = new(creationContext) ProtoSet(creationContext);
     ProtoObject *threadName = creationContext->literalFromUTF8String((char *) "Main thread");
     firstThread->name = threadName;
+    this->threads = new(creationContext) IdentityDict(
+        creationContext,
+        threadName,
+        firstThread
+    );
+
     this->mutableLock.store(FALSE);
     this->threadsLock.store(FALSE);
     this->gcLock.store(FALSE);
     this->mutableRoot.store(new(creationContext) IdentityDict(creationContext));
-    this->threads = creationContext->newMutable(
-        new(creationContext) ProtoSet(creationContext)
-    );
     this->gcThread = new std::thread(
         (void (*)(ProtoSpace *)) (&gcThreadLoop), 
         this
     );
 };
 
+void scanThreads(ProtoContext *context, void *self, ProtoObject *value) {
+    ProtoList *&threadList = (ProtoList *&) self;
+
+    threadList = threadList->appendLast(context, value);
+}
+
 ProtoSpace::~ProtoSpace() {
     ProtoContext finalContext(NULL, this);
 
-    ProtoList *threads = ((ProtoSet *) (this->threads->currentValue(&finalContext)))->asList(&finalContext);
+    IdentityDict *threads = ((IdentityDict *) (this->threads->currentValue(&finalContext)));
+    ProtoList *threadList = new(&finalContext) ProtoList(&finalContext);
+
+    threads->processValues(&finalContext, &threadList, scanThreads);
+
     int threadCount = threads->getSize(&finalContext);
 
     this->state = SPACE_STATE_ENDING;
 
     // Wait till all threads are ended
     for (int i = 0; i < threadCount; i++) {
-        ProtoThread *t = (ProtoThread *) threads->getAt(
+        ProtoThread *t = (ProtoThread *) threadList->getAt(
             &finalContext,
             i
         );

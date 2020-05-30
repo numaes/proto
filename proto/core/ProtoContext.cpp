@@ -74,8 +74,7 @@ ProtoContext::ProtoContext(
         this->thread = thread;
     }
 
-    this->returnSet = NULL;
-    this->returnChain = NULL;
+    this->returnValue = NULL;
 
     if (this->thread)
         this->lastCellPreviousContext = this->thread->currentWorkingSet;
@@ -85,32 +84,35 @@ ProtoContext::~ProtoContext() {
     Cell *freeCells = NULL;
 
     // Generate the chain of cells for the return value if needed
+    freeCells = this->thread->currentWorkingSet;
+    Cell *currentCell = this->thread->currentWorkingSet;
 
-    if (this->thread && this->returnSet) {
-        Cell *returnChain = this->lastCellPreviousContext;
-        Cell *oldContextWorkingSet = this->lastCellPreviousContext;
-        Cell *currentCell = this->thread->currentWorkingSet;
-        ProtoSet *returnSet = (ProtoSet *) this->returnSet;
+    Cell *previousCell = NULL;
+    while (currentCell && currentCell != this->lastCellPreviousContext) {
+        if (currentCell->context == this &&
+            currentCell == (Cell *) this->returnValue) {
+            if (previousCell)
+                previousCell->nextCell = currentCell->nextCell;
+            else
+                freeCells = currentCell->nextCell;
 
-        // Ensure currentWorkingSet is allways consistent, even when adding return value cells
-        this->thread->currentWorkingSet = this->lastCellPreviousContext;
+            currentCell->nextCell = this->lastCellPreviousContext;
+            this->lastCellPreviousContext = currentCell;
 
-        while (currentCell && currentCell != oldContextWorkingSet) {
-            Cell *nextCell = currentCell->nextCell;
-            if (!returnSet->has(this, (ProtoObject *) currentCell)) {
-                currentCell->nextCell = freeCells;
-                freeCells = currentCell;
-            }
-            else {
-                currentCell->nextCell = returnChain;
-                returnChain = currentCell;
-            }
-            currentCell = nextCell;
+            currentCell->context = this->previous;
         }
+        else
+            previousCell = currentCell;
 
-        this->thread->currentWorkingSet = returnChain;
+        currentCell = currentCell->nextCell;
     }
 
+    if (previousCell)
+        previousCell->nextCell = NULL;
+
+    if (this->thread)
+        this->thread->currentWorkingSet = this->lastCellPreviousContext;
+    
     // Return all dirty blocks to space
 
     if (freeCells && this->space)
@@ -165,34 +167,8 @@ Cell *ProtoContext::allocCell(){
     }
 };
 
-void collectCells(ProtoContext *context, void *self, Cell *value) {
-    ProtoObjectPointer p;
-    p.oid.oid = (ProtoObject *) value;
-
-    ProtoSet *returnSet = (ProtoSet *) context->returnSet;
-
-    // Go further in the scanning only if it is a cell and the cell belongs to current context!
-    if (p.op.pointer_tag == POINTER_TAG_CELL && p.cell.cell->context == context) {
-        // It is an object pointer with references
-        if (!returnSet->has(context, p.oid.oid)) {
-            context->returnSet = returnSet->add(context, p.oid.oid);
-            p.cell.cell->processReferences(context, context, collectCells);
-        }
-    }
-}
-
 void ProtoContext::setReturnValue(ProtoObject *value){
-    if (value != NULL && value != PROTO_NONE) {
-        this->returnSet = new(this) ProtoSet(this);
-
-        ProtoObjectPointer p;
-        p.oid.oid = value;
-
-        if (p.op.pointer_tag == POINTER_TAG_CELL) {
-            p.cell.cell->processReferences(this, this, collectCells);
-
-        }
-    }
+    this->returnValue = value;
 };
 
 ProtoObject *ProtoContext::fromInteger(int value) {

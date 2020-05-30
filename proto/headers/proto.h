@@ -142,8 +142,7 @@ public:
 	ProtoContext	*previous;
 	ProtoSpace		*space;
 	ProtoThread		*thread;
-	Cell			*returnChain;
-	ProtoObject		*returnSet;
+	ProtoObject		*returnValue;
 	Cell			*lastCellPreviousContext;
 	
 	Cell 			*allocCell();
