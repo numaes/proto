@@ -84,40 +84,42 @@ ProtoContext::~ProtoContext() {
     Cell *freeCells = NULL;
 
     // Generate the chain of cells for the return value if needed
-    freeCells = this->thread->currentWorkingSet;
-    Cell *currentCell = this->thread->currentWorkingSet;
 
-    Cell *previousCell = NULL;
-    while (currentCell && currentCell != this->lastCellPreviousContext) {
-        if (currentCell->context == this &&
-            currentCell == (Cell *) this->returnValue) {
-            if (previousCell)
-                previousCell->nextCell = currentCell->nextCell;
+    if (this->thread) {
+        freeCells = this->thread->currentWorkingSet;
+        Cell *currentCell = this->thread->currentWorkingSet;
+
+        Cell *previousCell = NULL;
+        while (currentCell && currentCell != this->lastCellPreviousContext) {
+            if (currentCell->context == this &&
+                currentCell == (Cell *) this->returnValue) {
+                if (previousCell)
+                    previousCell->nextCell = currentCell->nextCell;
+                else
+                    freeCells = currentCell->nextCell;
+
+                currentCell->nextCell = this->lastCellPreviousContext;
+                this->lastCellPreviousContext = currentCell;
+
+                currentCell->context = this->previous;
+            }
             else
-                freeCells = currentCell->nextCell;
+                previousCell = currentCell;
 
-            currentCell->nextCell = this->lastCellPreviousContext;
-            this->lastCellPreviousContext = currentCell;
-
-            currentCell->context = this->previous;
+            currentCell = currentCell->nextCell;
         }
-        else
-            previousCell = currentCell;
 
-        currentCell = currentCell->nextCell;
+        if (previousCell)
+            previousCell->nextCell = NULL;
+
+        if (this->thread)
+            this->thread->currentWorkingSet = this->lastCellPreviousContext;
+        
+        // Return all dirty blocks to space
+
+        if (freeCells && this->space)
+            this->space->analyzeUsedCells(freeCells);
     }
-
-    if (previousCell)
-        previousCell->nextCell = NULL;
-
-    if (this->thread)
-        this->thread->currentWorkingSet = this->lastCellPreviousContext;
-    
-    // Return all dirty blocks to space
-
-    if (freeCells && this->space)
-        this->space->analyzeUsedCells(freeCells);
-
 };
 
 Cell *ProtoContext::allocCell(){

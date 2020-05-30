@@ -107,21 +107,74 @@ BOOLEAN test_proto_header() {
 };
 
 BOOLEAN test_cell() {
-    cout << "\nTesting Cell";
+    cout << "\n\nTesting Cell";
 
 
     return FALSE;
 };
 
 BOOLEAN test_identityDict() {
-    cout << "\nTesting IdentitySet";
+    cout << "\n\nTesting IdentitySet";
 
     return FALSE;
 };
 
 BOOLEAN test_protoSet() {
-    cout << "\nTesting ProtoSet";
+    cout << "\n\nTesting ProtoSet";
 
+    ProtoSpace *s = new ProtoSpace();
+    ProtoContext *c = new ProtoContext(
+        NULL,
+        s
+    );
+
+    cout << "\nStep 01 Creating";
+
+    ProtoSet *s1 = new(c) ProtoSet(c);
+    int i, j;
+
+    cout << "\nStep 01 Add";
+
+    for (i = 0; i < 10; i++)
+        s1 = s1->add(c, c->fromInteger(i));
+
+    for (i = 0; i < 10; i++) {
+        if (!s1->has(c, c->fromInteger(i))) {
+            cout << "\nSomething wrong with add";
+            return TRUE;
+        }
+    }
+
+    if (s1->has(c, c->fromInteger(100))) {
+        cout << "\nSomething wrong with has";
+        return TRUE;
+    }
+
+    cout << "\nStep 02 Remove";
+
+    s1 = s1->removeAt(c, c->fromInteger(5));
+
+    if (s1->has(c, c->fromInteger(5))) {
+        cout << "\nSomething wrong with remove";
+        return TRUE;
+    }
+
+    ProtoSet *s2 = new(c) ProtoSet(c);
+
+    for (i = 0; i < 10; i++)
+        s2 = s2->add(c, c->fromInteger(i));
+
+    if (s1->isEqual(c, s2)) {
+        cout << "\nSomething wrong with isEqual";
+        return TRUE;
+    };
+
+    s1 = s1->add(c, c->fromInteger(5));
+
+    if (s1->isEqual(c, s2)) {
+        cout << "\nSomething wrong with isEqual";
+        return TRUE;
+    };
 
     return FALSE;
 };

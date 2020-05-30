@@ -147,10 +147,10 @@ BOOLEAN ProtoSet::has(ProtoContext *context, ProtoObject *value) {
 	while (node) {
 		if (node->value == value)
 			return TRUE;
-        long cmp = ((long) value) - ((long) this->value);
+        long cmp = ((long) value) - ((long) node->value);
         if (cmp < 0)
             node = node->previous;
-        else if (cmp > 1)
+        else 
             node = node->next;
 	}
 
@@ -188,7 +188,7 @@ ProtoSet *ProtoSet::add(ProtoContext *context, ProtoObject *value) {
                 this->previous,
                 new(context) ProtoSet(
                     context,
-                    value = this->value
+                    value
                 )
             );
         }
@@ -208,7 +208,7 @@ ProtoSet *ProtoSet::add(ProtoContext *context, ProtoObject *value) {
                 this->value,
                 new(context) ProtoSet(
                     context,
-                    value = this->value
+                    value
                 ),
                 this->next
             );

@@ -181,9 +181,9 @@ ProtoSpace::ProtoSpace() {
 };
 
 void scanThreads(ProtoContext *context, void *self, ProtoObject *value) {
-    ProtoList *&threadList = (ProtoList *&) self;
+    ProtoList **threadList = (ProtoList **) self;
 
-    threadList = threadList->appendLast(context, value);
+    *threadList = (*threadList)->appendLast(context, value);
 }
 
 ProtoSpace::~ProtoSpace() {
@@ -194,7 +194,7 @@ ProtoSpace::~ProtoSpace() {
 
     threads->processValues(&finalContext, &threadList, scanThreads);
 
-    int threadCount = threads->getSize(&finalContext);
+    int threadCount = threadList->getSize(&finalContext);
 
     this->state = SPACE_STATE_ENDING;
 

@@ -70,7 +70,8 @@ void ProtoThread::detach(ProtoContext *context) {
 };
 
 void ProtoThread::join(ProtoContext *context) {
-    this->osThread->join();
+    if (this->osThread)
+        this->osThread->join();
 };
 
 void ProtoThread::exit(ProtoContext *context) {
