@@ -610,12 +610,12 @@ LiteralDictionary *rebalance(LiteralDictionary *newNode) {
         // there are 4 cases
 
         // Left Left Case
-        if (balance < -1) {
+        if (balance < -1 && getBalance(newNode->previous) < 0) {
             newNode = rightRotate(newNode);
         }
         else {
             // Right Right Case
-            if (balance > 1) {
+            if (balance > 1 && getBalance(newNode->previous) > 0) {
                 newNode = leftRotate(newNode);
             }
             // Left Right Case
