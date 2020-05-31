@@ -78,7 +78,7 @@ endif
 SRCS         := \
     Cell IdentityDict ParentLink Proto ProtoByteBuffer \
 	ProtoContext ProtoExternalPointer ProtoObjectCell ProtoSet \
-	ProtoSpace ProtoList ProtoMethodCell Thread
+	ProtoSpace ProtoList ProtoMethodCell Thread ProtoMutableReference
 
 # +-----------------------------------+
 # | HEADERS defines headers to export |

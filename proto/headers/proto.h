@@ -93,7 +93,7 @@ namespace proto {
 #define CELL_TYPE_METHOD	      	(0x08LU)
 #define CELL_TYPE_PARENT_LINK     	(0x09LU)
 #define CELL_TYPE_LITERAL_DICT    	(0x0ALU)
-#define CELL_TYPE_UNASSIGNED_B    	(0x0BLU)
+#define CELL_TYPE_MUTABLE_REFERENCE	(0x0BLU)
 #define CELL_TYPE_UNASSIGNED_C    	(0x0CLU)
 #define CELL_TYPE_UNASSIGNED_D    	(0x0DLU)
 #define CELL_TYPE_UNASSIGNED_E    	(0x0ELU)
@@ -639,6 +639,27 @@ public:
 
 	ProtoMethod	method;
 	ProtoObject *self;
+};
+
+class ProtoMutableReference: public Cell {
+public:
+	ProtoMutableReference(
+		ProtoContext *context,
+		ProtoObject  *reference 
+	);
+	~ProtoMutableReference();
+
+	void			processReferences(
+		ProtoContext *context,
+		void *self,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			Cell *cell
+		)
+	);
+
+	ProtoObject *reference;
 };
 
 

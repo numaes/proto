@@ -153,11 +153,25 @@ ProtoObject *ProtoObject::currentValue(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = this;
     if (p.op.pointer_tag == POINTER_TAG_MUTABLEOBJECT) {
-        IdentityDict *currentRoot = (IdentityDict *) (context->space->mutableRoot.load()); 
-        return currentRoot->getAt(
-            context,
-            context->fromInteger(p.mutableObject.mutableID)
-        );
+        // Ensure a reference to the current value of the mutable is kept in the 
+        // system at any time to block a garbage collection of the value.
+        // If the mutable object is changed later, be sure
+        // that the old value is referenced at least from this thread
+        // Use an optimistic lock strategy in order not to block other threads!
+
+        Cell *crc;
+        do {
+            IdentityDict *currentRoot = (IdentityDict *) (context->space->mutableRoot.load());
+            crc = currentRoot; 
+            ProtoObject *currentValue = currentRoot->getAt(
+                context,
+                context->fromInteger(p.mutableObject.mutableID)
+            );
+            ProtoMutableReference *mr = new(context) ProtoMutableReference(context, currentValue);
+        } while (context->space->mutableRoot.compare_exchange_strong(
+            crc,
+            crc
+        ));
     }
 
     return this;

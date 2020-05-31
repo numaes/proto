@@ -63,6 +63,11 @@ void Cell::finalize() {
         case CELL_TYPE_METHOD:
             ((ProtoMethodCell *) this)->~ProtoMethodCell();
             break;
+
+        case CELL_TYPE_MUTABLE_REFERENCE:
+            ((ProtoMutableReference *) this)->~ProtoMutableReference();
+            break;
+
     }
 };
 
@@ -147,6 +152,14 @@ void Cell::processReferences(
 
         case CELL_TYPE_METHOD:
             ((ProtoMethodCell *) this)->processReferences(
+                context, 
+                self, 
+                method
+            );
+            break;
+
+        case CELL_TYPE_MUTABLE_REFERENCE:
+            ((ProtoMutableReference *) this)->processReferences(
                 context, 
                 self, 
                 method

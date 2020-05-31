@@ -93,13 +93,24 @@ ProtoContext::~ProtoContext() {
         while (currentCell && currentCell != this->lastCellPreviousContext) {
             if (currentCell->context == this &&
                 currentCell == (Cell *) this->returnValue) {
-                if (previousCell)
-                    previousCell->nextCell = currentCell->nextCell;
-                else
-                    freeCells = currentCell->nextCell;
+                Cell *nextInChain = currentCell->nextCell;
 
+                // Be carefull here!
+                // Always the current working should point to 
+                // all valid references at least.
+                // Some extra references are no problem, never less!
+                // NO EXCEPTIONS! 
+                // order matters!
                 currentCell->nextCell = this->lastCellPreviousContext;
                 this->lastCellPreviousContext = currentCell;
+                if (this->thread)
+                    this->thread->currentWorkingSet = this->lastCellPreviousContext;
+
+                // ONLY AFTER changing the currentWorking set !
+                if (previousCell)
+                    previousCell->nextCell = nextInChain;
+                else
+                    freeCells = nextInChain;
 
                 currentCell->context = this->previous;
             }
@@ -109,13 +120,11 @@ ProtoContext::~ProtoContext() {
             currentCell = currentCell->nextCell;
         }
 
+        // The possible free chain is not so restrictive
         if (previousCell)
             previousCell->nextCell = NULL;
 
-        if (this->thread)
-            this->thread->currentWorkingSet = this->lastCellPreviousContext;
-        
-        // Return all dirty blocks to space
+        // Return all dirty blocks to garbage collector for analysis
 
         if (freeCells && this->space)
             this->space->analyzeUsedCells(freeCells);
