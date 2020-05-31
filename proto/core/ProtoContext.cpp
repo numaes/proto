@@ -91,8 +91,13 @@ ProtoContext::~ProtoContext() {
 
         Cell *previousCell = NULL;
         while (currentCell && currentCell != this->lastCellPreviousContext) {
-            if (currentCell->context == this &&
-                currentCell == (Cell *) this->returnValue) {
+            ProtoObjectPointer p;
+            p.cell.cell = currentCell;
+            if ((currentCell->context == this &&
+                 currentCell == (Cell *) this->returnValue) ||
+                (p.op.pointer_tag == POINTER_TAG_CELL &&
+                 p.cell.cell->type == CELL_TYPE_MUTABLE_REFERENCE &&
+                 ((ProtoMutableReference *) p.cell.cell)->reference == this->returnValue)) {
                 Cell *nextInChain = currentCell->nextCell;
 
                 // Be carefull here!

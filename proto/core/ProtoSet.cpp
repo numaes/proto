@@ -220,6 +220,42 @@ ProtoSet *ProtoSet::add(ProtoContext *context, ProtoObject *value) {
     return rebalance(context, newNode);
 };
 
+ProtoObject *firstValue(ProtoContext *context, ProtoSet *self) {
+	while (self->previous)
+		self = self->previous;
+	
+	return self->value;
+};
+
+ProtoSet *removeFirst(ProtoContext *context, ProtoSet *self) {
+	if (!self->value)
+        return self;
+
+    ProtoSet *newNode;
+
+    if (self->previous) {
+        newNode = removeFirst(context, self->previous);
+        if (newNode->count == 0)
+            newNode = NULL; 
+        newNode = new(context) ProtoSet(
+            context,
+			self->value,
+            newNode,
+            self->next
+        );
+    }
+    else {
+        if (self->next)
+            return self->next;
+        
+        newNode = new(context) ProtoSet(
+            context
+		);
+    }
+
+    return rebalance(context, newNode);
+}
+
 ProtoSet *ProtoSet::removeAt(ProtoContext *context, ProtoObject *value) {
 	if (value == this->value && !this->next && !this->previous)
 		return new(context) ProtoSet(context);
@@ -246,16 +282,36 @@ ProtoSet *ProtoSet::removeAt(ProtoContext *context, ProtoObject *value) {
 			);
 	}
 	else {
-		if (!this->next)
-			return this;
-		newNode = this->next->removeAt(context, value);
-		if (newNode->getSize(context) == 0)
+		if (cmp > 0) {
+			if (!this->next)
+				return this;
+
+			newNode = this->next->removeAt(context, value);
+			if (newNode->count == 0)
+				newNode = NULL;
+
 			newNode = new(context) ProtoSet(
 				context,
 				this->value,
 				this->previous,
-				NULL
+				newNode
 			);
+		}
+		else {
+			if (this->next) {
+				newNode = removeFirst(context, this->next);
+				if (newNode->count == 0)
+					newNode = NULL; 
+				newNode = new(context) ProtoSet(
+					context,
+					firstValue(context, this->next),
+					this->previous,
+					newNode
+				);
+			}
+			else
+				return this->previous;
+		}
 	}
 
     return rebalance(context, newNode);
