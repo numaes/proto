@@ -116,6 +116,80 @@ BOOLEAN test_cell() {
 BOOLEAN test_identityDict() {
     cout << "\n\nTesting IdentitySet";
 
+    ProtoSpace *s = new ProtoSpace();
+    ProtoContext *c = new ProtoContext(
+        NULL,
+        s
+    );
+
+    cout << "\nStep 01 Creating";
+
+    IdentityDict *d = new(c) IdentityDict(c);
+
+    cout << "\nStep 02 Adding";
+
+    ProtoObject *s1 = c->fromUTF8String((char *) "First");
+    ProtoObject *s2 = c->fromUTF8String((char *) "Second");
+    ProtoObject *s3 = c->fromUTF8String((char *) "Third");
+    ProtoObject *s4 = c->fromUTF8String((char *) "Fourh");
+
+    d = d->setAt(c, s1, c->fromInteger(1));
+    d = d->setAt(c, s2, c->fromInteger(2));
+    d = d->setAt(c, s3, c->fromInteger(3));
+    d = d->setAt(c, s4, c->fromInteger(4));
+
+    if (d->getSize(c) != 4) {
+        cout << "\nError on size";
+        return TRUE;
+    }
+
+    if (d->getAt(c, s1) != c->fromInteger(1)) {
+        cout << "\nMismatch on adding";
+        return TRUE;
+    }
+
+    cout << "\nStep 03 Replace";
+
+    d = d->setAt(c, s2, c->fromInteger(1));
+
+    if (d->getSize(c) != 4 ||
+        d->getAt(c, s2) != c->fromInteger(1)) {
+        cout << "\nReplace is not working";
+        return TRUE;
+    }
+
+    cout << "\nStep 04 Remove";
+
+    d = d->removeAt(c, s2);
+
+    if (d->getSize(c) != 3 ||
+        !d->has(c, s1) ||
+        !d->has(c, s3) ||
+        !d->has(c, s4) ||
+        d->has(c, s2)) {
+        cout << "\nRemove is not working";
+        return TRUE;
+    }
+
+    cout << "\nStep 05 isEqual";
+
+    IdentityDict *d2 = new(c) IdentityDict(c);
+
+    d2 = d2->setAt(c, s1, c->fromInteger(1));
+    d2 = d2->setAt(c, s3, c->fromInteger(3));
+
+    if (d->isEqual(c, d2)) {
+        cout << "\nisEqual with diferent dicts is not working";
+        return TRUE;
+    }
+
+    d2 = d2->setAt(c, s4, c->fromInteger(4));
+
+    if (!d->isEqual(c, d2)) {
+        cout << "\nisEqual with equal dicts is not working";
+        return TRUE;
+    }
+
     return FALSE;
 };
 

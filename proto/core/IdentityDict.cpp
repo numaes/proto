@@ -214,7 +214,8 @@ IdentityDict *IdentityDict::setAt(ProtoContext *context, ProtoObject *key, Proto
                 previous = this->previous,
                 next = new(context) IdentityDict(
                     context,
-                    key = this->key
+                    key,
+					value
                 )
             );
         }
@@ -227,7 +228,7 @@ IdentityDict *IdentityDict::setAt(ProtoContext *context, ProtoObject *key, Proto
 					this->key,
 					this->value,
 					previous = this->previous->setAt(context, key, value),
-					next = this->next
+					this->next
 				);
 			}
 			else {
@@ -237,18 +238,70 @@ IdentityDict *IdentityDict::setAt(ProtoContext *context, ProtoObject *key, Proto
 					this->value,
 					new(context) IdentityDict(
 						context,
-						key = this->key
+						key,
+						value
 					),
 					this->next
 				);
 			}
 		}
-		else 
-			return this;
+		else {
+			newNode = new(context) IdentityDict(
+				context,
+				this->key,
+				value,
+				this->previous,
+				this->next
+			);
+		}
 	}
 
 	return rebalance(context, newNode);
 };
+
+ProtoObject *firstKey(ProtoContext *context, IdentityDict *self) {
+	while (self->previous)
+		self = self->previous;
+	
+	return self->key;
+};
+
+ProtoObject *firstValue(ProtoContext *context, IdentityDict *self) {
+	while (self->previous)
+		self = self->previous;
+	
+	return self->value;
+};
+
+IdentityDict *removeFirst(ProtoContext *context, IdentityDict *self) {
+	if (!self->key)
+        return self;
+
+    IdentityDict *newNode;
+
+    if (self->previous) {
+        newNode = removeFirst(context, self->previous);
+        if (newNode->key == NULL)
+            newNode = NULL; 
+        newNode = new(context) IdentityDict(
+            context,
+			self->key,
+			self->value,
+            newNode,
+            self->next
+        );
+    }
+    else {
+        if (self->next)
+            return self->next;
+        
+        newNode = new(context) IdentityDict(
+            context
+		);
+    }
+
+    return rebalance(context, newNode);
+}
 
 IdentityDict *IdentityDict::removeAt(ProtoContext *context, ProtoObject *key) {
 	if (key == this->key && !this->next && !this->previous)
@@ -277,17 +330,38 @@ IdentityDict *IdentityDict::removeAt(ProtoContext *context, ProtoObject *key) {
 			);
 	}
 	else {
-		if (!this->next)
-			return this;
-		newNode = this->next->removeAt(context, key);
-		if (newNode->getSize(context) == 0)
+		if (cmp > 0) {
+			if (!this->next)
+				return this;
+
+			newNode = this->next->removeAt(context, key);
+			if (newNode->getSize(context) == 0)
+				newNode = NULL;
+
 			newNode = new(context) IdentityDict(
 				context,
 				this->key,
 				this->value,
 				this->previous,
-				NULL
+				newNode
 			);
+		}
+		else {
+			if (this->next) {
+				newNode = removeFirst(context, this->next);
+				if (newNode->count == 0)
+					newNode = NULL; 
+				newNode = new(context) IdentityDict(
+					context,
+					firstKey(context, this->next),
+					firstValue(context, this->next),
+					this->previous,
+					newNode
+				);
+			}
+			else
+				return this->previous;
+		}
 	}
 
 	return rebalance(context, newNode);

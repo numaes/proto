@@ -587,31 +587,43 @@ ProtoList *ProtoList::removeAt(ProtoContext *context, int index) {
     ProtoList *newNode;
 
     if (thisIndex == ((unsigned long) index)) {
-        if (this->next)
+        if (this->next) {
+            newNode = this->next->removeFirst(context);
+            if (newNode->count == 0)
+                newNode = NULL;
             newNode = new(context) ProtoList(
                 context,
                 this->next->getFirst(context),
                 this->previous,
-                this->next->removeFirst(context)
+                newNode
             );
+        }
         else
             return this->previous;
     }
     else {
-        if (((unsigned long) index) < thisIndex)
+        if (((unsigned long) index) < thisIndex) {
+            newNode = this->previous->removeAt(context, index);
+            if (newNode->count == 0)
+                newNode = NULL;
             newNode = new(context) ProtoList(
                 context,
                 value,
-                this->previous->removeAt(context, index),
+                newNode,
                 this->next
             );
-        else
+        }
+        else {
+            newNode = this->next->removeAt(context, index - thisIndex - 1);
+            if (newNode->count == 0)
+                newNode = NULL;
             newNode = new(context) ProtoList(
                 context,
                 value,
                 this->previous,
-                this->next->removeAt(context, index - thisIndex - 1)
+                newNode
             );
+        }
     }
 
     return rebalance(context, newNode);
