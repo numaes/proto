@@ -6,6 +6,7 @@
  */
 
 #include "../headers/proto.h"
+#include <string.h>
 
 using namespace std;
 namespace proto {
@@ -100,12 +101,12 @@ ProtoList *rebalance(ProtoContext *context, ProtoList *newNode) {
         // there are 4 cases
 
         // Left Left Case
-        if (balance < -1) {
+        if (balance < -1 && getBalance(newNode->previous) < 0) {
             newNode = rightRotate(context, newNode);
         }
         else {
             // Right Right Case
-            if (balance > 1) {
+            if (balance > 1 && getBalance(newNode->next) > 0) {
                 newNode = leftRotate(context, newNode);
             }
             // Left Right Case
@@ -193,12 +194,12 @@ ProtoList *ProtoList::getSlice(ProtoContext *context, int from, int to) {
             to = 0;
     }
 
-    ProtoList *slice = new(context) ProtoList(context);
-    if (to >= from)
-        for (int i=from; i <= to; i++)
-            slice = slice->appendLast(context, this->getAt(context, i));
-
-    return slice;
+    if (to >= from) {
+        ProtoList *upperPart = this->splitLast(context, from);
+        return upperPart->splitFirst(context, to - from);
+    }
+    else
+        return new(context) ProtoList(context);
 };
 
 unsigned long ProtoList::getSize(ProtoContext *context) {
@@ -364,6 +365,143 @@ ProtoList *ProtoList::appendLast(ProtoContext *context, ProtoObject* value) {
     return rebalance(context, newNode);
 };
 
+ProtoList *ProtoList::extend(ProtoContext *context, ProtoList *other) {
+    if (this->count == 0)
+        return other;
+
+    if (other->count == 0)
+        return this;
+
+    if (this->count < other->count)
+        return rebalance(
+            context, 
+            new(context) ProtoList(
+                context,
+                this->getLast(context),
+                this->removeLast(context),
+                other
+            ));
+    else
+        return rebalance(
+            context, 
+            new(context) ProtoList(
+                context,
+                other->getFirst(context),
+                this,
+                other->removeFirst(context)
+            ));
+};
+
+ProtoList *ProtoList::splitFirst(ProtoContext *context, int index) {
+	if (!this->value)
+        return this;
+
+    if (index < 0) {
+        index = this->count + index;
+        if (index < 0)
+            index = 0;
+    }
+
+    if (((unsigned long) index) >= this->count)
+        index = this->count - 1;
+
+    if (index == this->count - 1)
+        return this;
+
+    if (index == 0)
+        return new(context) ProtoList(context);
+
+    ProtoList *newNode = NULL;
+
+    int thisIndex = (this->previous? this->previous->count : 0);
+
+    if (thisIndex == ((unsigned long) index))
+        return this->previous;
+    else {
+        if (index > thisIndex) {
+            ProtoList *newNext = this->next->splitFirst(context, index - thisIndex - 1);
+            if (newNext->count == 0)
+                newNext = NULL;
+            newNode = new(context) ProtoList(
+                context,
+                this->value,
+                this->previous,
+                newNext
+            );
+        }
+        else {
+            if (this->previous)
+                return this->previous->splitFirst(context, index);
+            else
+                newNode = new(context) ProtoList(
+                    context,
+                    value,
+                    NULL,
+                    this->next->splitFirst(context, index - thisIndex - 1)
+                );
+        }
+    }
+
+    return rebalance(context, newNode);
+};
+
+ProtoList *ProtoList::splitLast(ProtoContext *context, int index) {
+	if (!this->value)
+        return this;
+
+    if (index < 0) {
+        index = this->count + index;
+        if (index < 0)
+            index = 0;
+    }
+
+    if (((unsigned long) index) >= this->count)
+        index = this->count - 1;
+
+    if (index == 0)
+        return this;
+
+    ProtoList *newNode = NULL;
+
+    int thisIndex = (this->previous? this->previous->count : 0);
+
+    if (thisIndex == ((unsigned long) index)) {
+        if (!this->previous)
+            return this;
+        else {
+            newNode = new(context) ProtoList(
+                context,
+                value,
+                NULL,
+                this->next
+            );
+        }
+    }
+    else {
+        if (((unsigned long) index) < thisIndex) {
+            newNode = new(context) ProtoList(
+                context,
+                this->value,
+                this->previous->splitLast(context, index),
+                this->next
+            );
+        }
+        else {
+            if (!this->next)
+                // It should not happen!
+                return new(context) ProtoList(context);
+            else {
+                return this->next->splitLast(
+                    context, 
+                    ((unsigned long) index - thisIndex)
+                );
+            }
+        }
+    }
+
+    return rebalance(context, newNode);
+};
+
 ProtoList *ProtoList::removeFirst(ProtoContext *context) {
 	if (!this->value)
         return this;
@@ -495,14 +633,84 @@ ProtoList *ProtoList::removeSlice(ProtoContext *context, int from, int to) {
 
     ProtoList *slice = new(context) ProtoList(context);
     if (to >= from) {
-        for (unsigned long i=0; i <= this->count; i++)
-            if (i < ((unsigned long) from) || i >= ((unsigned long) to))
-                slice = slice->appendLast(context, this->getAt(context, i));
+        return this->splitFirst(context, from)->extend(
+            context,
+            this->splitLast(context, from)
+        );
     }
     else
         return this;
 
     return slice;
+};
+
+int ProtoList::fillUTF8Buffer(ProtoContext *context, char *buffer, size_t size) {
+    char singleCharBuffer[5];
+
+    unsigned fillCount = 0;
+    unsigned index = 0;
+
+    while (fillCount < size) {
+        ProtoObject *unicodeChar = this->getAt(context, index);
+        size_t unicodeCharSize;
+
+        ProtoObjectPointer p;
+        p.oid.oid = unicodeChar;
+        if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
+            p.op.embedded_type == EMBEDED_TYPE_UNICODECHAR) {
+
+            if (p.unicodeChar.unicodeValue <= 0x7f) {
+                singleCharBuffer[0] = (char) p.unicodeChar.unicodeValue;
+                singleCharBuffer[1] = 0;
+                unicodeCharSize = 1;
+            }
+            else {
+                if (p.unicodeChar.unicodeValue >= 0x80 &&
+                    p.unicodeChar.unicodeValue <= 0x7ff) {
+                    long u = p.unicodeChar.unicodeValue - 0x80;
+                    singleCharBuffer[0] = (char) (u >> 6) & 0x07;
+                    singleCharBuffer[1] = (char) u & 0x3F;
+                    singleCharBuffer[2] = 0;
+                    unicodeCharSize = 2;
+                }
+                else {
+                    if (p.unicodeChar.unicodeValue >= 0x800 &&
+                        p.unicodeChar.unicodeValue <=0x10ffff) {
+                        long u = p.unicodeChar.unicodeValue - 0x800;
+                        singleCharBuffer[0] = (char) (u >> 12) & 0x07;
+                        singleCharBuffer[1] = (char) (u >> 6) & 0x3F;
+                        singleCharBuffer[2] = (char) u & 0x3F;
+                        singleCharBuffer[3] = 0;
+                        unicodeCharSize = 3;
+                    }
+                    else {
+                        long u = p.unicodeChar.unicodeValue - 0x10000;
+                        singleCharBuffer[0] = (char) (u >> 18) & 0x07;
+                        singleCharBuffer[1] = (char) (u >> 12) & 0x3F;
+                        singleCharBuffer[2] = (char) (u >> 12) & 0x3F;
+                        singleCharBuffer[3] = (char) u & 0x3F;
+                        singleCharBuffer[4] = 0;
+                        unicodeCharSize = 4;
+                    }
+                }
+            }
+        }
+        // fill single char buffer
+
+        if ((fillCount + unicodeCharSize) < size) {
+            strncpy(buffer, singleCharBuffer, unicodeCharSize);
+            buffer += unicodeCharSize;
+            fillCount += unicodeCharSize;
+            index += 1;
+        }
+        else
+            break;
+    };
+
+    if (size)
+        *buffer = 0;
+
+    return index;    
 };
 
 void ProtoList::processReferences(

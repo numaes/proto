@@ -566,10 +566,10 @@ BOOLEAN test_protoList() {
 
     cout << "\nStep 08 getSlice";
 
-    ProtoList *l2 = l->getSlice(c, 30, 39);
+    ProtoList *l2 = l->getSlice(c, 30, 40);
     for (i = 30; i < 40; i++) {
         if (l2->getAt(c, i-30) != c->fromInteger(i)) {
-            cout << "\nSomething wrong in getLast";
+            cout << "\nSomething wrong in getSlice";
             return TRUE;
         };
     }

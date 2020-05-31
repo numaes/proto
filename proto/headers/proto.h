@@ -495,10 +495,17 @@ public:
 	ProtoList  	  *appendFirst(ProtoContext *context, ProtoObject* value);
 	ProtoList  	  *appendLast(ProtoContext *context, ProtoObject* value);
 
+	ProtoList  	  *extend(ProtoContext *context, ProtoList* other);
+
+	ProtoList	  *splitFirst(ProtoContext *context, int index);
+	ProtoList     *splitLast(ProtoContext *context, int index);
+
 	ProtoList	  *removeFirst(ProtoContext *context);
 	ProtoList	  *removeLast(ProtoContext *context);
 	ProtoList	  *removeAt(ProtoContext *context, int index);
 	ProtoList  	  *removeSlice(ProtoContext *context, int from, int to);
+
+	int			fillUTF8Buffer(ProtoContext *context, char *buffer, size_t size);
 
 	void		processReferences(
 		ProtoContext *context,
