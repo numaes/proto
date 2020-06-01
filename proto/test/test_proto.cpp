@@ -243,7 +243,7 @@ BOOLEAN test_protoSet() {
         return TRUE;
     };
 
-    s1 = s1->add(c, c->fromInteger(5));
+    s1 = s1->removeAt(c, c->fromInteger(5));
 
     if (s1->isEqual(c, s2)) {
         cout << "\nSomething wrong with isEqual";
