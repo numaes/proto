@@ -60,79 +60,30 @@ std::atomic<LiteralDictionary *> literalRoot(
 
 ProtoContext::ProtoContext(
 		ProtoContext *previous,
-		ProtoSpace *space,
-		ProtoThread *thread
+        unsigned int localsCount = 0,
+		ProtoSpace *space = NULL,
+		ProtoThread *thread = NULL
 ) {
+    this->previous = previous;
     if (previous) {
-        this->previous = previous;
         this->space = this->previous->space;
         this->thread = this->previous->thread;
     }
     else {
-        this->previous = NULL;
         this->space = space;
         this->thread = thread;
     }
 
     this->returnValue = NULL;
-
-    if (this->thread)
-        this->lastCellPreviousContext = this->thread->currentWorkingSet;
-};
+    this->lastAllocatedCell = NULL;
+    this->localsCount = localsCount;
+ 
+    this->thread->currentContext = this;
+ };
 
 ProtoContext::~ProtoContext() {
-    Cell *freeCells = NULL;
-
-    // Generate the chain of cells for the return value if needed
-
-    if (this->thread) {
-        freeCells = this->thread->currentWorkingSet;
-        Cell *currentCell = this->thread->currentWorkingSet;
-
-        Cell *previousCell = NULL;
-        while (currentCell && currentCell != this->lastCellPreviousContext) {
-            ProtoObjectPointer p;
-            p.cell.cell = currentCell;
-            if ((currentCell->context == this &&
-                 currentCell == (Cell *) this->returnValue) ||
-                (p.op.pointer_tag == POINTER_TAG_CELL &&
-                 p.cell.cell->type == CELL_TYPE_MUTABLE_REFERENCE &&
-                 ((ProtoMutableReference *) p.cell.cell)->reference == this->returnValue)) {
-                Cell *nextInChain = currentCell->nextCell;
-
-                // Be carefull here!
-                // Always the current working should point to 
-                // all valid references at least.
-                // Some extra references are no problem, never less!
-                // NO EXCEPTIONS! 
-                // order matters!
-                currentCell->nextCell = this->lastCellPreviousContext;
-                this->lastCellPreviousContext = currentCell;
-                if (this->thread)
-                    this->thread->currentWorkingSet = this->lastCellPreviousContext;
-
-                // ONLY AFTER changing the currentWorking set !
-                if (previousCell)
-                    previousCell->nextCell = nextInChain;
-                else
-                    freeCells = nextInChain;
-
-                currentCell->context = this->previous;
-            }
-            else
-                previousCell = currentCell;
-
-            currentCell = currentCell->nextCell;
-        }
-
-        // The possible free chain is not so restrictive
-        if (previousCell)
-            previousCell->nextCell = NULL;
-
-        // Return all dirty blocks to garbage collector for analysis
-
-        if (freeCells && this->space)
-            this->space->analyzeUsedCells(freeCells);
+    if (this->previous && this->space && this->lastAllocatedCell) {
+        this->space->analyzeUsedCells(lastAllocatedCell);
     }
 };
 
@@ -181,10 +132,6 @@ Cell *ProtoContext::allocCell(){
 
         return newCell;
     }
-};
-
-void ProtoContext::setReturnValue(ProtoObject *value){
-    this->returnValue = value;
 };
 
 ProtoObject *ProtoContext::fromInteger(int value) {

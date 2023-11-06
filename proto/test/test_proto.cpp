@@ -106,86 +106,82 @@ BOOLEAN test_proto_header() {
     return FALSE;
 };
 
-BOOLEAN test_cell() {
+BOOLEAN test_cell(ProtoContext *previousContext) {
     cout << "\n\nTesting Cell";
 
 
     return FALSE;
 };
 
-BOOLEAN test_identityDict() {
+BOOLEAN test_identityDict(ProtoContext *previousContext) {
     cout << "\n\nTesting IdentitySet";
 
-    ProtoSpace *s = new ProtoSpace();
-    ProtoContext *c = new ProtoContext(
-        NULL,
-        s
-    );
+    ProtoContext c(previousContext);
 
     cout << "\nStep 01 Creating";
 
-    IdentityDict *d = new(c) IdentityDict(c);
+    IdentityDict *d = new(&c) IdentityDict(&c);
 
     cout << "\nStep 02 Adding";
 
-    ProtoObject *s1 = c->fromUTF8String((char *) "First");
-    ProtoObject *s2 = c->fromUTF8String((char *) "Second");
-    ProtoObject *s3 = c->fromUTF8String((char *) "Third");
-    ProtoObject *s4 = c->fromUTF8String((char *) "Fourh");
+    ProtoObject *s1 = c.fromUTF8String((char *) "First");
+    ProtoObject *s2 = c.fromUTF8String((char *) "Second");
+    ProtoObject *s3 = c.fromUTF8String((char *) "Third");
+    ProtoObject *s4 = c.fromUTF8String((char *) "Fourh");
 
-    d = d->setAt(c, s1, c->fromInteger(1));
-    d = d->setAt(c, s2, c->fromInteger(2));
-    d = d->setAt(c, s3, c->fromInteger(3));
-    d = d->setAt(c, s4, c->fromInteger(4));
+    d = d->setAt(&c, s1, c.fromInteger(1));
+    d = d->setAt(&c, s2, c.fromInteger(2));
+    d = d->setAt(&c, s3, c.fromInteger(3));
+    d = d->setAt(&c, s4, c.fromInteger(4));
 
-    if (d->getSize(c) != 4) {
+    if (d->getSize(&c) != 4) {
         cout << "\nError on size";
         return TRUE;
     }
 
-    if (d->getAt(c, s1) != c->fromInteger(1)) {
+    if (d->getAt(&c, s1) != c.fromInteger(1)) {
         cout << "\nMismatch on adding";
         return TRUE;
     }
 
     cout << "\nStep 03 Replace";
 
-    d = d->setAt(c, s2, c->fromInteger(1));
+    d = d->setAt(&c, s2, c.fromInteger(1));
 
-    if (d->getSize(c) != 4 ||
-        d->getAt(c, s2) != c->fromInteger(1)) {
+    if (d->getSize(&c) != 4 ||
+        d->getAt(&c, s2) != c.fromInteger(1)) {
         cout << "\nReplace is not working";
         return TRUE;
     }
 
     cout << "\nStep 04 Remove";
 
-    d = d->removeAt(c, s2);
+    d = d->removeAt(&c, s2);
 
-    if (d->getSize(c) != 3 ||
-        !d->has(c, s1) ||
-        !d->has(c, s3) ||
-        !d->has(c, s4) ||
-        d->has(c, s2)) {
+    if (d->getSize(&c) != 3 ||
+        !d->has(&c, s1) ||
+        !d->has(&c, s3) ||
+        !d->has(&c, s4) ||
+        d->has(&c, s2)) {
         cout << "\nRemove is not working";
         return TRUE;
     }
 
     cout << "\nStep 05 isEqual";
 
-    IdentityDict *d2 = new(c) IdentityDict(c);
+    IdentityDict *d2 = new(&c) IdentityDict(&c);
 
-    d2 = d2->setAt(c, s1, c->fromInteger(1));
-    d2 = d2->setAt(c, s3, c->fromInteger(3));
+    d2 = d2->setAt(&c, s1, c.fromInteger(1));
+    d2 = d2->setAt(&c, s3, c.fromInteger(3));
 
-    if (d->isEqual(c, d2)) {
+    if (d->isEqual(&c, d2)) {
         cout << "\nisEqual with diferent dicts is not working";
         return TRUE;
     }
 
-    d2 = d2->setAt(c, s4, c->fromInteger(4));
+    d2 = d2->setAt(&c, s4, c.fromInteger(4));
 
-    if (!d->isEqual(c, d2)) {
+    if (!d->isEqual(&c, d2)) {
         cout << "\nisEqual with equal dicts is not working";
         return TRUE;
     }
@@ -193,59 +189,55 @@ BOOLEAN test_identityDict() {
     return FALSE;
 };
 
-BOOLEAN test_protoSet() {
+BOOLEAN test_protoSet(ProtoContext *previousContext) {
     cout << "\n\nTesting ProtoSet";
 
-    ProtoSpace *s = new ProtoSpace();
-    ProtoContext *c = new ProtoContext(
-        NULL,
-        s
-    );
+    ProtoContext c(previousContext);
 
     cout << "\nStep 01 Creating";
 
-    ProtoSet *s1 = new(c) ProtoSet(c);
+    ProtoSet *s1 = new(&c) ProtoSet(&c);
     int i, j;
 
     cout << "\nStep 01 Add";
 
     for (i = 0; i < 10; i++)
-        s1 = s1->add(c, c->fromInteger(i));
+        s1 = s1->add(&c, c.fromInteger(i));
 
     for (i = 0; i < 10; i++) {
-        if (!s1->has(c, c->fromInteger(i))) {
+        if (!s1->has(&c, c.fromInteger(i))) {
             cout << "\nSomething wrong with add";
             return TRUE;
         }
     }
 
-    if (s1->has(c, c->fromInteger(100))) {
+    if (s1->has(&c, c.fromInteger(100))) {
         cout << "\nSomething wrong with has";
         return TRUE;
     }
 
     cout << "\nStep 02 Remove";
 
-    s1 = s1->removeAt(c, c->fromInteger(5));
+    s1 = s1->removeAt(&c, c.fromInteger(5));
 
-    if (s1->has(c, c->fromInteger(5))) {
+    if (s1->has(&c, c.fromInteger(5))) {
         cout << "\nSomething wrong with remove";
         return TRUE;
     }
 
-    ProtoSet *s2 = new(c) ProtoSet(c);
+    ProtoSet *s2 = new(&c) ProtoSet(&c);
 
     for (i = 0; i < 10; i++)
-        s2 = s2->add(c, c->fromInteger(i));
+        s2 = s2->add(&c, c.fromInteger(i));
 
-    if (s1->isEqual(c, s2)) {
+    if (s1->isEqual(&c, s2)) {
         cout << "\nSomething wrong with isEqual";
         return TRUE;
     };
 
-    s1 = s1->removeAt(c, c->fromInteger(5));
+    s1 = s1->removeAt(&c, c.fromInteger(5));
 
-    if (s1->isEqual(c, s2)) {
+    if (s1->isEqual(&c, s2)) {
         cout << "\nSomething wrong with isEqual";
         return TRUE;
     };
@@ -253,14 +245,14 @@ BOOLEAN test_protoSet() {
     return FALSE;
 };
 
-BOOLEAN test_parentLink() {
+BOOLEAN test_parentLink(ProtoContext *previousContext) {
     cout << "\n\nTesting ParentLink";
 
 
     return FALSE;
 };
 
-BOOLEAN test_byteBuffer() {
+BOOLEAN test_byteBuffer(ProtoContext *previousContext) {
     cout << "\n\nTesting ByteBuffer";
 
     return FALSE;
@@ -275,17 +267,12 @@ int countBlocks(Cell *cell) {
     return count;
 }
 
-BOOLEAN test_protoContext() {
+BOOLEAN test_protoContext(ProtoContext *previousContext) {
     cout << "\n\nTesting ProtoContext";
 
     cout << "\nStep 01 - ProtoContext basic";
 
-    ProtoSpace *s = new ProtoSpace();
-    s->~ProtoSpace();
-
-    ProtoContext *c = new ProtoContext(
-        s->creationContext
-    );
+    ProtoContext *c = new ProtoContext(previousContext);
 
     ProtoObjectPointer p;
     ProtoObject *o, *o2, *o3;
@@ -483,60 +470,56 @@ BOOLEAN test_protoContext() {
 
     cout << "\nStep 06 - Context go and return";
 
-    int currentCount = countBlocks(c->thread->currentWorkingSet);
 
-    ProtoContext *newContext = new ProtoContext(c);
-    newContext->~ProtoContext();
+//    int currentCount = countBlocks(c->thread->currentWorkingSet);
 
-    if (currentCount != countBlocks(c->thread->currentWorkingSet)) {
-        cout << "\nUnbalanced count on subcontext";
-        return TRUE;
-    }
+//    ProtoContext *newContext = new ProtoContext(c);
+//    newContext->~ProtoContext();
 
-    newContext = new ProtoContext(c);
-    new(newContext) ProtoSet(newContext);
-    if (countBlocks(c->thread->currentWorkingSet) != (currentCount + 1)) {
-        cout << "\nWorkingSet incorrect";
-        return TRUE;
-    }
-    newContext->setReturnValue(new(newContext) ProtoSet(newContext));
-    newContext->~ProtoContext();
+//    if (currentCount != countBlocks(c->thread->currentWorkingSet)) {
+//        cout << "\nUnbalanced count on subcontext";
+//        return TRUE;
+//    }
 
-    if ((currentCount + 1) != countBlocks(c->thread->currentWorkingSet)) {
-        cout << "\nUnbalanced count on subcontext after return";
-        return TRUE;
-    }
+//    newContext = new ProtoContext(c);
+//    new(newContext) ProtoSet(newContext);
+//    if (countBlocks(c->thread->currentWorkingSet) != (currentCount + 1)) {
+//        cout << "\nWorkingSet incorrect";
+//        return TRUE;
+//    }
+//    newContext->setReturnValue(new(newContext) ProtoSet(newContext));
+//    newContext->~ProtoContext();
 
-    newContext->~ProtoContext();
+//    if ((currentCount + 1) != countBlocks(c->thread->currentWorkingSet)) {
+//        cout << "\nUnbalanced count on subcontext after return";
+//        return TRUE;
+//    }
 
-    newContext = NULL;
+//    newContext->~ProtoContext();
+
+//    newContext = NULL;
 
     return FALSE;
 };
 
-BOOLEAN test_externalPointer() {
+BOOLEAN test_externalPointer(ProtoContext *previousContext) {
     cout << "\n\nTesting ExternalPointer";
 
     return FALSE;
 };
 
-BOOLEAN test_protoList() {
+BOOLEAN test_protoList(ProtoContext *previousContext) {
     cout << "\n\nTesting ProtoList";
 
-    ProtoSpace *s = new ProtoSpace();
-    s->~ProtoSpace();
-
-    ProtoContext *c = new ProtoContext(
-        s->creationContext
-    );
+    ProtoContext c(previousContext);
 
     cout << "\nStep 01 Creating";
 
     int i, j;
 
-    ProtoList *l = new(c) ProtoList(c);
+    ProtoList *l = new(&c) ProtoList(&c);
 
-    if (l->getSize(c) != 0) {
+    if (l->getSize(&c) != 0) {
         cout << "\nWrong size on creation";
         return TRUE;
     }    
@@ -544,17 +527,17 @@ BOOLEAN test_protoList() {
     cout << "\nStep 02 Appends";
 
     for (i = 0; i < 100; i++)
-        l = l->appendLast(c, c->fromInteger(i));
+        l = l->appendLast(&c, c.fromInteger(i));
 
     for (i = 0; i < 100; i++) {
-        if (l->getAt(c, i) != c->fromInteger(i)) {
+        if (l->getAt(&c, i) != c.fromInteger(i)) {
             cout << "\nSequence error on appendLast";
             return TRUE;
         }
     }
 
     for (i = -1; i >= -100; i--) {
-        l = l->appendFirst(c, c->fromInteger(i));
+        l = l->appendFirst(&c, c.fromInteger(i));
     }
 
     i = 0;
@@ -562,7 +545,7 @@ BOOLEAN test_protoList() {
     j = -100;
 
     while (i < 200) {
-        if (l->getAt(c, i) != c->fromInteger(j)) {
+        if (l->getAt(&c, i) != c.fromInteger(j)) {
             cout << "\nSequence error on appendFirst";
             return TRUE;
         }
@@ -570,79 +553,79 @@ BOOLEAN test_protoList() {
         j++;
     };
 
-    if (l->getAt(c, -1) != c->fromInteger(99)) {
+    if (l->getAt(&c, -1) != c.fromInteger(99)) {
         cout << "\nGet (negative index) failed";
         return TRUE;
     }
 
     cout << "\nStep 03 Remove";
 
-    l = l->removeFirst(c);
-    if (l->getAt(c, 0) != c->fromInteger(-99)) {
+    l = l->removeFirst(&c);
+    if (l->getAt(&c, 0) != c.fromInteger(-99)) {
         cout << "\nSomething wrong in removeFirst";
         return TRUE;
     }
 
-    l = l->removeLast(c);
-    if (l->getAt(c, 197) != c->fromInteger(98)) {
+    l = l->removeLast(&c);
+    if (l->getAt(&c, 197) != c.fromInteger(98)) {
         cout << "\nSomething wrong in removeLast";
         return TRUE;
     }
 
-    l = l->removeAt(c, 4);
-    if (l->getAt(c, 3) != c->fromInteger(-96) && 
-        l->getAt(c, 4) != c->fromInteger(-94)) {
+    l = l->removeAt(&c, 4);
+    if (l->getAt(&c, 3) != c.fromInteger(-96) && 
+        l->getAt(&c, 4) != c.fromInteger(-94)) {
         cout << "\nSomething wrong in removeAt";
         return TRUE;
     }
 
     cout << "\nStep 04 Set";
 
-    l = l->setAt(c, 4, c->fromInteger(201));
-    if (l->getAt(c, 4) != c->fromInteger(201)) {
+    l = l->setAt(&c, 4, c.fromInteger(201));
+    if (l->getAt(&c, 4) != c.fromInteger(201)) {
         cout << "\nSomething wrong in setAt";
         return TRUE;
     }
 
     cout << "\nStep 05 Has";
 
-    if (!l->has(c, c->fromInteger(201))) {
+    if (!l->has(&c, c.fromInteger(201))) {
         cout << "\nSomething went wrong in has";
         return TRUE;
     }
 
     cout << "\nStep 06 InsertAt";
 
-    l = l->insertAt(c, 4, c->fromInteger(202));
-    if (l->getAt(c, 3) != c->fromInteger(-97) && 
-        l->getAt(c, 4) != c->fromInteger(202) &&
-        l->getAt(c, 5) != c->fromInteger(201)) {
+    l = l->insertAt(&c, 4, c.fromInteger(202));
+    if (l->getAt(&c, 3) != c.fromInteger(-97) && 
+        l->getAt(&c, 4) != c.fromInteger(202) &&
+        l->getAt(&c, 5) != c.fromInteger(201)) {
         cout << "\nSomething wrong in insertAt";
         return TRUE;
     }
 
     cout << "\nStep 07 Get";
 
-    if (l->getFirst(c) != c->fromInteger(-99)) {
+    if (l->getFirst(&c) != c.fromInteger(-99)) {
         cout << "\nSomething wrong in getFirst";
         return TRUE;
     }
 
-    if (l->getLast(c) != c->fromInteger(98)) {
+    if (l->getLast(&c) != c.fromInteger(98)) {
         cout << "\nSomething wrong in getLast";
         return TRUE;
     }
 
-    l = new(c) ProtoList(c);
+    l = new(&c) ProtoList(&c);
 
     for (i = 0; i < 100; i++)
-        l = l->appendLast(c, c->fromInteger(i));
+        l = l->appendLast(&c, c.fromInteger(i));
 
     cout << "\nStep 08 getSlice";
 
-    ProtoList *l2 = l->getSlice(c, 30, 40);
+    ProtoList *l2 = l->getSlice(&c, 30, 40);
     for (i = 30; i < 40; i++) {
-        if (l2->getAt(c, i-30) != c->fromInteger(i)) {
+        if (l2->getAt(&c, i-30) != c.fromInteger(i)) {
             cout << "\nSomething wrong in getSlice";
             return TRUE;
         };
@@ -651,65 +634,64 @@ BOOLEAN test_protoList() {
     return FALSE;
 };
 
-BOOLEAN test_protoLiteral() {
+BOOLEAN test_protoLiteral(ProtoContext *previousContext) {
     cout << "\n\nTesting ProtoLiteral";
 
 
     return FALSE;
 };
 
-BOOLEAN test_memoryBuffer() {
+BOOLEAN test_memoryBuffer(ProtoContext *previousContext) {
     cout << "\n\nTesting ByteBuffer";
 
 
     return FALSE;
 };
 
-BOOLEAN test_methodCall() {
+BOOLEAN test_methodCall(ProtoContext *previousContext) {
     cout << "\n\nTesting MethodCall";
 
 
     return FALSE;
 };
 
-BOOLEAN test_protoObject() {
+BOOLEAN test_protoObject(ProtoContext *previousContext) {
     cout << "\n\nTesting Proto";
 
 
     return FALSE;
 };
 
+
+void test_protomethod(ProtoContext *previousContext, int par1=0) {
+    unsigned int localsCount = 4;
+    ProtoContext localContext(previousContext, localsCount);
+    struct {
+        ProtoObject * p1;
+        ProtoObject * p2;
+        ProtoObject * p3;
+        ProtoObject * p4;
+    };
+}
+
 BOOLEAN test_protoSpace() {
     cout << "\n\nTesting ProtoSpace";
 
     cout << "\nStep 01 - Creating and deleting";
     ProtoSpace *s = new ProtoSpace();
-    s->~ProtoSpace();
 
     cout << "\nStep 02 - Creating with context";
     s = new ProtoSpace();
-    ProtoContext *c = new ProtoContext(
-        s->creationContext
-    );
-    c->~ProtoContext();
-    s->~ProtoSpace();
-    
-    cout << "\nStep 03 - Creating with context and return value";
-    s = new ProtoSpace();
-    *c = new ProtoContext(
-        s->creationContext
-    );
+    ProtoContext c(NULL, 0, s);
 
-    ProtoSet *set = new(c) ProtoSet(c);
-    c->setReturnValue(set);
+    test_protomethod(&c);
 
-    c->~ProtoContext();
-    s->~ProtoSpace();
-    
+    ProtoSet *set = new(&c) ProtoSet(&c);
+
     return FALSE;
 };
 
-BOOLEAN test_protoThread() {
+BOOLEAN test_protoThread(ProtoContext *previousContext) {
     cout << "\n\nTesting Thread";
 
 
@@ -722,6 +704,9 @@ BOOLEAN main(BOOLEAN argc, char **argv) {
     int phase;
     int error;
 
+    ProtoSpace *s = new ProtoSpace();
+    ProtoContext c(NULL, 0, s);
+
     for (phase = 1; phase <= 13; phase++) {
         switch(phase) {
             case 1:
@@ -731,37 +716,37 @@ BOOLEAN main(BOOLEAN argc, char **argv) {
                 error = test_protoSpace();
                 break;
             case 3:
-                error = test_protoContext();
+                error = test_protoContext(&c);
                 break;
             case 4:
-                error = test_protoThread();
+                error = test_protoThread(&c);
                 break;
             case 5:
-                error = test_cell();
+                error = test_cell(&c);
                 break;
             case 6:
-                error = test_identityDict();
+                error = test_identityDict(&c);
                 break;
             case 7:
-                error = test_protoSet();
+                error = test_protoSet(&c);
                 break;
             case 8:
-                error = test_protoList();
+                error = test_protoList(&c);
                 break;
             case 9:
-                error = test_parentLink();
+                error = test_parentLink(&c);
                 break;
             case 10:
-                error = test_byteBuffer();
+                error = test_byteBuffer(&c);
                 break;
             case 11:
-                error = test_memoryBuffer();
+                error = test_memoryBuffer(&c);
                 break;
             case 12:
-                error = test_methodCall();
+                error = test_methodCall(&c);
                 break;
             case 13:
-                error = test_protoObject();
+                error = test_protoObject(&c);
                 break;
         }
         if (error) {

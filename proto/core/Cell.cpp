@@ -80,7 +80,7 @@ void Cell::processReferences(
     ProtoContext *context, 
     void *self,
     void (*method)(
-        ProtoContext *context, 
+        ProtoContext *context,
         void *self,
         Cell *cell
     )
@@ -121,7 +121,7 @@ void Cell::processReferences(
         case CELL_TYPE_PROTO_SET:
             ((ProtoSet *) this)->processReferences(
                 context, 
-                self, 
+                self,
                 method
             );
             break;

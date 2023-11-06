@@ -133,6 +133,7 @@ class ProtoContext {
 public:
 	ProtoContext(
 		ProtoContext *previous = NULL,
+		unsigned int localsCount = 0, 
 		ProtoSpace *space = NULL,
 		ProtoThread *thread = NULL
 	);
@@ -143,10 +144,10 @@ public:
 	ProtoSpace		*space;
 	ProtoThread		*thread;
 	ProtoObject		*returnValue;
-	Cell			*lastCellPreviousContext;
+	Cell			*lastAllocatedCell;
+	unsigned int	localsCount;
 	
 	Cell 			*allocCell();
-	void 			setReturnValue(ProtoObject *value=PROTO_NONE);
 
 	// Constructors for base types, here to get the right context on invoke
 	ProtoObject 	*fromInteger(int value);
@@ -203,7 +204,9 @@ public:
 	void 		analyzeUsedCells(Cell *cellsChain);
 	void 		deallocMemory();
 
-	ProtoObject			*threads;
+	// TODO Should it be a dictionary to access threads by name?
+	ProtoList			*threads;
+
 	std::atomic<Cell *>  mutableRoot;
 	std::atomic<BOOLEAN> mutableLock;
 	std::atomic<BOOLEAN> threadsLock;
@@ -215,7 +218,6 @@ public:
 	int					 state;
 	std::thread::id		 mainThreadId;
 	std::thread			*gcThread;
-	ProtoContext		*creationContext;
 };
 
 class ProtoObject {
@@ -662,7 +664,6 @@ public:
 	ProtoObject *reference;
 };
 
-
 class ProtoObjectCell: public Cell, public ProtoObject {
 public:
 	ProtoObjectCell(
@@ -718,14 +719,13 @@ public:
 	);
 
 	Cell	    *allocCell();
-	Cell		*getLastAllocatedCell();
-	void		setLastAllocatedCell(Cell *someCell);
 
 	ProtoObject			*name;
-	Cell				*currentWorkingSet;
 	std::thread			*osThread;
 	ProtoSpace			*space;
 	BigCell				*freeCells;
+	ProtoContext		*firstContext;
+	ProtoContext		*currentContext;
 };
 
 // Used just to compute the number of bytes needed for a Cell at allocation time

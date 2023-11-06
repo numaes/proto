@@ -60,8 +60,7 @@ void gcCollectObjects(ProtoContext *context, void *self, ProtoObject *value) {
 void gcScan(ProtoContext *context, ProtoSpace *space) {
     DirtySegment *toAnalize;
 
-    // Convert the dirtyList into the list of cells to analyze
-    // Acquire mutables
+    // Acquire space lock
 
     BOOLEAN oldValue = FALSE;
     while (space->gcLock.compare_exchange_strong(
@@ -72,20 +71,60 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
     toAnalize = space->dirtySegments;
     space->dirtySegments = NULL;
 
-    space->gcLock.store(FALSE);
-
     ProtoContext gcContext(context); 
+
+    // cellSet: a set of all referenced Cells
 
     ProtoSet *cellSet = new(&gcContext) ProtoSet(&gcContext);
 
+    // Add all mutables to cellSet
     ((IdentityDict *) space->mutableRoot.load())->processValues(
         &gcContext,
         &cellSet,
         gcCollectObjects
     );
 
-    // Collect all roots
-    
+    // Collect all roots from thread stacks
+
+    int threadCount = space->threads->count;
+    while (threadCount--) {
+        ProtoThread *thread = (ProtoThread *) space->threads->getAt(&gcContext, threadCount);
+
+        // Collect allocated objects
+        ProtoContext *currentContext = thread->context;
+        while (currentContext) {
+            Cell * currentCell = currentContext->lastAllocatedCell;
+            while (currentCell) {
+                if (! cellSet->has(context, (ProtoObject *) currentCell)) {
+                    cellSet = cellSet->add(context, (ProtoObject *) currentCell);
+                }
+
+                currentCell = currentCell->nextCell;
+            }
+
+            currentContext = currentContext->previous;
+        }
+
+        // Collect all stack based pointers
+
+        union ProtoObjectPointer *p = ((ProtoObjectPointer *) thread->currentContext) - thread->currentContext->localsCount;
+        union ProtoObjectPointer *topOfStack = (ProtoObjectPointer *) thread->firstContext;
+        while (p++ <= topOfStack) {
+            if (p->op.pointer_tag == POINTER_TAG_CELL) {
+                if (p->cell.cell->type != CELL_TYPE_UNASSIGNED && p->cell.cell->type < CELL_TYPE_UNASSIGNED_C) {
+                    if (! cellSet->has(context, (ProtoObject *) p)) {
+                        cellSet = cellSet->add(context, (ProtoObject *) p);
+                    }
+                }
+            }
+        }
+    }
+
+    // Scan all indirect roots. Deep traversal of cellSet
+    cellSet->processValues(context, cellSet, gcCollectObjects);
+
+    // Scan all blocks to analyze and if they are not referenced, free them
+
     Cell *freeBlocks = NULL;
     int freeCount = 0;
     while (toAnalize) {
@@ -112,12 +151,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
         toAnalize = nextToAnalize;
     }
 
-    oldValue = FALSE;
-    while (space->gcLock.compare_exchange_strong(
-        oldValue,
-        TRUE
-    )) std::this_thread::yield();
-
+    // Update space freeSegments
     DirtySegment *newList = new DirtySegment;
     newList->nextSegment = space->freeSegments;
     newList->cellChain = (BigCell *) freeBlocks;
@@ -146,34 +180,33 @@ ProtoSpace::ProtoSpace() {
     ProtoThread *firstThread = (ProtoThread *) firstCell;
     firstThread->freeCells = (BigCell *) firstCell->nextCell;
     firstThread->nextCell = NULL;
-    firstThread->currentWorkingSet = firstThread;
     // Get current thread id from OS
     firstThread->osThread = NULL;
     firstThread->space = this;
 
     firstCell->nextCell = NULL;
 
-    ProtoContext *creationContext = new ProtoContext(
+    ProtoContext creationContext(
         NULL,
+        0,
         this,
         firstThread
     );
-    this->creationContext = creationContext;
 
     this->mainThreadId = std::this_thread::get_id();
 
-    ProtoObject *threadName = creationContext->literalFromUTF8String((char *) "Main thread");
+    ProtoObject *threadName = creationContext.literalFromUTF8String((char *) "Main thread");
     firstThread->name = threadName;
-    this->threads = new(creationContext) IdentityDict(
-        creationContext,
-        threadName,
+    this->threads = (new(&creationContext) ProtoList(
+        &creationContext,
         firstThread
-    );
+    ))->appendFirst(&creationContext, firstThread);
+
 
     this->mutableLock.store(FALSE);
     this->threadsLock.store(FALSE);
     this->gcLock.store(FALSE);
-    this->mutableRoot.store(new(creationContext) IdentityDict(creationContext));
+    this->mutableRoot.store(new(&creationContext) IdentityDict(&creationContext));
     this->gcThread = new std::thread(
         (void (*)(ProtoSpace *)) (&gcThreadLoop), 
         this
@@ -187,7 +220,7 @@ void scanThreads(ProtoContext *context, void *self, ProtoObject *value) {
 }
 
 ProtoSpace::~ProtoSpace() {
-    ProtoContext finalContext(NULL, this);
+    ProtoContext finalContext(NULL);
 
     IdentityDict *threads = ((IdentityDict *) (this->threads->currentValue(&finalContext)));
     ProtoList *threadList = new(&finalContext) ProtoList(&finalContext);
@@ -217,15 +250,9 @@ void ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread) {
         TRUE
     )) std::this_thread::yield();
 
-    ProtoSet *currentSet = (ProtoSet *) this->threads->currentValue(context);
-    this->threads->setValue(
-        context,
-        currentSet,
-        currentSet->add(context, thread)
-    );
+    this->threads = this->threads->appendLast(context, thread);
 
     this->threadsLock.store(FALSE);
-
 };
 
 void ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *thread) {
@@ -235,12 +262,14 @@ void ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *thread) {
         TRUE
     )) std::this_thread::yield();
 
-    ProtoSet *currentSet = (ProtoSet *) this->threads->currentValue(context);
-    this->threads->setValue(
-        context,
-        currentSet,
-        currentSet->removeAt(context, thread)
-    );
+    int threadCount = this->threads->count;
+    while (threadCount--) {
+        ProtoThread * t = (ProtoThread *) this->threads->getAt(context, threadCount);
+        if (t == thread) {
+            this->threads = this->threads->removeAt(context, threadCount);
+            break;
+        }
+    }
 
     this->threadsLock.store(FALSE);
 };
