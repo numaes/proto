@@ -8,6 +8,8 @@
 #include <cstddef>
 #include <atomic>
 #include <thread>
+#include <condition_variable>
+
 
 namespace proto {
 
@@ -99,6 +101,14 @@ namespace proto {
 #define CELL_TYPE_UNASSIGNED_E    	(0x0ELU)
 #define CELL_TYPE_UNASSIGNED_F    	(0x0FLU)
 
+#define SPACE_STATE_RUNNING			(0x0)
+#define SPACE_STATE_STOPPING_WORLD  (0x1)
+#define SPACE_STATE_WORLD_STOPPED   (0x2)
+
+#define THREAD_STATE_MANAGED        (0x0)
+#define THREAD_STATE_UNMANAGED      (0x1)
+#define THREAD_STATE_STOPPED        (0x2)
+
 class ProtoContext;
 class ProtoObject;
 class ProtoThread;
@@ -133,8 +143,9 @@ class ProtoContext {
 public:
 	ProtoContext(
 		ProtoContext *previous = NULL,
-		unsigned int localsCount = 0, 
 		ProtoSpace *space = NULL,
+		void *localsBase = NULL,
+		unsigned int localsCount = 0, 
 		ProtoThread *thread = NULL
 	);
 
@@ -145,6 +156,7 @@ public:
 	ProtoThread		*thread;
 	ProtoObject		*returnValue;
 	Cell			*lastAllocatedCell;
+	ProtoObjectPointer *localsBase;
 	unsigned int	localsCount;
 	
 	Cell 			*allocCell();
@@ -203,6 +215,7 @@ public:
 	Cell 		*getFreeCells();
 	void 		analyzeUsedCells(Cell *cellsChain);
 	void 		deallocMemory();
+	void		synchGC();
 
 	// TODO Should it be a dictionary to access threads by name?
 	ProtoList			*threads;

@@ -59,9 +59,10 @@ std::atomic<LiteralDictionary *> literalRoot(
 #define BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL 1024U
 
 ProtoContext::ProtoContext(
-		ProtoContext *previous,
-        unsigned int localsCount = 0,
+		ProtoContext *previous = NULL,
 		ProtoSpace *space = NULL,
+		void *localsBase = NULL,
+		unsigned int localsCount = 0, 
 		ProtoThread *thread = NULL
 ) {
     this->previous = previous;
@@ -76,6 +77,7 @@ ProtoContext::ProtoContext(
 
     this->returnValue = NULL;
     this->lastAllocatedCell = NULL;
+    this->localsBase = (ProtoObjectPointer *) localsBase;
     this->localsCount = localsCount;
  
     this->thread->currentContext = this;

@@ -665,13 +665,13 @@ BOOLEAN test_protoObject(ProtoContext *previousContext) {
 
 void test_protomethod(ProtoContext *previousContext, int par1=0) {
     unsigned int localsCount = 4;
-    ProtoContext localContext(previousContext, localsCount);
     struct {
         ProtoObject * p1;
         ProtoObject * p2;
         ProtoObject * p3;
         ProtoObject * p4;
-    };
+    } locals;
+    ProtoContext localContext(previousContext, previousContext->space,  &locals, sizeof(locals) / sizeof(ProtoObjectPointer));
 }
 
 BOOLEAN test_protoSpace() {
@@ -682,7 +682,7 @@ BOOLEAN test_protoSpace() {
 
     cout << "\nStep 02 - Creating with context";
     s = new ProtoSpace();
-    ProtoContext c(NULL, 0, s);
+    ProtoContext c(NULL, s);
 
     test_protomethod(&c);
 
@@ -705,7 +705,7 @@ BOOLEAN main(BOOLEAN argc, char **argv) {
     int error;
 
     ProtoSpace *s = new ProtoSpace();
-    ProtoContext c(NULL, 0, s);
+    ProtoContext c(NULL, s);
 
     for (phase = 1; phase <= 13; phase++) {
         switch(phase) {

@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <thread>
 #include <functional>
+#include <condition_variable>
 
 using namespace std;
 
@@ -60,7 +61,7 @@ void gcCollectObjects(ProtoContext *context, void *self, ProtoObject *value) {
 void gcScan(ProtoContext *context, ProtoSpace *space) {
     DirtySegment *toAnalize;
 
-    // Acquire space lock
+    // Acquire space lock and take all dirty segments to analyze
 
     BOOLEAN oldValue = FALSE;
     while (space->gcLock.compare_exchange_strong(
@@ -71,7 +72,12 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
     toAnalize = space->dirtySegments;
     space->dirtySegments = NULL;
 
+    space->gcLock.store(FALSE);
+
     ProtoContext gcContext(context); 
+
+    // Stop the world
+    // TODO
 
     // cellSet: a set of all referenced Cells
 
@@ -102,25 +108,29 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
                 currentCell = currentCell->nextCell;
             }
 
-            currentContext = currentContext->previous;
-        }
-
-        // Collect all stack based pointers
-
-        union ProtoObjectPointer *p = ((ProtoObjectPointer *) thread->currentContext) - thread->currentContext->localsCount;
-        union ProtoObjectPointer *topOfStack = (ProtoObjectPointer *) thread->firstContext;
-        while (p++ <= topOfStack) {
-            if (p->op.pointer_tag == POINTER_TAG_CELL) {
-                if (p->cell.cell->type != CELL_TYPE_UNASSIGNED && p->cell.cell->type < CELL_TYPE_UNASSIGNED_C) {
-                    if (! cellSet->has(context, (ProtoObject *) p)) {
-                        cellSet = cellSet->add(context, (ProtoObject *) p);
+            if (currentContext->localsBase) {
+                ProtoObjectPointer *p = currentContext->localsBase;
+                for (int n = currentContext->localsCount;
+                     n > 0;
+                     n--) {
+                    if (p->op.pointer_tag == POINTER_TAG_CELL) {
+                        if (p->cell.cell->type != CELL_TYPE_UNASSIGNED && p->cell.cell->type < CELL_TYPE_UNASSIGNED_C) {
+                            if (! cellSet->has(context, (ProtoObject *) p)) {
+                                cellSet = cellSet->add(context, (ProtoObject *) p);
+                            }
+                        }
                     }
                 }
             }
+
+            currentContext = currentContext->previous;
         }
     }
 
-    // Scan all indirect roots. Deep traversal of cellSet
+    // Free the world
+    // TODO
+
+    // Deep Scan all indirect roots. Deep traversal of cellSet
     cellSet->processValues(context, cellSet, gcCollectObjects);
 
     // Scan all blocks to analyze and if they are not referenced, free them
@@ -136,7 +146,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
                 block->~Cell();
 
                 void **p = (void **) block;
-                for (unsigned i; i < sizeof(BigCell) / sizeof(void *); i++)
+                for (unsigned i = 0; i < sizeof(BigCell) / sizeof(void *); i++)
                     *p++ = NULL;
 
                 block->nextCell = freeBlocks;
@@ -146,12 +156,17 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
             block = nextCell;
         }
 
-        DirtySegment *nextToAnalize = toAnalize->nextSegment;
-        delete toAnalize;
-        toAnalize = nextToAnalize;
+        toAnalize = toAnalize->nextSegment;
     }
 
     // Update space freeSegments
+    BOOLEAN oldValue = FALSE;
+    while (space->gcLock.compare_exchange_strong(
+        oldValue,
+        TRUE
+    )) std::this_thread::yield();
+
+
     DirtySegment *newList = new DirtySegment;
     newList->nextSegment = space->freeSegments;
     newList->cellChain = (BigCell *) freeBlocks;
@@ -186,10 +201,13 @@ ProtoSpace::ProtoSpace() {
 
     firstCell->nextCell = NULL;
 
+    this->state = SPACE_STATE_RUNNING;
+
     ProtoContext creationContext(
         NULL,
-        0,
         this,
+        NULL,
+        0,
         firstThread
     );
 
@@ -242,6 +260,16 @@ ProtoSpace::~ProtoSpace() {
 
     this->gcThread->join();
 };
+
+void ProtoSpace::synchGC(ProtoThread *currentThread) {
+    if (this->state != SPACE_STATE_RUNNING && currentThread->state == THREAD_STATE_MANAGED) {
+        while (this->state != SPACE_STATE_RUNNING) {
+            currentThread->state = THREAD_STATE_STOPPED;
+            this->stopTheWorldCV->wait();
+            currentThread->state = THREAD_STATE_MANAGED;
+        }
+    }
+}
 
 void ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread) {
     BOOLEAN oldValue = FALSE;
