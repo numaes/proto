@@ -84,7 +84,7 @@ void ProtoThread::exit(ProtoContext *context) {
 Cell *ProtoThread::allocCell() {
     Cell *newCell;
 
-    while (!this->freeCells) {
+    if (!this->freeCells) {
         if (this->state == THREAD_STATE_MANAGED && 
             this->context->space->state != SPACE_STATE_RUNNING) {
 
