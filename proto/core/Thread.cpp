@@ -79,8 +79,31 @@ void ProtoThread::exit(ProtoContext *context) {
 Cell *ProtoThread::allocCell() {
     Cell *newCell;
 
-    if (this->context->space->state != SPACE_STATE_RUNNING)
-        this->context->space->synchGC(this);
+    if (this->state == THREAD_STATE_MANAGED && 
+        this->context->space->state != SPACE_STATE_RUNNING) {
+
+        if (this->state != SPACE_STATE_RUNNING && this->state == THREAD_STATE_MANAGED) {
+            if (this->space->state != SPACE_STATE_STOPPING_WORLD) {
+                this->state = THREAD_STATE_STOPPING;
+                this->space->stopTheWorldCV.notify_one();
+
+                // Wait for GC to start to stop the world
+                do {
+                    std::unique_lock lk(globalMutex);
+                    this->space->restartTheWorldCV.wait(lk);
+                } while (this->space->state != SPACE_STATE_WORLD_TO_STOP);
+
+                this->state = THREAD_STATE_STOPPED;
+                // Wait for GC to complete
+                do {
+                    std::unique_lock lk(globalMutex);
+                    this->space->restartTheWorldCV.wait(lk);
+                } while (this->space->state != SPACE_STATE_RUNNING);
+
+                this->state = THREAD_STATE_MANAGED;
+            }
+        }
+    }
 
     if (!this->freeCells) {
         this->freeCells = (BigCell *) this->space->getFreeCells();

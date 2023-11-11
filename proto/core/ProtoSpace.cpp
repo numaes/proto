@@ -79,7 +79,46 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
     // Stop the world
     // Wait till all managed threads join the stopped state
     // After stopping the world, no managed thread is changing its state
-    // TODO
+    
+    space->state = SPACE_STATE_STOPPING_WORLD;
+    while (space->state == SPACE_STATE_STOPPING_WORLD) {
+        std::unique_lock lk(globalMutex);
+        space->stopTheWorldCV.wait(lk);
+
+        int allStoping = TRUE;
+        for (unsigned n = 0; n < space->threads->count; n++) {
+            ProtoThread *t = (ProtoThread *) space->threads->getAt(&gcContext, n);
+
+            // Be sure no thread is still in managed state
+            if (t->state == THREAD_STATE_MANAGED) {
+                allStoping = FALSE;
+                break;
+            }
+        }
+        if (allStoping)
+            space->state = SPACE_STATE_WORLD_TO_STOP;
+    }
+
+    space->restartTheWorldCV.notify_all();
+
+    while (space->state == SPACE_STATE_WORLD_TO_STOP) {
+        std::unique_lock lk(globalMutex);
+        space->stopTheWorldCV.wait(lk);
+
+        int allStopped = TRUE;
+        for (unsigned n = 0; n < space->threads->count; n++) {
+            ProtoThread *t = (ProtoThread *) space->threads->getAt(&gcContext, n);
+
+            if (t->state != THREAD_STATE_STOPPED) {
+                allStopped = FALSE;
+                break;
+            }
+        }
+        if (allStopped)
+            space->state = SPACE_STATE_WORLD_STOPPED;
+
+        space->restartTheWorldCV.notify_all();
+    }
 
     // cellSet: a set of all referenced Cells
 
@@ -130,7 +169,8 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
     }
 
     // Free the world. Let them run
-    // TODO
+    space->state = SPACE_STATE_RUNNING;
+    space->restartTheWorldCV.notify_all();
 
     // Deep Scan all indirect roots. Deep traversal of cellSet
     cellSet->processValues(context, cellSet, gcCollectObjects);
@@ -176,7 +216,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
     space->freeSegments = newList;
 
     space->gcLock.store(FALSE);
-}
+};
 
 void gcThreadLoop(ProtoSpace *space) {
     ProtoContext gcContext;
@@ -188,9 +228,7 @@ void gcThreadLoop(ProtoSpace *space) {
         else
             std::this_thread::sleep_for(std::chrono::milliseconds(GC_SLEEP_MILLISECONDS));
     }
-
-    std::this_thread::yield();
-}
+};
 
 ProtoSpace::ProtoSpace() {
     Cell *firstCell = this->getFreeCells();
@@ -261,16 +299,6 @@ ProtoSpace::~ProtoSpace() {
 
     this->gcThread->join();
 };
-
-void ProtoSpace::synchGC(ProtoThread *currentThread) {
-    if (this->state != SPACE_STATE_RUNNING && currentThread->state == THREAD_STATE_MANAGED) {
-        while (this->state != SPACE_STATE_RUNNING) {
-            currentThread->state = THREAD_STATE_STOPPED;
-            this->stopTheWorldCV->wait();
-            currentThread->state = THREAD_STATE_MANAGED;
-        }
-    }
-}
 
 void ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread) {
     BOOLEAN oldValue = FALSE;

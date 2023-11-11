@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <atomic>
 #include <thread>
+#include <mutex>
 #include <condition_variable>
 
 
@@ -103,11 +104,13 @@ namespace proto {
 
 #define SPACE_STATE_RUNNING			(0x0)
 #define SPACE_STATE_STOPPING_WORLD  (0x1)
-#define SPACE_STATE_WORLD_STOPPED   (0x2)
+#define SPACE_STATE_WORLD_TO_STOP   (0x2)
+#define SPACE_STATE_WORLD_STOPPED   (0x3)
 
 #define THREAD_STATE_MANAGED        (0x0)
 #define THREAD_STATE_UNMANAGED      (0x1)
-#define THREAD_STATE_STOPPED        (0x2)
+#define THREAD_STATE_STOPPING       (0x3)
+#define THREAD_STATE_STOPPED        (0x3)
 
 class ProtoContext;
 class ProtoObject;
@@ -182,6 +185,8 @@ public:
 	ProtoObject 	*newMutable(ProtoObject *value=PROTO_NONE);
 };
 
+std::mutex		globalMutex;
+
 class ProtoSpace {
 public:
 	ProtoSpace();
@@ -215,7 +220,6 @@ public:
 	Cell 		*getFreeCells();
 	void 		analyzeUsedCells(Cell *cellsChain);
 	void 		deallocMemory();
-	void		synchGC(ProtoThread *currentThread);
 
 	// TODO Should it be a dictionary to access threads by name?
 	ProtoList			*threads;
@@ -231,6 +235,8 @@ public:
 	int					 state;
 	std::thread::id		 mainThreadId;
 	std::thread			*gcThread;
+	std::condition_variable stopTheWorldCV;
+	std::condition_variable restartTheWorldCV;
 };
 
 class ProtoObject {
