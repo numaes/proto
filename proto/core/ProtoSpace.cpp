@@ -17,13 +17,6 @@ using namespace std;
 
 namespace proto {
 
-
-#define BLOCKS_PER_ALLOCATION           1024
-#define BLOCKS_PER_MALLOC_REQUEST       8 * BLOCKS_PER_ALLOCATION
-
-#define SPACE_STATE_RUNNING             0
-#define SPACE_STATE_ENDING              1
-
 #define GC_SLEEP_MILLISECONDS           1000
 
 void gcCollectCells(ProtoContext *context, void *self, Cell *value) {
@@ -356,36 +349,11 @@ Cell *ProtoSpace::getFreeCells(){
             unsigned n = 0;
             while (n < (sizeof(BigCell) / sizeof(void *)))
                 *p++ = NULL;
-        }    
-        else {
-            if (this->blocksInCurrentSegment <= 0) {
-                // Get a new segment from OS
-                newBlocks = (Cell *) malloc(sizeof(BigCell) * BLOCKS_PER_MALLOC_REQUEST);
-                if (!newBlocks) {
-                    printf("\nPANIC ERROR: Not enough MEMORY! Exiting ...\n");
-                    exit(1);
-                }
 
-                // Clear new allocated blocks
-                void **p =(void **) newBlocks;
-                unsigned n = 0;
-                while (n++ < (BLOCKS_PER_MALLOC_REQUEST * sizeof(BigCell) / sizeof(void *)))
-                    *p++ = NULL;
-
-                newSegment = new AllocatedSegment();
-                newSegment->memoryBlock = (BigCell *) newBlocks;
-                newSegment->cellsCount = BLOCKS_PER_MALLOC_REQUEST;
-                newSegment->nextBlock = this->segments;
-
-                this->segments = newSegment;
-                this->blocksInCurrentSegment = BLOCKS_PER_MALLOC_REQUEST;
-            }
-
-            newBlock = &(this->segments->memoryBlock[
-                this->segments->cellsCount - this->blocksInCurrentSegment--]);
+            freeBlocks = newBlock;
         }
-
-        freeBlocks = newBlock;
+        else
+            break;
     }
 
     this->gcLock.store(FALSE);
