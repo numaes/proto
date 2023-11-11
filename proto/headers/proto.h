@@ -143,10 +143,10 @@ class ProtoContext {
 public:
 	ProtoContext(
 		ProtoContext *previous = NULL,
-		ProtoSpace *space = NULL,
 		void *localsBase = NULL,
 		unsigned int localsCount = 0, 
-		ProtoThread *thread = NULL
+		ProtoThread *thread = NULL,
+		ProtoSpace *space = NULL
 	);
 
 	~ProtoContext();
@@ -215,7 +215,7 @@ public:
 	Cell 		*getFreeCells();
 	void 		analyzeUsedCells(Cell *cellsChain);
 	void 		deallocMemory();
-	void		synchGC();
+	void		synchGC(ProtoThread *currentThread);
 
 	// TODO Should it be a dictionary to access threads by name?
 	ProtoList			*threads;
@@ -720,6 +720,9 @@ public:
 	void 		join(ProtoContext *context);
 	void		exit(ProtoContext *context); // ONLY for current thread!!!
 
+	void		setManaged();
+	void		setUnmanaged();
+
 	// Apply method recursivelly to all referenced objects, except itself
     void 	processReferences(
 		ProtoContext *context, 
@@ -739,6 +742,8 @@ public:
 	BigCell				*freeCells;
 	ProtoContext		*firstContext;
 	ProtoContext		*currentContext;
+	unsigned int		state;
+	int					unmanagedCount;
 };
 
 // Used just to compute the number of bytes needed for a Cell at allocation time

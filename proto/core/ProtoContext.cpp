@@ -60,10 +60,10 @@ std::atomic<LiteralDictionary *> literalRoot(
 
 ProtoContext::ProtoContext(
 		ProtoContext *previous = NULL,
-		ProtoSpace *space = NULL,
 		void *localsBase = NULL,
 		unsigned int localsCount = 0, 
-		ProtoThread *thread = NULL
+		ProtoThread *thread = NULL,
+		ProtoSpace *space = NULL
 ) {
     this->previous = previous;
     if (previous) {
@@ -85,7 +85,35 @@ ProtoContext::ProtoContext(
 
 ProtoContext::~ProtoContext() {
     if (this->previous && this->space && this->lastAllocatedCell) {
-        this->space->analyzeUsedCells(lastAllocatedCell);
+        Cell *firstCell = this->lastAllocatedCell;
+        Cell *c = firstCell;
+        ProtoObjectPointer p;
+        p.oid.oid = this->returnValue;
+
+        if (this->returnValue && p.op.pointer_tag == POINTER_TAG_CELL) {
+            Cell *previousCell = NULL;
+
+            // Remove returnValue from list of allocated cell for the context
+
+            while (c) {
+                if (c == p.cell.cell) {
+                    if (previousCell)
+                        previousCell->nextCell = c->nextCell;
+                    else
+                        firstCell = c->nextCell;
+
+                    // Move returnValue to the previous context
+                    c->nextCell = this->previous->lastAllocatedCell;
+                    this->previous->lastAllocatedCell = c;
+                }
+            }
+        }
+
+        // Send the list of allocated Cells to GC to analysis
+
+        if (firstCell)
+            this->space->analyzeUsedCells(firstCell);
+
     }
 };
 
@@ -94,9 +122,8 @@ Cell *ProtoContext::allocCell(){
         return this->thread->allocCell();
     else {
         // Assume the only context without thread is the Literal creation,
-        // so use global pool for cells
+        // so use the literal global pool for cells
 
-        // Get literalLock
         Cell *newCell;
         BOOLEAN currentLock = FALSE;
 

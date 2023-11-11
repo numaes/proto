@@ -671,7 +671,7 @@ void test_protomethod(ProtoContext *previousContext, int par1=0) {
         ProtoObject * p3;
         ProtoObject * p4;
     } locals;
-    ProtoContext localContext(previousContext, previousContext->space,  &locals, sizeof(locals) / sizeof(ProtoObjectPointer));
+    ProtoContext localContext(previousContext, &locals, sizeof(locals) / sizeof(ProtoObjectPointer));
 }
 
 BOOLEAN test_protoSpace() {

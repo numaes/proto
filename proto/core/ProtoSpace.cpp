@@ -77,6 +77,8 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
     ProtoContext gcContext(context); 
 
     // Stop the world
+    // Wait till all managed threads join the stopped state
+    // After stopping the world, no managed thread is changing its state
     // TODO
 
     // cellSet: a set of all referenced Cells
@@ -127,7 +129,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
         }
     }
 
-    // Free the world
+    // Free the world. Let them run
     // TODO
 
     // Deep Scan all indirect roots. Deep traversal of cellSet
@@ -205,21 +207,13 @@ ProtoSpace::ProtoSpace() {
 
     ProtoContext creationContext(
         NULL,
-        this,
         NULL,
         0,
-        firstThread
+        firstThread,
+        this
     );
 
     this->mainThreadId = std::this_thread::get_id();
-
-    ProtoObject *threadName = creationContext.literalFromUTF8String((char *) "Main thread");
-    firstThread->name = threadName;
-    this->threads = (new(&creationContext) ProtoList(
-        &creationContext,
-        firstThread
-    ))->appendFirst(&creationContext, firstThread);
-
 
     this->mutableLock.store(FALSE);
     this->threadsLock.store(FALSE);
@@ -229,6 +223,13 @@ ProtoSpace::ProtoSpace() {
         (void (*)(ProtoSpace *)) (&gcThreadLoop), 
         this
     );
+
+    ProtoObject *threadName = creationContext.literalFromUTF8String((char *) "Main thread");
+    firstThread->name = threadName;
+    this->threads = (new(&creationContext) ProtoList(
+        &creationContext,
+        firstThread
+    ))->appendFirst(&creationContext, firstThread);
 };
 
 void scanThreads(ProtoContext *context, void *self, ProtoObject *value) {
