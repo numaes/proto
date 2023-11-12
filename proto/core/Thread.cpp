@@ -124,7 +124,9 @@ Cell *ProtoThread::allocCell() {
     this->freeCells = (BigCell *) newCell->nextCell;
 
     // Add it to current working set
+    newCell->nextCell = this->context->lastAllocatedCell->nextCell;
     this->context->lastAllocatedCell = newCell;
+    this->context->allocatedCellsCount += 1;
 
     return newCell;
 };
