@@ -224,6 +224,8 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
 void gcThreadLoop(ProtoSpace *space) {
     ProtoContext gcContext;
 
+    space->gcCV.notify_one();
+
     while (space->state != SPACE_STATE_RUNNING) {
         std::unique_lock<std::mutex> lk(globalMutex);
 
@@ -262,10 +264,17 @@ ProtoSpace::ProtoSpace() {
     this->threadsLock.store(FALSE);
     this->gcLock.store(FALSE);
     this->mutableRoot.store(new(&creationContext) IdentityDict(&creationContext));
+
+    // Create GC thread and ensure it is working
     this->gcThread = new std::thread(
         (void (*)(ProtoSpace *)) (&gcThreadLoop), 
         this
     );
+    {
+        std::unique_lock<std::mutex> lk(globalMutex);
+        this->gcCV.wait(lk);
+    }
+
     this->maxAllocatedCellsPerContext = MAX_ALLOCATED_CELLS_PER_CONTEXT;
     this->blocksPerAllocation = BLOCKS_PER_ALLOCATION;
     this->heapSize = 0;
