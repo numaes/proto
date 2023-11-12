@@ -50,10 +50,10 @@ std::atomic<BOOLEAN> literalMutex(FALSE);
 
 BigCell *literalFreeCells = NULL;
 unsigned   literalFreeCellsIndex = 0;
-ProtoContext literalContext;
+ProtoContext globalContext;
 std::atomic<LiteralDictionary *> literalRoot(
-    new(&literalContext) LiteralDictionary(
-            &literalContext, (ProtoList *) NULL, 
+    new(&globalContext) LiteralDictionary(
+            &globalContext, (ProtoList *) NULL, 
             (LiteralDictionary *) NULL, (LiteralDictionary *) NULL));
 
 #define BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL 1024U
@@ -333,7 +333,7 @@ ProtoObject *ProtoContext::literalFromUTF8String(char *zeroTerminatedUtf8String)
         if (currentLiteral != PROTO_NONE)
             return currentLiteral;
 
-        literalString = new(&literalContext) ProtoList(&literalContext);
+        literalString = new(&globalContext) ProtoList(&globalContext);
         char *currentChar = zeroTerminatedUtf8String;
         while (*currentChar) {
             ProtoObject *protoChar = this->fromUTF8Char(currentChar);
@@ -348,7 +348,7 @@ ProtoObject *ProtoContext::literalFromUTF8String(char *zeroTerminatedUtf8String)
                 currentChar += 3;
             else if (( currentChar[0] & 0xF8 ) == 0xF0 )
                 currentChar += 4;
-            literalString = literalString->appendLast(&literalContext, protoChar);
+            literalString = literalString->appendLast(&globalContext, protoChar);
         }
 
         newRoot = currentRoot->set(literalString);
@@ -418,15 +418,15 @@ ProtoThread *ProtoContext::getCurrentThread() {
 }
 
 int compareStrings(ProtoList *string1, ProtoList *string2) {
-    int string1Size = string1->getSize(&literalContext);
-    int string2Size = string2->getSize(&literalContext);
+    int string1Size = string1->getSize(&globalContext);
+    int string2Size = string2->getSize(&globalContext);
 
     int i;
     for (i = 0; i <= string1Size && i <= string2Size; i++) {
         ProtoObjectPointer string1Char;
-        string1Char.oid.oid = string1->getAt(&literalContext, i);
+        string1Char.oid.oid = string1->getAt(&globalContext, i);
         ProtoObjectPointer string2Char;
-        string2Char.oid.oid = string2->getAt(&literalContext, i);
+        string2Char.oid.oid = string2->getAt(&globalContext, i);
 
         if (string1Char.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE || 
             string1Char.op.embedded_type != EMBEDED_TYPE_UNICODECHAR)
@@ -564,14 +564,14 @@ int getBalance(LiteralDictionary *self) {
 // See the diagram given above.
 LiteralDictionary *rightRotate(LiteralDictionary *n)
 {
-    LiteralDictionary *newRight = new(&literalContext) LiteralDictionary(
-        &literalContext,
+    LiteralDictionary *newRight = new(&globalContext) LiteralDictionary(
+        &globalContext,
         n->key,
         n->previous->next,
         n->next
     );
-    return new(&literalContext) LiteralDictionary(
-        &literalContext,
+    return new(&globalContext) LiteralDictionary(
+        &globalContext,
         n->previous->key,
         n->previous->previous,
         newRight
@@ -581,14 +581,14 @@ LiteralDictionary *rightRotate(LiteralDictionary *n)
 // A utility function to left rotate subtree rooted with x
 // See the diagram given above.
 LiteralDictionary *leftRotate(LiteralDictionary *n) {
-    LiteralDictionary *newLeft = new(&literalContext) LiteralDictionary(
-        &literalContext,
+    LiteralDictionary *newLeft = new(&globalContext) LiteralDictionary(
+        &globalContext,
         n->key,
         n->previous,
         n->next->previous
     );
-    return new(&literalContext) LiteralDictionary(
-        &literalContext,
+    return new(&globalContext) LiteralDictionary(
+        &globalContext,
         n->next->key,
         newLeft,
         n->next->next
@@ -614,8 +614,8 @@ LiteralDictionary *rebalance(LiteralDictionary *newNode) {
             // Left Right Case
             else {
                 if (balance < 0 && getBalance(newNode->previous) > 0) {
-                    newNode = new(&literalContext) LiteralDictionary(
-                        &literalContext,
+                    newNode = new(&globalContext) LiteralDictionary(
+                        &globalContext,
                         newNode->key,
                         leftRotate(newNode->previous),
                         newNode->next
@@ -625,8 +625,8 @@ LiteralDictionary *rebalance(LiteralDictionary *newNode) {
                 else {
                     // Right Left Case
                     if (balance > 0 && getBalance(newNode->next) < 0) {
-                        newNode = new(&literalContext) LiteralDictionary(
-                            &literalContext,
+                        newNode = new(&globalContext) LiteralDictionary(
+                            &globalContext,
                             newNode->key,
                             newNode->previous,
                             rightRotate(newNode->next)
@@ -647,28 +647,28 @@ LiteralDictionary *LiteralDictionary::set(ProtoList *string) {
 
 	// Empty tree case
 	if (!this->key)
-        return new(&literalContext) LiteralDictionary(
-            &literalContext,
+        return new(&globalContext) LiteralDictionary(
+            &globalContext,
             key = string
         );
 
     cmp = compareStrings(string, this->key);
     if (cmp > 0) {
         if (this->next) {
-            newNode = new(&literalContext) LiteralDictionary(
-                &literalContext,
+            newNode = new(&globalContext) LiteralDictionary(
+                &globalContext,
                 key = this->key,
                 previous = this->previous,
                 next = this->next->set(string)
             );
         }
         else {
-            newNode = new(&literalContext) LiteralDictionary(
-                &literalContext,
+            newNode = new(&globalContext) LiteralDictionary(
+                &globalContext,
                 key = this->key,
                 previous = this->previous,
-                next = new(&literalContext) LiteralDictionary(
-                    &literalContext,
+                next = new(&globalContext) LiteralDictionary(
+                    &globalContext,
                     key = this->key
                 )
             );
@@ -676,19 +676,19 @@ LiteralDictionary *LiteralDictionary::set(ProtoList *string) {
     }
     else if (cmp < 0) {
         if (this->previous) {
-            newNode = new(&literalContext) LiteralDictionary(
-                &literalContext,
+            newNode = new(&globalContext) LiteralDictionary(
+                &globalContext,
                 key = this->key,
                 previous = this->previous->set(string),
                 next = this->next
             );
         }
         else {
-            newNode = new(&literalContext) LiteralDictionary(
-                &literalContext,
+            newNode = new(&globalContext) LiteralDictionary(
+                &globalContext,
                 key = this->key,
-                previous = new(&literalContext) LiteralDictionary(
-                    &literalContext,
+                previous = new(&globalContext) LiteralDictionary(
+                    &globalContext,
                     key = this->key
                 ),
                 next = this->next
