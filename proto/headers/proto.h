@@ -143,6 +143,77 @@ typedef ProtoObject *(*ProtoMethod)(
 	ProtoObject * 			// keywordParameters
 );
 
+// Base tree structure used by Dictionaries, Sets and Lists
+// Internal use exclusively
+
+union ProtoObjectPointer {
+	struct {
+		ProtoObject	*oid;
+	} oid;
+	
+	struct {
+		Cell *cell;
+	} cell;
+
+	struct {
+		unsigned long pointer_tag:3;
+		unsigned long embedded_type:5;
+		unsigned long value:56;
+	} op;
+
+	// Pointer tag dependent values
+	struct {
+		long pointer_tag:3;
+		long smallInteger:61;
+	} si;
+	struct {
+		unsigned long pointer_tag:3;
+		unsigned long smallDouble:61;
+	} sd;
+	struct {
+		unsigned long pointer_tag:3;
+		unsigned long mutableID:61;
+	} mutableObject;
+
+	// Embedded types dependent values
+	struct {
+		unsigned long pointer_tag:3;
+		unsigned long embedded_type:5;
+		unsigned long unicodeValue:32;
+	} unicodeChar;
+	struct {
+		unsigned long pointer_tag:3;
+		unsigned long embedded_type:5;
+		unsigned long booleanValue:1;
+	} booleanValue;
+	struct {
+		unsigned long pointer_tag:3;
+		unsigned long embedded_type:5;
+		unsigned long byteData:8;
+	} byteValue;
+
+	struct {
+		unsigned long pointer_tag:3;
+		unsigned long embedded_type:5;
+		unsigned long timestamp:56;
+	} timestampValue;
+
+	struct {
+		unsigned long pointer_tag:3;
+		unsigned long embedded_type:5;
+		unsigned long day:8;
+		unsigned long month:8;
+		unsigned long year:16;
+	} date;
+
+	struct {
+		long pointer_tag:3;
+		long embedded_type:5;
+		long timedelta:56;
+	} timedeltaValue;
+
+};
+
 class ProtoContext {
 public:
 	ProtoContext(
@@ -331,77 +402,6 @@ private:
 	Cell *p5;
 };
 
-
-// Base tree structure used by Dictionaries, Sets and Lists
-// Internal use exclusively
-
-union ProtoObjectPointer {
-	struct {
-		ProtoObject	*oid;
-	} oid;
-	
-	struct {
-		Cell *cell;
-	} cell;
-
-	struct {
-		unsigned long pointer_tag:3;
-		unsigned long embedded_type:5;
-		unsigned long value:56;
-	} op;
-
-	// Pointer tag dependent values
-	struct {
-		long pointer_tag:3;
-		long smallInteger:61;
-	} si;
-	struct {
-		unsigned long pointer_tag:3;
-		unsigned long smallDouble:61;
-	} sd;
-	struct {
-		unsigned long pointer_tag:3;
-		unsigned long mutableID:61;
-	} mutableObject;
-
-	// Embedded types dependent values
-	struct {
-		unsigned long pointer_tag:3;
-		unsigned long embedded_type:5;
-		unsigned long unicodeValue:32;
-	} unicodeChar;
-	struct {
-		unsigned long pointer_tag:3;
-		unsigned long embedded_type:5;
-		unsigned long booleanValue:1;
-	} booleanValue;
-	struct {
-		unsigned long pointer_tag:3;
-		unsigned long embedded_type:5;
-		unsigned long byteData:8;
-	} byteValue;
-
-	struct {
-		unsigned long pointer_tag:3;
-		unsigned long embedded_type:5;
-		unsigned long timestamp:56;
-	} timestampValue;
-
-	struct {
-		unsigned long pointer_tag:3;
-		unsigned long embedded_type:5;
-		unsigned long day:8;
-		unsigned long month:8;
-		unsigned long year:16;
-	} date;
-
-	struct {
-		long pointer_tag:3;
-		long embedded_type:5;
-		long timedelta:56;
-	} timedeltaValue;
-
-};
 
 // ParentPointers are chains of parent classes used to solve attribute access
 class ParentLink: public Cell {
