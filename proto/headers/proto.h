@@ -106,6 +106,7 @@ namespace proto {
 #define SPACE_STATE_STOPPING_WORLD  (0x1)
 #define SPACE_STATE_WORLD_TO_STOP   (0x2)
 #define SPACE_STATE_WORLD_STOPPED   (0x3)
+#define SPACE_STATE_ENDING          (0x4)
 
 #define THREAD_STATE_MANAGED        (0x0)
 #define THREAD_STATE_UNMANAGED      (0x1)
@@ -161,8 +162,10 @@ public:
 	Cell			*lastAllocatedCell;
 	ProtoObjectPointer *localsBase;
 	unsigned int	localsCount;
+	unsigned int	allocatedCellsCount;
 	
 	Cell 			*allocCell();
+	void			checkCellsCount();
 
 	// Constructors for base types, here to get the right context on invoke
 	ProtoObject 	*fromInteger(int value);
@@ -219,20 +222,23 @@ public:
 
 	Cell 		*getFreeCells();
 	void 		analyzeUsedCells(Cell *cellsChain);
-	void 		deallocMemory();
 
-	// TODO Should it be a dictionary to access threads by name?
+	// TODO Should it has a dictionary to access threads by name?
 	ProtoList			*threads;
+
+	Cell			 	*freeCells;
+	DirtySegment 		*dirtySegments;
+	int					 state;
+
+	unsigned int 		 maxAllocatedCellsPerContext;
+	int					 blocksPerAllocation;
+	int					 heapSize;
+	int 			     freeCellsCount;
 
 	std::atomic<Cell *>  mutableRoot;
 	std::atomic<BOOLEAN> mutableLock;
 	std::atomic<BOOLEAN> threadsLock;
-	int					 blocksInCurrentSegment;
-	AllocatedSegment 	*segments;
-	DirtySegment		*freeSegments;
-	DirtySegment 		*dirtySegments;
 	std::atomic<BOOLEAN> gcLock;
-	int					 state;
 	std::thread::id		 mainThreadId;
 	std::thread			*gcThread;
 	std::condition_variable stopTheWorldCV;

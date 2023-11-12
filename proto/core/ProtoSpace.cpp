@@ -18,6 +18,9 @@ using namespace std;
 namespace proto {
 
 #define GC_SLEEP_MILLISECONDS           1000
+#define BLOCKS_PER_ALLOCATION           1024
+#define BLOCKS_PER_MALLOC_REQUEST       8 * BLOCKS_PER_ALLOCATION
+#define MAX_ALLOCATED_CELLS_PER_CONTEXT 1024
 
 void gcCollectCells(ProtoContext *context, void *self, Cell *value) {
      ProtoObjectPointer p;
@@ -171,18 +174,23 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
     // Scan all blocks to analyze and if they are not referenced, free them
 
     Cell *freeBlocks = NULL;
+    Cell *firstBlock = NULL;
     int freeCount = 0;
     while (toAnalize) {
         Cell *block = toAnalize->cellChain;
 
         while (block) {
             Cell *nextCell = block->nextCell;
+
             if (!cellSet->has(&gcContext, (ProtoObject *) block)) {
                 block->~Cell();
 
                 void **p = (void **) block;
                 for (unsigned i = 0; i < sizeof(BigCell) / sizeof(void *); i++)
                     *p++ = NULL;
+
+                if (! firstBlock)
+                    firstBlock = block;
 
                 block->nextCell = freeBlocks;
                 freeBlocks = block;
@@ -191,22 +199,23 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
             block = nextCell;
         }
 
+        DirtySegment *segmentToFree = toAnalize;
         toAnalize = toAnalize->nextSegment;
+        delete segmentToFree;
     }
 
-    // Update space freeSegments
+    // Update space freeCells
     BOOLEAN oldValue = FALSE;
     while (space->gcLock.compare_exchange_strong(
         oldValue,
         TRUE
     )) std::this_thread::yield();
 
-
-    DirtySegment *newList = new DirtySegment;
-    newList->nextSegment = space->freeSegments;
-    newList->cellChain = (BigCell *) freeBlocks;
-
-    space->freeSegments = newList;
+    if (firstBlock)
+        firstBlock->nextCell = space->freeCells;
+    
+    space->freeCells = freeBlocks;
+    space->freeCellsCount += freeCount;
 
     space->gcLock.store(FALSE);
 };
@@ -254,6 +263,10 @@ ProtoSpace::ProtoSpace() {
         (void (*)(ProtoSpace *)) (&gcThreadLoop), 
         this
     );
+    this->maxAllocatedCellsPerContext = MAX_ALLOCATED_CELLS_PER_CONTEXT;
+    this->blocksPerAllocation = BLOCKS_PER_ALLOCATION;
+    this->heapSize = 0;
+    this->freeCellsCount = 0;
 
     ProtoObject *threadName = creationContext.literalFromUTF8String((char *) "Main thread");
     firstThread->name = threadName;
@@ -336,24 +349,48 @@ Cell *ProtoSpace::getFreeCells(){
     )) std::this_thread::yield();
 
     for (int i=0; i < BLOCKS_PER_ALLOCATION; i++) {
-        if (this->freeSegments) {
-            Cell *nextBlock = this->freeSegments->cellChain->nextCell;
-            newBlock = this->freeSegments->cellChain;
-            if (nextBlock)
-                this->freeSegments->cellChain = (BigCell *) nextBlock;
-            else {
-                this->freeSegments = this->freeSegments->nextSegment;
+        if (! this->freeCells) {
+            // Alloc from OS
+            // TODO: Limit the amount of RAM to ask to the OS per space
+            // TODO: Record in space the total amount of RAM requested for Heap
+            // TODO: Make the number of cells to be requested to the OS configurable per space
+            // TODO: Make the number of cells returned to thread per request configurable per space
+
+            BigCell *newBlocks = (BigCell *) malloc(sizeof(BigCell) * this->blocksPerAllocation);
+            if (!newBlocks) {
+                printf("\nPANIC ERROR: Not enough MEMORY! Exiting ...\n");
+                std::exit(1);
             }
 
-            void **p =(void **) newBlock;
-            unsigned n = 0;
-            while (n < (sizeof(BigCell) / sizeof(void *)))
-                *p++ = NULL;
+            BigCell *currentBlock = newBlocks;
+            Cell *lastBlock = this->freeCells;
+            for (int n = 0; n < this->blocksPerAllocation; n++) {
+                // Clear new allocated block
+                void **p =(void **) newBlocks;
+                for (int count = 0;
+                    count < sizeof(BigCell) / sizeof(void *);
+                    count++)
+                    *p++ = NULL;
 
-            freeBlocks = newBlock;
+                // Chain new blocks as a list
+                currentBlock->nextCell = lastBlock;
+                lastBlock = currentBlock++;
+            }
+
+            this->freeCells = newBlocks;
+
+            this->heapSize += sizeof(BigCell) * this->blocksPerAllocation;
+            this->freeCellsCount += this->blocksPerAllocation;
         }
-        else
-            break;
+
+        if (this->freeCells) {
+            newBlock = this->freeCells->nextCell;
+            this->freeCells = newBlock->nextCell;
+
+            this->freeCellsCount -= 1;
+            newBlock->nextCell = newBlocks;
+            newBlocks = newBlock;
+        }
     }
 
     this->gcLock.store(FALSE);
@@ -376,20 +413,6 @@ void ProtoSpace::analyzeUsedCells(Cell *cellsChain) {
     this->dirtySegments = newChain;
 
     this->gcLock.store(FALSE);
-};
-
-void ProtoSpace::deallocMemory(){
-    AllocatedSegment *nextSegment, *currentSegment = this->segments;
-
-    while (currentSegment) {
-        if (currentSegment->memoryBlock)
-            free(currentSegment->memoryBlock);
-        nextSegment = currentSegment->nextBlock;
-        free(currentSegment);
-        currentSegment = nextSegment;
-    }
-    this->segments = NULL;
-    this->blocksInCurrentSegment = 0;
 };
 
 };

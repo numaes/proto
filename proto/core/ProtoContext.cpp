@@ -79,6 +79,7 @@ ProtoContext::ProtoContext(
     this->lastAllocatedCell = NULL;
     this->localsBase = (ProtoObjectPointer *) localsBase;
     this->localsCount = localsCount;
+    this->allocatedCellsCount = 0;
  
     this->thread->currentContext = this;
  };
@@ -117,9 +118,20 @@ ProtoContext::~ProtoContext() {
     }
 };
 
+void ProtoContext::checkCellsCount() {
+    if (this->allocatedCellsCount >= this->space->maxAllocatedCellsPerContext) {
+        this->space->analyzeUsedCells(this->lastAllocatedCell);
+        this->lastAllocatedCell = NULL;
+        this->allocatedCellsCount = 0;
+    }
+}
+
 Cell *ProtoContext::allocCell(){
-    if (this->thread)
-        return this->thread->allocCell();
+    if (this->thread) {
+        Cell *newCell = this->thread->allocCell();
+        this->allocatedCellsCount += 1;
+        return newCell;
+    }
     else {
         // Assume the only context without thread is the Literal creation,
         // so use the literal global pool for cells
