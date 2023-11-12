@@ -123,6 +123,7 @@ void ProtoContext::checkCellsCount() {
         this->space->analyzeUsedCells(this->lastAllocatedCell);
         this->lastAllocatedCell = NULL;
         this->allocatedCellsCount = 0;
+        this->space->triggerGC();
     }
 }
 

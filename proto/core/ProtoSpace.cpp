@@ -10,6 +10,7 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <thread>
+#include <chrono>
 #include <functional>
 #include <condition_variable>
 
@@ -223,12 +224,14 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
 void gcThreadLoop(ProtoSpace *space) {
     ProtoContext gcContext;
 
-    while (space->state == SPACE_STATE_RUNNING) {
+    while (space->state != SPACE_STATE_RUNNING) {
+        std::unique_lock<std::mutex> lk(globalMutex);
+
+        space->gcCV.wait_for(lk, std::chrono::milliseconds(space->gcSleepMilliseconds));
+
         if (space->dirtySegments) {
             gcScan(&gcContext, space);
         }
-        else
-            std::this_thread::sleep_for(std::chrono::milliseconds(GC_SLEEP_MILLISECONDS));
     }
 };
 
@@ -267,6 +270,7 @@ ProtoSpace::ProtoSpace() {
     this->blocksPerAllocation = BLOCKS_PER_ALLOCATION;
     this->heapSize = 0;
     this->freeCellsCount = 0;
+    this->gcSleepMilliseconds = GC_SLEEP_MILLISECONDS;
 
     ProtoObject *threadName = creationContext.literalFromUTF8String((char *) "Main thread");
     firstThread->name = threadName;
@@ -303,8 +307,14 @@ ProtoSpace::~ProtoSpace() {
         t->join(&finalContext);
     }
 
+    this->triggerGC();
+
     this->gcThread->join();
 };
+
+void ProtoSpace::triggerGC() {
+    this->gcCV.notify_all();
+}
 
 void ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread) {
     BOOLEAN oldValue = FALSE;

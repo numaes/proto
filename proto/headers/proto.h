@@ -293,6 +293,7 @@ public:
 
 	Cell 		*getFreeCells();
 	void 		analyzeUsedCells(Cell *cellsChain);
+	void		triggerGC();
 
 	// TODO Should it has a dictionary to access threads by name?
 	ProtoList			*threads;
@@ -305,6 +306,7 @@ public:
 	int					 blocksPerAllocation;
 	int					 heapSize;
 	int 			     freeCellsCount;
+	unsigned int		 gcSleepMilliseconds;
 
 	std::atomic<Cell *>  mutableRoot;
 	std::atomic<BOOLEAN> mutableLock;
@@ -314,6 +316,7 @@ public:
 	std::thread			*gcThread;
 	std::condition_variable stopTheWorldCV;
 	std::condition_variable restartTheWorldCV;
+	std::condition_variable gcCV;
 };
 
 class ProtoObject {
