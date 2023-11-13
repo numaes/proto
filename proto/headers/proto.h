@@ -291,7 +291,7 @@ public:
 	void allocThread(ProtoContext *context, ProtoThread *thread);
 	void deallocThread(ProtoContext *context, ProtoThread *thread);
 
-	Cell 		*getFreeCells();
+	Cell 		*getFreeCells(ProtoThread *currentThread);
 	void 		analyzeUsedCells(Cell *cellsChain);
 	void		triggerGC();
 
@@ -305,8 +305,10 @@ public:
 	unsigned int 		 maxAllocatedCellsPerContext;
 	int					 blocksPerAllocation;
 	int					 heapSize;
+	int					 maxHeapSize;
 	int 			     freeCellsCount;
 	unsigned int		 gcSleepMilliseconds;
+	int					 blockOnNoMemory;
 
 	std::atomic<Cell *>  mutableRoot;
 	std::atomic<BOOLEAN> mutableLock;
@@ -737,6 +739,7 @@ public:
 
 	void		setManaged();
 	void		setUnmanaged();
+	void		synchToGC();
 
 	// Apply method recursivelly to all referenced objects, except itself
     void 	processReferences(

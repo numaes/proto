@@ -23,6 +23,11 @@ namespace proto {
 #define BLOCKS_PER_MALLOC_REQUEST       8 * BLOCKS_PER_ALLOCATION
 #define MAX_ALLOCATED_CELLS_PER_CONTEXT 1024
 
+#define KB                              1024
+#define MB                              1024 * KB
+#define GB                              1024 * MB
+#define MAX_HEAP_SIZE                   256 * MB
+
 void gcCollectCells(ProtoContext *context, void *self, Cell *value) {
      ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) value;
@@ -238,7 +243,7 @@ void gcThreadLoop(ProtoSpace *space) {
 };
 
 ProtoSpace::ProtoSpace() {
-    Cell *firstCell = this->getFreeCells();
+    Cell *firstCell = this->getFreeCells(NULL);
     ProtoThread *firstThread = (ProtoThread *) firstCell;
     firstThread->freeCells = (BigCell *) firstCell->nextCell;
     firstThread->nextCell = NULL;
@@ -280,6 +285,9 @@ ProtoSpace::ProtoSpace() {
     this->heapSize = 0;
     this->freeCellsCount = 0;
     this->gcSleepMilliseconds = GC_SLEEP_MILLISECONDS;
+    this->maxHeapSize = MAX_HEAP_SIZE;
+    this->blockOnNoMemory = FALSE;
+
 
     ProtoObject *threadName = creationContext.literalFromUTF8String((char *) "Main thread");
     firstThread->name = threadName;
@@ -356,7 +364,7 @@ void ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *thread) {
     this->threadsLock.store(FALSE);
 };
 
-Cell *ProtoSpace::getFreeCells(){
+Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
     Cell *freeBlocks = NULL;
     Cell *newBlocks, *newBlock;
     AllocatedSegment *newSegment;
@@ -370,36 +378,59 @@ Cell *ProtoSpace::getFreeCells(){
     for (int i=0; i < BLOCKS_PER_ALLOCATION; i++) {
         if (! this->freeCells) {
             // Alloc from OS
-            // TODO: Limit the amount of RAM to ask to the OS per space
-            // TODO: Record in space the total amount of RAM requested for Heap
-            // TODO: Make the number of cells to be requested to the OS configurable per space
-            // TODO: Make the number of cells returned to thread per request configurable per space
 
-            BigCell *newBlocks = (BigCell *) malloc(sizeof(BigCell) * this->blocksPerAllocation);
-            if (!newBlocks) {
-                printf("\nPANIC ERROR: Not enough MEMORY! Exiting ...\n");
+            int toAllocBytes = sizeof(BigCell) * this->blocksPerAllocation;
+            if (this->maxHeapSize != 0 && !this->blockOnNoMemory && 
+                this->heapSize + toAllocBytes >= this->maxHeapSize) {
+                printf("\nPANIC ERROR: HEAP size will be bigger than configured maximun (%d is over %d bytes)! Exiting ...\n",
+                       this->heapSize + toAllocBytes, this->maxHeapSize
+                );
                 std::exit(1);
             }
 
-            BigCell *currentBlock = newBlocks;
-            Cell *lastBlock = this->freeCells;
-            for (int n = 0; n < this->blocksPerAllocation; n++) {
-                // Clear new allocated block
-                void **p =(void **) newBlocks;
-                for (int count = 0;
-                    count < sizeof(BigCell) / sizeof(void *);
-                    count++)
-                    *p++ = NULL;
+            if (this->maxHeapSize != 0 && this->blockOnNoMemory && 
+                this->heapSize + toAllocBytes >= this->maxHeapSize) {
+                while (!this->freeCells) {
+                    this->gcLock.store(FALSE);
 
-                // Chain new blocks as a list
-                currentBlock->nextCell = lastBlock;
-                lastBlock = currentBlock++;
+                    currentThread->synchToGC();
+
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+                    while (this->gcLock.compare_exchange_strong(
+                        oldValue,
+                        TRUE
+                    )) std::this_thread::yield();
+                }
             }
+            else {
+                BigCell *newBlocks = (BigCell *) malloc(toAllocBytes);
+                if (!newBlocks) {
+                    printf("\nPANIC ERROR: Not enough MEMORY! Exiting ...\n");
+                    std::exit(1);
+                }
 
-            this->freeCells = newBlocks;
+                BigCell *currentBlock = newBlocks;
+                Cell *lastBlock = this->freeCells;
+                int allocatedBlocks = toAllocBytes / sizeof(BigCell);
+                for (int n = 0; n < allocatedBlocks; n++) {
+                    // Clear new allocated block
+                    void **p =(void **) newBlocks;
+                    for (int count = 0;
+                        count < sizeof(BigCell) / sizeof(void *);
+                        count++)
+                        *p++ = NULL;
 
-            this->heapSize += sizeof(BigCell) * this->blocksPerAllocation;
-            this->freeCellsCount += this->blocksPerAllocation;
+                    // Chain new blocks as a list
+                    currentBlock->nextCell = lastBlock;
+                    lastBlock = currentBlock++;
+                }
+
+                this->freeCells = newBlocks;
+
+                this->heapSize += toAllocBytes;
+                this->freeCellsCount += allocatedBlocks;
+            }
         }
 
         if (this->freeCells) {

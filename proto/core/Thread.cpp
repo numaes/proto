@@ -78,31 +78,31 @@ void ProtoThread::exit(ProtoContext *context) {
     }
 };
 
-void synchToGC(ProtoThread *thread) {
-    if (thread->state == THREAD_STATE_MANAGED && 
-        thread->context->space->state != SPACE_STATE_RUNNING) {
+void ProtoThread::synchToGC() {
+    if (this->state == THREAD_STATE_MANAGED && 
+        this->context->space->state != SPACE_STATE_RUNNING) {
 
-        if (thread->state != SPACE_STATE_RUNNING && thread->state == THREAD_STATE_MANAGED) {
-            if (thread->space->state != SPACE_STATE_STOPPING_WORLD) {
-                thread->state = THREAD_STATE_STOPPING;
+        if (this->state != SPACE_STATE_RUNNING && this->state == THREAD_STATE_MANAGED) {
+            if (this->space->state != SPACE_STATE_STOPPING_WORLD) {
+                this->state = THREAD_STATE_STOPPING;
 
-                thread->space->stopTheWorldCV.notify_one();
+                this->space->stopTheWorldCV.notify_one();
 
                 // Wait for GC to start to stop the world
-                while (thread->space->state != SPACE_STATE_WORLD_TO_STOP) {
+                while (this->space->state != SPACE_STATE_WORLD_TO_STOP) {
                     std::unique_lock lk(globalMutex);
-                    thread->space->restartTheWorldCV.wait(lk);
+                    this->space->restartTheWorldCV.wait(lk);
                 };
 
-                thread->state = THREAD_STATE_STOPPED;
+                this->state = THREAD_STATE_STOPPED;
 
                 // Wait for GC to complete
-                while (thread->space->state != SPACE_STATE_RUNNING) {
+                while (this->space->state != SPACE_STATE_RUNNING) {
                     std::unique_lock lk(globalMutex);
-                    thread->space->restartTheWorldCV.wait(lk);
+                    this->space->restartTheWorldCV.wait(lk);
                 };
 
-                thread->state = THREAD_STATE_MANAGED;
+                this->state = THREAD_STATE_MANAGED;
             }
         }
     }
@@ -113,8 +113,8 @@ Cell *ProtoThread::allocCell() {
     Cell *newCell;
 
     if (!this->freeCells) {
-        synchToGC(this);
-        this->freeCells = (BigCell *) this->space->getFreeCells();
+        this->synchToGC();
+        this->freeCells = (BigCell *) this->space->getFreeCells(this);
     }
 
     this->context->checkCellsCount();
