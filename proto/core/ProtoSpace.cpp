@@ -229,6 +229,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
 void gcThreadLoop(ProtoSpace *space) {
     ProtoContext gcContext;
 
+    space->gcStarted = TRUE;
     space->gcCV.notify_one();
 
     while (space->state != SPACE_STATE_RUNNING) {
@@ -270,16 +271,6 @@ ProtoSpace::ProtoSpace() {
     this->gcLock.store(FALSE);
     this->mutableRoot.store(new(&creationContext) IdentityDict(&creationContext));
 
-    // Create GC thread and ensure it is working
-    this->gcThread = new std::thread(
-        (void (*)(ProtoSpace *)) (&gcThreadLoop), 
-        this
-    );
-    {
-        std::unique_lock<std::mutex> lk(globalMutex);
-        this->gcCV.wait(lk);
-    }
-
     this->maxAllocatedCellsPerContext = MAX_ALLOCATED_CELLS_PER_CONTEXT;
     this->blocksPerAllocation = BLOCKS_PER_ALLOCATION;
     this->heapSize = 0;
@@ -287,7 +278,18 @@ ProtoSpace::ProtoSpace() {
     this->gcSleepMilliseconds = GC_SLEEP_MILLISECONDS;
     this->maxHeapSize = MAX_HEAP_SIZE;
     this->blockOnNoMemory = FALSE;
+    this->gcStarted = FALSE;
 
+    // Create GC thread and ensure it is working
+    this->gcThread = new std::thread(
+        (void (*)(ProtoSpace *)) (&gcThreadLoop), 
+        this
+    );
+
+    while (!this->gcStarted) {
+        std::unique_lock<std::mutex> lk(globalMutex);
+        this->gcCV.wait_for(lk, 100ms);
+    }
 
     ProtoObject *threadName = creationContext.literalFromUTF8String((char *) "Main thread");
     firstThread->name = threadName;

@@ -319,6 +319,7 @@ public:
 	std::condition_variable stopTheWorldCV;
 	std::condition_variable restartTheWorldCV;
 	std::condition_variable gcCV;
+	int					 gcStarted;
 };
 
 class ProtoObject {
