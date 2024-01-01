@@ -179,7 +179,8 @@ Cell *ProtoContext::allocCell(){
 ProtoObject *ProtoContext::fromInteger(int value) {
     ProtoObjectPointer p;
     p.oid.oid = NULL;
-    p.si.pointer_tag = POINTER_TAG_SMALLINT;
+    p.si.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
+    p.si.embedded_type = EMBEDED_TYPE_SMALLINT;
     p.si.smallInteger = value;
 
     return p.oid.oid; 
@@ -188,7 +189,8 @@ ProtoObject *ProtoContext::fromInteger(int value) {
 ProtoObject *ProtoContext::fromDouble(double value) {
     ProtoObjectPointer p;
     p.oid.oid = NULL;
-    p.op.pointer_tag = POINTER_TAG_SMALLDOUBLE;
+    p.si.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
+    p.si.embedded_type = EMBEDED_TYPE_SMALLDOUBLE;
 
     union {
         unsigned long lv;
@@ -235,6 +237,76 @@ ProtoObject *ProtoContext::fromUTF8Char(char *utf8OneCharString) {
     return p.oid.oid; 
 };
 
+
+
+ProtoList *ProtoContext::newList() {
+    ProtoList *list = new(this) ProtoList(this->lastAllocatedCell);
+    return list;
+}
+
+ProtoTuple *ProtoContext::newTuple() {
+    ProtoTuple *tuple = new(this) ProtoTuple(this->lastAllocatedCell);
+    return tuple;
+}
+
+ProtoTuple *createIndirectTuples(ProtoContext *context, ProtoList *list) {
+
+}
+
+ProtoTuple *ProtoContext::tupleFromList(ProtoList *list) {
+    unsigned long size = list->getSize(this);
+
+    ProtoObject *data[TUPLE_ATOM_SIZE];
+
+    for (int i = 0; i < TUPLE_ATOM_SIZE; i++)
+        if (i < size)
+            data[i] = list->getAt(this, 0);
+
+    if (size < TUPLE_ATOM_SIZE) {
+        return new(this) ProtoTuple(
+            this->lastAllocatedCell,
+            size,
+            NULL,
+            data);
+    }
+    else {
+        ProtoList *restOfList = list->getSlice(this, TUPLE_ATOM_SIZE, -1);
+        ProtoTuple *indirect = createIndirectTuples(this, restOfList);
+
+        return new(this) ProtoTuple(
+            this->lastAllocatedCell,
+            size,
+            indirect,
+            data);
+
+    }
+
+}
+
+ProtoString *ProtoContext::fromUTF8String(char *zeroTerminatedUtf8String) {
+    char *currentChar = zeroTerminatedUtf8String;
+    ProtoList *string = new(this) ProtoList(this->lastAllocatedCell);
+
+    while (*currentChar) {
+        ProtoObject *oneChar = this->fromUTF8Char(currentChar);
+        if (( currentChar[0] & 0x80 ) == 0 )
+            // 0000 0000-0000 007F | 0xxxxxxx
+            currentChar += 1;
+        else if (( currentChar[0] & 0xE0 ) == 0xC0 )
+            // 0000 0080-0000 07FF | 110xxxxx 10xxxxxx
+            currentChar += 2;
+        else if (( currentChar[0] & 0xF0 ) == 0xE0 ) 
+            // 0000 0800-0000 FFFF | 1110xxxx 10xxxxxx 10xxxxxx
+            currentChar += 3;
+        else if (( currentChar[0] & 0xF8 ) == 0xF0 )
+            currentChar += 4;
+
+        string = string->appendLast(this, oneChar);    
+    }
+
+    return (ProtoString *) this->tupleFromList(string);
+};
+
 ProtoObject *ProtoContext::fromDate(unsigned year, unsigned month, unsigned day) {
     ProtoObjectPointer p;
     p.oid.oid = NULL;
@@ -265,30 +337,6 @@ ProtoObject *ProtoContext::fromTimeDelta(long timedelta) {
     p.timedeltaValue.timedelta = timedelta;
 
     return p.oid.oid; 
-};
-
-ProtoObject *ProtoContext::fromUTF8String(char *zeroTerminatedUtf8String) {
-    char *currentChar = zeroTerminatedUtf8String;
-    ProtoList *string = new(this) ProtoList(this);
-
-    while (*currentChar) {
-        ProtoObject *oneChar = this->fromUTF8Char(currentChar);
-        if (( currentChar[0] & 0x80 ) == 0 )
-            // 0000 0000-0000 007F | 0xxxxxxx
-            currentChar += 1;
-        else if (( currentChar[0] & 0xE0 ) == 0xC0 )
-            // 0000 0080-0000 07FF | 110xxxxx 10xxxxxx
-            currentChar += 2;
-        else if (( currentChar[0] & 0xF0 ) == 0xE0 ) 
-            // 0000 0800-0000 FFFF | 1110xxxx 10xxxxxx 10xxxxxx
-            currentChar += 3;
-        else if (( currentChar[0] & 0xF8 ) == 0xF0 )
-            currentChar += 4;
-
-        string = string->appendLast(this, oneChar);    
-    }
-
-    return string;
 };
 
 ProtoObject *ProtoContext::fromMethod(ProtoObject *self, ProtoMethod method) {
