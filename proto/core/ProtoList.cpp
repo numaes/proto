@@ -20,21 +20,12 @@ ProtoList::ProtoList(
     ProtoContext *context,
 
     ProtoObject *value,
-    ProtoList *previous,
-    ProtoList *next
-) : Cell(
-    context,
-    type = CELL_TYPE_PROTO_LIST,
-    height = 1 + max(previous? previous->height : 0, next? next->height : 0),
-    count = (value? 1: 0) + (previous? previous->count : 0) + (next? next->count : 0)
-) {
+    ProtoList *previous = NULL,
+    ProtoList *next = NULL
+) : Cell(context) {
     this->value = value;
     this->previous = previous;
     this->next = next;
-    this->hash = context->fromInteger(
-        (((long) value) ^ 
-         (previous? (long) previous->hash : 0L) ^ 
-         (next? (long) next->hash : 0L)));
 };
 
 ProtoList::~ProtoList() {
@@ -656,74 +647,7 @@ ProtoList *ProtoList::removeSlice(ProtoContext *context, int from, int to) {
     return slice;
 };
 
-int ProtoList::fillUTF8Buffer(ProtoContext *context, char *buffer, size_t size) {
-    char singleCharBuffer[5];
-
-    unsigned fillCount = 0;
-    unsigned index = 0;
-
-    while (fillCount < size) {
-        ProtoObject *unicodeChar = this->getAt(context, index);
-        size_t unicodeCharSize;
-
-        ProtoObjectPointer p;
-        p.oid.oid = unicodeChar;
-        if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
-            p.op.embedded_type == EMBEDED_TYPE_UNICODECHAR) {
-
-            if (p.unicodeChar.unicodeValue <= 0x7f) {
-                singleCharBuffer[0] = (char) p.unicodeChar.unicodeValue;
-                singleCharBuffer[1] = 0;
-                unicodeCharSize = 1;
-            }
-            else {
-                if (p.unicodeChar.unicodeValue >= 0x80 &&
-                    p.unicodeChar.unicodeValue <= 0x7ff) {
-                    long u = p.unicodeChar.unicodeValue - 0x80;
-                    singleCharBuffer[0] = (char) (u >> 6) & 0x07;
-                    singleCharBuffer[1] = (char) u & 0x3F;
-                    singleCharBuffer[2] = 0;
-                    unicodeCharSize = 2;
-                }
-                else {
-                    if (p.unicodeChar.unicodeValue >= 0x800 &&
-                        p.unicodeChar.unicodeValue <=0x10ffff) {
-                        long u = p.unicodeChar.unicodeValue - 0x800;
-                        singleCharBuffer[0] = (char) (u >> 12) & 0x07;
-                        singleCharBuffer[1] = (char) (u >> 6) & 0x3F;
-                        singleCharBuffer[2] = (char) u & 0x3F;
-                        singleCharBuffer[3] = 0;
-                        unicodeCharSize = 3;
-                    }
-                    else {
-                        long u = p.unicodeChar.unicodeValue - 0x10000;
-                        singleCharBuffer[0] = (char) (u >> 18) & 0x07;
-                        singleCharBuffer[1] = (char) (u >> 12) & 0x3F;
-                        singleCharBuffer[2] = (char) (u >> 12) & 0x3F;
-                        singleCharBuffer[3] = (char) u & 0x3F;
-                        singleCharBuffer[4] = 0;
-                        unicodeCharSize = 4;
-                    }
-                }
-            }
-        }
-        // fill single char buffer
-
-        if ((fillCount + unicodeCharSize) < size) {
-            strncpy(buffer, singleCharBuffer, unicodeCharSize);
-            buffer += unicodeCharSize;
-            fillCount += unicodeCharSize;
-            index += 1;
-        }
-        else
-            break;
-    };
-
-    if (size)
-        *buffer = 0;
-
-    return index;    
-};
+void ProtoList::finalize() {};
 
 void ProtoList::processReferences(
     ProtoContext *context,
@@ -737,16 +661,11 @@ void ProtoList::processReferences(
     if (this->previous)
         this->previous->processReferences(context, self, method);
 
-    ProtoObjectPointer p;
-    p.oid.oid = this->value;
-    if (p.op.pointer_tag == POINTER_TAG_CELL) {
-        method(context, self, p.cell.cell);
-    }
-
     if (this->next)
         this->next->processReferences(context, self, method);
 
-    method(context, self, this);
+    if (this->value)
+        this->value->processReferences(context, self, method);
 };
 
 };

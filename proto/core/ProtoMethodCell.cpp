@@ -18,10 +18,7 @@ ProtoMethodCell::ProtoMethodCell(
     ProtoContext *context,
     ProtoObject  *self,
     ProtoMethod	 method
-) : Cell(
-	context,
-	type = CELL_TYPE_METHOD
-) {
+) : Cell(context) {
     this->self = self;
     this->method = method;
 };

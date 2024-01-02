@@ -1,4 +1,4 @@
-/*
+/* /*
  * proto.h
  *
  *  Created on: November, 2017
@@ -52,10 +52,12 @@ namespace proto {
 // There is no other form of allocation for proto objects or scalars
 // 
 
-#define TAG_MASK				  (0x07LU)
-#define TAG_SHIFT				  (0x03LU)
-#define TYPE_MASK				  (0x0fLU)
-#define TYPE_SHIFT				  (0x07LU)
+#define TAG_BITS				  4
+#define EMBEDED_BITS			  4
+
+#define TAG_MASK				  ((1LU << TAG_BITS) - 1)
+#define TYPE_MASK				  ((1LU << EMBEDED_BITS) - 1)
+#define TYPE_SHIFT				  (TAG_BITS + EMBEDED_BITS)
 
 #define POINTER_GET_TAG(p)		  (((unsigned long) p) & TAG_MASK)
 #define POINTER_GET_TYPE(p)	  	  ((((unsigned long) p >> TAG_SHIFT) & TYPE_MASK))
@@ -68,6 +70,14 @@ namespace proto {
 #define POINTER_TAG_BYTE_BUFFER   		(0x05LU)
 #define POINTER_TAG_EXTERNAL_POINTER	(0x06LU)
 #define POINTER_TAG_METHOD_CELL     	(0x07LU)
+#define POINTER_TAG_STRING		     	(0x08LU)
+#define POINTER_TAG_UNASSIGNED_9     	(0x09LU)
+#define POINTER_TAG_UNASSIGNED_A     	(0x0ALU)
+#define POINTER_TAG_UNASSIGNED_B     	(0x0BLU)
+#define POINTER_TAG_UNASSIGNED_C     	(0x0CLU)
+#define POINTER_TAG_UNASSIGNED_D     	(0x0DLU)
+#define POINTER_TAG_UNASSIGNED_E     	(0x0ELU)
+#define POINTER_TAG_UNASSIGNED_F     	(0x0FLU)
 
 #define EMBEDED_TYPE_BOOLEAN      (0x00LU)
 #define EMBEDED_TYPE_UNICODECHAR  (0x01LU)
@@ -104,6 +114,7 @@ class BigCell;
 class ProtoContext;
 class ProtoList;
 class ProtoSparseList;
+class TupleDictionary;
 
 class AllocatedSegment {
 public:
@@ -139,57 +150,57 @@ union ProtoObjectPointer {
 	} cell;
 
 	struct {
-		unsigned long pointer_tag:3;
-		unsigned long embedded_type:4;
-		unsigned long value:57;
+		unsigned long pointer_tag:TAG_BITS;
+		unsigned long embedded_type:EMBEDED_BITS;
+		unsigned long value:(64 - TAG_BITS - EMBEDED_BITS);
 	} op;
 
 	// Pointer tag dependent values
 	struct {
-		long pointer_tag:3;
-		unsigned long embedded_type:4;
-		long smallInteger:57;
+		unsigned long pointer_tag:TAG_BITS;
+		unsigned long embedded_type:EMBEDED_BITS;
+		long smallInteger:(64 - TAG_BITS - EMBEDED_BITS);
 	} si;
 	struct {
-		unsigned long pointer_tag:3;
-		unsigned long embedded_type:4;
-		unsigned long smallDouble:57;
+		unsigned long pointer_tag:TAG_BITS;
+		unsigned long embedded_type:EMBEDED_BITS;
+		unsigned long smallDouble:(64 - TAG_BITS - EMBEDED_BITS);
 	} sd;
 	// Embedded types dependent values
 	struct {
-		unsigned long pointer_tag:3;
-		unsigned long embedded_type:5;
+		unsigned long pointer_tag:TAG_BITS;
+		unsigned long embedded_type:EMBEDED_BITS;
 		unsigned long unicodeValue:32;
 	} unicodeChar;
 	struct {
-		unsigned long pointer_tag:3;
-		unsigned long embedded_type:5;
+		unsigned long pointer_tag:TAG_BITS;
+		unsigned long embedded_type:EMBEDED_BITS;
 		unsigned long booleanValue:1;
 	} booleanValue;
 	struct {
-		unsigned long pointer_tag:3;
-		unsigned long embedded_type:5;
+		unsigned long pointer_tag:TAG_BITS;
+		unsigned long embedded_type:EMBEDED_BITS;
 		unsigned long byteData:8;
 	} byteValue;
 
 	struct {
-		unsigned long pointer_tag:3;
-		unsigned long embedded_type:5;
-		unsigned long timestamp:56;
+		unsigned long pointer_tag:TAG_BITS;
+		unsigned long embedded_type:EMBEDED_BITS;
+		unsigned long timestamp:(64 - TAG_BITS - EMBEDED_BITS);
 	} timestampValue;
 
 	struct {
-		unsigned long pointer_tag:3;
-		unsigned long embedded_type:5;
+		unsigned long pointer_tag:TAG_BITS;
+		unsigned long embedded_type:EMBEDED_BITS;
 		unsigned long day:8;
 		unsigned long month:8;
 		unsigned long year:16;
 	} date;
 
 	struct {
-		long pointer_tag:3;
-		long embedded_type:5;
-		long timedelta:56;
+		unsigned long pointer_tag:TAG_BITS;
+		unsigned long embedded_type:EMBEDED_BITS;
+		long timedelta:(64 - TAG_BITS - EMBEDED_BITS);
 	} timedeltaValue;
 
 };
@@ -219,6 +230,19 @@ public:
 
 	unsigned long getHash(ProtoContext *context);
 
+	void finalize();
+
+	void processReferences(
+		ProtoContext *context, 
+		void *self,
+		void (*method)(
+			ProtoContext *context, 
+			void *self,
+			Cell *cell
+		)
+	);
+
+
 	BOOLEAN			 asBoolean();
 	int				 asInteger();
 	double			 asDouble();
@@ -233,9 +257,7 @@ public:
 
 class Cell {
 public:
-	Cell(
-		Cell *nextCell
-	);
+	Cell(ProtoContext *context);
 	~Cell();
 
 	void *operator new(size_t size, ProtoContext *context);
@@ -254,7 +276,7 @@ public:
 		)
 	);
 
-    Cell				*nextCell;
+    Cell *nextCell;
 };
 
 
@@ -279,7 +301,7 @@ class ParentLink: public Cell {
 protected:
 public:
 	ParentLink(
-		Cell *nextCell,
+		ProtoContext *context,
 		ParentLink *parent,
 		ProtoObjectCell *object
 	);
@@ -306,7 +328,7 @@ public:
 class ProtoList: virtual public Cell {
 public:
 	ProtoList(
-		Cell *nextCell,
+		ProtoContext *context,
 		ProtoObject *value = PROTO_NONE,
 		ProtoList *previous = NULL,
 		ProtoList *next = NULL
@@ -363,13 +385,43 @@ public:
 
 
 #define TUPLE_ATOM_SIZE 4
+#define TUPLE_INDIRECT_SIZE 4
 
-class ProtoTuple: public ProtoList {
+class ProtoIndirectTuple: public Cell {
+public:
+	ProtoIndirectTuple(
+		ProtoContext *context,
+		unsigned long element_count = 0,
+		ProtoIndirectTuple *continuation = NULL,
+		ProtoTuple **data = NULL
+	);
+	virtual ~ProtoIndirectTuple();
+
+	virtual ProtoObject   *getAt(ProtoContext *context, int index);
+
+	virtual void finalize();
+
+	virtual void processReferences(
+		ProtoContext *context,
+		void *self,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			Cell *cell
+		)
+	);
+
+	ProtoIndirectTuple    *continuation;
+
+	ProtoTuple   *data[TUPLE_INDIRECT_SIZE];
+};
+
+class ProtoTuple: public Cell {
 public:
 	ProtoTuple(
-		Cell *nextCell,
+		ProtoContext *context,
 		unsigned long element_count = 0,
-		ProtoTuple *continuation = NULL,
+		ProtoIndirectTuple *continuation = NULL,
 		ProtoObject **data = NULL
 	);
 	~ProtoTuple();
@@ -415,24 +467,28 @@ public:
 	);
 
 	unsigned long element_count;
-	ProtoTuple    *continuation;
+	ProtoIndirectTuple    *continuation;
 
 	ProtoObject   *data[4];
 };
 
-class ProtoString: public ProtoTuple {
+class ProtoString: public Cell {
 public:
 	ProtoString(
-		Cell *nextCell,
-		char *utf8_cstring
+		ProtoContext *context,
+		ProtoTuple *baseTuple
 	);
+
 	~ProtoString();
 
 
 	int	cmp_to_string(ProtoContext *context, ProtoString *other_string);
 
+	virtual ProtoObject    *getAt(ProtoContext *context, int index);
 	virtual ProtoString    *setAt(ProtoContext *context, int index, ProtoObject* character);
 	virtual ProtoString    *insertAt(ProtoContext *context, int index, ProtoObject* character);
+	unsigned long    	    getSize(ProtoContext *context);
+	virtual ProtoString	   *getSlice(ProtoContext *context, int from, int to);
 
 	virtual ProtoString    *setAtString(ProtoContext *context, int index, ProtoString* other_string);
 	virtual ProtoString    *insertAtString(ProtoContext *context, int index, ProtoString* other_string);
@@ -453,24 +509,26 @@ public:
 	virtual ProtoObject	   *asObject(ProtoContext *context);
 	virtual ProtoList	   *asList(ProtoContext *context);
 
+	ProtoTuple *baseTuple;
+
 };
 
-class SparseList: public Cell {
+class ProtoSparseList: public Cell {
 public:
-	SparseList(
-		Cell *nextCell,
+	ProtoSparseList(
+		ProtoContext *context,
 		ProtoObject *key = PROTO_NONE,
 		ProtoObject *value = PROTO_NONE,
-		SparseList *previous = NULL,
-		SparseList *next = NULL
+		ProtoSparseList *previous = NULL,
+		ProtoSparseList *next = NULL
 	);
-	~SparseList();
+	~ProtoSparseList();
 
 	virtual BOOLEAN			has(ProtoContext *context, unsigned long index);
 	virtual ProtoObject     *getAt(ProtoContext *context, unsigned long index);
-	virtual SparseList      *setAt(ProtoContext *context, unsigned long index, ProtoObject *value);
-	virtual SparseList      *removeAt(ProtoContext *context, unsigned long index);
-	virtual int				isEqual(ProtoContext *context, SparseList *otherDict);
+	virtual ProtoSparseList *setAt(ProtoContext *context, unsigned long index, ProtoObject *value);
+	virtual ProtoSparseList *removeAt(ProtoContext *context, unsigned long index);
+	virtual int				isEqual(ProtoContext *context, ProtoSparseList *otherDict);
 
 	unsigned long 	getSize(ProtoContext *context);
 
@@ -519,8 +577,8 @@ public:
 		)
 	);
 
-	SparseList    	*previous;
-	SparseList		*next;
+	ProtoSparseList    	*previous;
+	ProtoSparseList		*next;
 
 	unsigned long 	index;
 	ProtoObject 	*value;
@@ -533,7 +591,7 @@ public:
 class ProtoByteBuffer: public Cell {
 public:
 	ProtoByteBuffer(
-		Cell *nextCell,
+		ProtoContext *context,
 		unsigned long size,
 		char 		  *buffer	
 	);
@@ -560,7 +618,7 @@ public:
 class ProtoExternalPointer: public Cell {
 public:
 	ProtoExternalPointer(
-		Cell *nextCell,
+		ProtoContext *context,
 		void		*pointer
 	);
 	~ProtoExternalPointer();
@@ -585,7 +643,7 @@ public:
 class ProtoMethodCell: public Cell {
 public:
 	ProtoMethodCell(
-		Cell *nextCell,
+		ProtoContext *context,
 		ProtoObject  *self,
 		ProtoMethod	 method
 	);
@@ -614,7 +672,7 @@ public:
 class ProtoMutableReference: public Cell {
 public:
 	ProtoMutableReference(
-		Cell *nextCell,
+		ProtoContext *context,
 		ProtoObject  *reference 
 	);
 	~ProtoMutableReference();
@@ -637,10 +695,10 @@ public:
 class ProtoObjectCell: public Cell {
 public:
 	ProtoObjectCell(
-		Cell *nextCell,
+		ProtoContext *context,
 		ParentLink	*parent = NULL,
 		ProtoMutableReference *mutable_ref = NULL,
-		SparseList  *attributes = NULL
+		ProtoSparseList  *attributes = NULL
 	);
 	 ~ProtoObjectCell();
 
@@ -663,13 +721,13 @@ public:
 
 	ProtoMutableReference *mutable_ref;
 	ParentLink	*parent;
-	SparseList  *attributes;
+	ProtoSparseList  *attributes;
 };
 
 class ProtoThread: public Cell {
 public:
 	ProtoThread(
-		Cell *nextCell,
+		ProtoContext *context,
 		ProtoObject *name,
 		ProtoSpace	*space,
 		ProtoMethod *code = NULL,
@@ -743,7 +801,7 @@ public:
 	ProtoTuple      *tupleFromList(ProtoList *list);
 	ProtoObject 	*fromUTF8Char(char *utf8OneCharString);
 	ProtoString 	*fromUTF8String(char *zeroTerminatedUtf8String);
-	ProtoMethod 	*fromMethod(ProtoObject *self, ProtoMethod method);
+	ProtoMethodCell		 	*fromMethod(ProtoObject *self, ProtoMethod method);
 	ProtoExternalPointer 	*fromExternalPointer(void *pointer);
 	ProtoByteBuffer 		*fromBuffer(unsigned long length, void*buffer);
 	ProtoByteBuffer		 	*newBuffer(unsigned long length);
@@ -799,6 +857,9 @@ public:
 	void		triggerGC();
 
 	// TODO Should it has a dictionary to access threads by name?
+	std::atomic<TupleDictionary *> tupleRoot;
+	
+
 	ProtoList			*threads;
 
 	Cell			 	*freeCells;
@@ -813,7 +874,7 @@ public:
 	unsigned int		 gcSleepMilliseconds;
 	int					 blockOnNoMemory;
 
-	std::atomic<Cell *>  mutableRoot;
+	std::atomic<ProtoSparseList *>  mutableRoot;
 	std::atomic<BOOLEAN> mutableLock;
 	std::atomic<BOOLEAN> threadsLock;
 	std::atomic<BOOLEAN> gcLock;
@@ -827,7 +888,7 @@ public:
 
 // Used just to compute the number of bytes needed for a Cell at allocation time
 
-static_assert (sizeof(SparseList) == 56);
+static_assert (sizeof(ProtoSparseList) == 56);
 
 // Usefull constants.
 // ATENTION: They should be kept on synch with proto_internal.h!

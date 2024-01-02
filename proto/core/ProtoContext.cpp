@@ -51,10 +51,6 @@ std::atomic<BOOLEAN> literalMutex(FALSE);
 BigCell *literalFreeCells = NULL;
 unsigned   literalFreeCellsIndex = 0;
 ProtoContext globalContext;
-std::atomic<LiteralDictionary *> literalRoot(
-    new(&globalContext) LiteralDictionary(
-            &globalContext, (ProtoList *) NULL, 
-            (LiteralDictionary *) NULL, (LiteralDictionary *) NULL));
 
 #define BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL 1024U
 
@@ -90,25 +86,6 @@ ProtoContext::~ProtoContext() {
         Cell *c = firstCell;
         ProtoObjectPointer p;
         p.oid.oid = this->returnValue;
-
-        if (this->returnValue && p.op.pointer_tag == POINTER_TAG_CELL) {
-            Cell *previousCell = NULL;
-
-            // Remove returnValue from list of allocated cell for the context
-
-            while (c) {
-                if (c == p.cell.cell) {
-                    if (previousCell)
-                        previousCell->nextCell = c->nextCell;
-                    else
-                        firstCell = c->nextCell;
-
-                    // Move returnValue to the previous context
-                    c->nextCell = this->previous->lastAllocatedCell;
-                    this->previous->lastAllocatedCell = c;
-                }
-            }
-        }
 
         // Send the list of allocated Cells to GC to analysis
 
@@ -237,55 +214,370 @@ ProtoObject *ProtoContext::fromUTF8Char(char *utf8OneCharString) {
     return p.oid.oid; 
 };
 
+class TupleDictionary: Cell {
+private:
+    TupleDictionary *next;
+    TupleDictionary *previous;
+    ProtoTuple *key;
+    int count;
+    int height;
 
+    int compareTuple(ProtoContext *context, ProtoTuple *tuple) {
+        int thisSize = this->key->getSize(context);
+        int tupleSize = tuple->getSize(context);
+
+        int cmpSize = (thisSize < tupleSize)? thisSize : tupleSize;
+        int i;
+        for (i = 0; i <= cmpSize; i++) {
+            int thisElementHash = this->key->getAt(context, i)->getHash(context);
+            int tupleElementHash = tuple->getAt(context, i)->getHash(context);
+            if (thisElementHash > tupleElementHash)
+                return 1;
+            else if (thisElementHash < tupleElementHash)
+                return 1;
+        }
+        if (i > thisSize)
+            return -1;
+        else if (i > tupleSize)
+            return 1;
+        return 0;
+    }
+
+    // A utility function to right rotate subtree rooted with y
+    // See the diagram given above.
+    TupleDictionary *rightRotate(ProtoContext *context, TupleDictionary *n)
+    {
+        TupleDictionary *newRight = new(context) TupleDictionary(
+            context,
+            n->key,
+            n->previous->next,
+            n->next
+        );
+        return new(context) TupleDictionary(
+            context,
+            n->previous->key,
+            n->previous->previous,
+            newRight
+        );
+    }
+
+    // A utility function to left rotate subtree rooted with x
+    // See the diagram given above.
+    TupleDictionary *leftRotate(ProtoContext *context, TupleDictionary *n) {
+        TupleDictionary *newLeft = new(context) TupleDictionary(
+            context,
+            n->key,
+            n->previous,
+            n->next->previous
+        );
+        return new(context) TupleDictionary(
+            context,
+            n->next->key,
+            newLeft,
+            n->next->next
+        );
+    }
+
+    TupleDictionary *rebalance(ProtoContext *context, TupleDictionary *newNode) {
+        while (TRUE) {
+            int balance = newNode->height;
+
+            // If this node becomes unbalanced, then
+            // there are 4 cases
+
+            // Left Left Case
+            if (balance < -1 && newNode->previous->height < 0) {
+                newNode = rightRotate(context, newNode);
+            }
+            else {
+                // Right Right Case
+                if (balance > 1 && newNode->previous->height > 0) {
+                    newNode = leftRotate(context, newNode);
+                }
+                // Left Right Case
+                else {
+                    if (balance < 0 && newNode->previous->height > 0) {
+                        newNode = new(context) TupleDictionary(
+                            context,
+                            newNode->key,
+                            leftRotate(context, newNode->previous),
+                            newNode->next
+                        );
+                        newNode = rightRotate(context, newNode);
+                    }
+                    else {
+                        // Right Left Case
+                        if (balance > 0 && newNode->next->height < 0) {
+                            newNode = new(context) TupleDictionary(
+                                context,
+                                newNode->key,
+                                newNode->previous,
+                                rightRotate(context, newNode->next)
+                            );
+                            newNode = leftRotate(context, newNode);
+                        }
+                        else
+                            return newNode;
+                    }
+                }
+            }
+        }
+    }
+
+public:
+    TupleDictionary(
+        ProtoContext *context,
+        ProtoTuple *key,
+        TupleDictionary *next = NULL,
+        TupleDictionary *previous = NULL
+    ): Cell(context) {
+        this->key = key;
+        this->next = next;
+        this->previous = previous;
+        this->height = 1 + max(previous? previous->height : 0, next? next->height : 0),
+        this->count = (previous? previous->count : 0) + (key? 1 : 0) + (next? next->count : 0);
+    }
+
+	virtual void finalize() {}
+
+	virtual void processReferences(
+		ProtoContext *context,
+		void *self,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			Cell *cell
+		)
+	) {
+        if (this->next)
+            this->next->processReferences(context, self, method);
+        if (this->previous)
+            this->previous->processReferences(context, self, method);
+        (*method)(context, this, this);
+    }
+
+    int compareList(ProtoContext *context, ProtoList *list) {
+        int thisSize = this->key->getSize(context);
+        int listSize = list->getSize(context);
+
+        int cmpSize = (thisSize < listSize)? thisSize : listSize;
+        int i;
+        for (i = 0; i <= cmpSize; i++) {
+            int thisElementHash = this->key->getAt(context, i)->getHash(context);
+            int tupleElementHash = list->getAt(context, i)->getHash(context);
+            if (thisElementHash > tupleElementHash)
+                return 1;
+            else if (thisElementHash < tupleElementHash)
+                return 1;
+        }
+        if (i > thisSize)
+            return -1;
+        else if (i > listSize)
+            return 1;
+        return 0;
+    }
+
+    ProtoTuple *hasList(ProtoContext *context, ProtoList *list) {
+        TupleDictionary *node = this;
+        int cmp;
+
+        // Empty tree case
+        if (!this->key)
+            return FALSE;
+
+        while (node) {
+            cmp = node->compareList(context, list);
+            if (cmp == 0)
+                return node->key;
+            if (cmp > 0)
+                node = node->next;
+            else
+                node = node->previous;
+        }
+        return NULL;
+    }
+
+    int has(ProtoContext *context, ProtoTuple *tuple) {
+        TupleDictionary *node = this;
+        int cmp;
+
+        // Empty tree case
+        if (!this->key)
+            return FALSE;
+
+        while (node) {
+            cmp = node->compareTuple(context, tuple);
+            if (cmp == 0)
+                return TRUE;
+            if (cmp > 0)
+                node = node->next;
+            else
+                node = node->previous;
+        }
+        return FALSE;
+    }
+
+    TupleDictionary *set(ProtoContext *context, ProtoTuple *tuple) {
+        TupleDictionary *newNode;
+        int cmp;
+
+        // Empty tree case
+        if (!this->key)
+            return new(context) TupleDictionary(
+                context,
+                key = tuple
+            );
+
+        cmp = this->compareTuple(context, tuple);
+        if (cmp > 0) {
+            if (this->next) {
+                newNode = new(context) TupleDictionary(
+                    context,
+                    key = this->key,
+                    previous = this->previous,
+                    next = this->next->set(context, tuple)
+                );
+            }
+            else {
+                newNode = new(context) TupleDictionary(
+                    context,
+                    key = this->key,
+                    previous = this->previous,
+                    next = new(context) TupleDictionary(
+                        context,
+                        key = this->key
+                    )
+                );
+            }
+        }
+        else if (cmp < 0) {
+            if (this->previous) {
+                newNode = new(context) TupleDictionary(
+                    context,
+                    key = this->key,
+                    previous = this->previous->set(context, tuple),
+                    next = this->next
+                );
+            }
+            else {
+                newNode = new(context) TupleDictionary(
+                    context,
+                    key = this->key,
+                    previous = new(context) TupleDictionary(
+                        context,
+                        key = this->key
+                    ),
+                    next = this->next
+                );
+            }
+        }
+        else 
+            return this;
+
+        return rebalance(context, newNode);
+    }
+};
 
 ProtoList *ProtoContext::newList() {
-    ProtoList *list = new(this) ProtoList(this->lastAllocatedCell);
+    ProtoList *list = new(this) ProtoList(this);
     return list;
 }
 
 ProtoTuple *ProtoContext::newTuple() {
-    ProtoTuple *tuple = new(this) ProtoTuple(this->lastAllocatedCell);
+    ProtoTuple *tuple = new(this) ProtoTuple(this);
     return tuple;
 }
 
-ProtoTuple *createIndirectTuples(ProtoContext *context, ProtoList *list) {
+ProtoIndirectTuple *createIndirectTuples(ProtoContext *context, ProtoList *list, int from, int to) {
+    int list_size = list->getSize(context);
+    int size = to - from + 1;
+    ProtoTuple *leaves[TUPLE_ATOM_SIZE];
 
+    for (int i = 0; i < TUPLE_INDIRECT_SIZE; i++) {
+        ProtoObject *data[TUPLE_ATOM_SIZE];
+        for (int j = 0; j < TUPLE_ATOM_SIZE; j++) {
+            int index = i * TUPLE_ATOM_SIZE + j;
+            if (index < list_size) 
+                data[j] = list->getAt(context, index);
+            else
+                data[j] = NULL;
+        }
+        leaves[i] = new(context) ProtoTuple(
+            context,
+            size,
+            NULL,
+            data);
+    }
+
+    if (size < TUPLE_INDIRECT_SIZE * TUPLE_ATOM_SIZE) {
+        return new(context) ProtoIndirectTuple(
+            context,
+            size,
+            NULL,
+            &leaves[0]);
+    }
+    else {
+        ProtoIndirectTuple *indirect = createIndirectTuples(context, list, from + TUPLE_ATOM_SIZE, to);
+
+        return new(context) ProtoIndirectTuple(
+            context,
+            size,
+            indirect,
+            &leaves[0]);
+    }
 }
+
 
 ProtoTuple *ProtoContext::tupleFromList(ProtoList *list) {
     unsigned long size = list->getSize(this);
 
     ProtoObject *data[TUPLE_ATOM_SIZE];
+    
 
     for (int i = 0; i < TUPLE_ATOM_SIZE; i++)
         if (i < size)
             data[i] = list->getAt(this, 0);
 
+    ProtoTuple *newTuple;
+
     if (size < TUPLE_ATOM_SIZE) {
-        return new(this) ProtoTuple(
-            this->lastAllocatedCell,
+        newTuple = new(this) ProtoTuple(
+            this,
             size,
             NULL,
             data);
     }
     else {
-        ProtoList *restOfList = list->getSlice(this, TUPLE_ATOM_SIZE, -1);
-        ProtoTuple *indirect = createIndirectTuples(this, restOfList);
+        ProtoIndirectTuple *indirect = createIndirectTuples(this, list, TUPLE_ATOM_SIZE, size - 1);
 
-        return new(this) ProtoTuple(
-            this->lastAllocatedCell,
+        newTuple = new(this) ProtoTuple(
+            this,
             size,
             indirect,
             data);
 
     }
 
+    TupleDictionary *currentRoot, *newRoot;
+    do {
+        currentRoot = this->space->tupleRoot;
+
+        ProtoTuple *entry = currentRoot->hasList(this, list);
+        if (entry)
+            newTuple = entry;
+            
+        newRoot = currentRoot->set(this, newTuple);
+    } while (!this->space->tupleRoot.compare_exchange_strong(
+        currentRoot, 
+        newRoot
+    ));
+
+    return newTuple;
 }
 
 ProtoString *ProtoContext::fromUTF8String(char *zeroTerminatedUtf8String) {
     char *currentChar = zeroTerminatedUtf8String;
-    ProtoList *string = new(this) ProtoList(this->lastAllocatedCell);
+    ProtoList *string = new(this) ProtoList(this);
 
     while (*currentChar) {
         ProtoObject *oneChar = this->fromUTF8Char(currentChar);
@@ -304,7 +596,10 @@ ProtoString *ProtoContext::fromUTF8String(char *zeroTerminatedUtf8String) {
         string = string->appendLast(this, oneChar);    
     }
 
-    return (ProtoString *) this->tupleFromList(string);
+    return new(this) ProtoString(
+        this,
+        this->tupleFromList(string)
+    );
 };
 
 ProtoObject *ProtoContext::fromDate(unsigned year, unsigned month, unsigned day) {
@@ -339,16 +634,16 @@ ProtoObject *ProtoContext::fromTimeDelta(long timedelta) {
     return p.oid.oid; 
 };
 
-ProtoObject *ProtoContext::fromMethod(ProtoObject *self, ProtoMethod method) {
+ProtoMethodCell *ProtoContext::fromMethod(ProtoObject *self, ProtoMethod method) {
     return new(this) ProtoMethodCell(this, self, method);
 };
 
-ProtoObject *ProtoContext::fromExternalPointer(void *pointer) {
+ProtoExternalPointer *ProtoContext::fromExternalPointer(void *pointer) {
     return new(this) ProtoExternalPointer(this, pointer);
 };
 
-ProtoObject *ProtoContext::newBuffer(unsigned long length) {
-    return new(this) ProtoByteBuffer(this, length);
+ProtoByteBuffer *ProtoContext::newBuffer(unsigned long length) {
+    return new(this) ProtoByteBuffer(this, length, (char *) malloc((size_t) length));
 };
 
 ProtoObject *ProtoContext::fromBoolean(BOOLEAN value) {
@@ -371,77 +666,33 @@ ProtoObject *ProtoContext::fromByte(char c) {
     return p.oid.oid;
 };
 
-ProtoObject *ProtoContext::literalFromUTF8String(char *zeroTerminatedUtf8String) {
-    LiteralDictionary *newRoot, *currentRoot;
-    ProtoList *literalString;
+ProtoObject *ProtoContext::newInmutable() {
+    ParentLink *newParent = new(this) ParentLink(
+        this,
+        NULL,
+        (ProtoObjectCell *) this->space->objectPrototype
+    );
 
-    do {
-        currentRoot = literalRoot.load();
+    ProtoObjectCell *object = new(this) ProtoObjectCell(
+        this,
+        newParent
+    );
 
-        ProtoObject *currentLiteral = currentRoot->get(zeroTerminatedUtf8String);
-        if (currentLiteral != PROTO_NONE)
-            return currentLiteral;
+    return object->asObject(this);
+}
 
-        literalString = new(&globalContext) ProtoList(&globalContext);
-        char *currentChar = zeroTerminatedUtf8String;
-        while (*currentChar) {
-            ProtoObject *protoChar = this->fromUTF8Char(currentChar);
-            if (( currentChar[0] & 0x80 ) == 0 )
-                // 0000 0000-0000 007F | 0xxxxxxx
-                currentChar += 1;
-            else if (( currentChar[0] & 0xE0 ) == 0xC0 )
-                // 0000 0080-0000 07FF | 110xxxxx 10xxxxxx
-                currentChar += 2;
-            else if (( currentChar[0] & 0xF0 ) == 0xE0 ) 
-                // 0000 0800-0000 FFFF | 1110xxxx 10xxxxxx 10xxxxxx
-                currentChar += 3;
-            else if (( currentChar[0] & 0xF8 ) == 0xF0 )
-                currentChar += 4;
-            literalString = literalString->appendLast(&globalContext, protoChar);
-        }
-
-        newRoot = currentRoot->set(literalString);
-    } while (!literalRoot.compare_exchange_strong(
-        currentRoot, 
-        newRoot
-    ));
-
-    return literalString;
-};
-
-ProtoObject *ProtoContext::literalFromString(ProtoList *string) {
-    LiteralDictionary *newRoot, *currentRoot;
-
-    do {
-        currentRoot = literalRoot.load();
-
-        ProtoList *currentLiteral = currentRoot->getFromString(string);
-        if (currentLiteral)
-            return currentLiteral;
-
-        newRoot = currentRoot->set(string);
-    } while (!literalRoot.compare_exchange_strong(
-        currentRoot, 
-        newRoot
-    ));
-
-    return PROTO_NULL;
-};
-
-ProtoObject *ProtoContext::newMutable(ProtoObject *value) {
-    IdentityDict *currentRoot;
-    Cell *oldRoot;
+ProtoObject *ProtoContext::newMutable() {
+    ProtoSparseList *currentRoot, *oldRoot;
     ProtoObject *randomIdObject;
     int randomId;
 
     do {
-        currentRoot = (IdentityDict *) this->space->mutableRoot.load();
+        currentRoot = this->space->mutableRoot.load();
         oldRoot = currentRoot;
 
         randomId = rand();
-        randomIdObject = this->fromInteger(randomId);
 
-        BOOLEAN existingMutable = currentRoot->has(this, randomIdObject);
+        BOOLEAN existingMutable = currentRoot->has(this, (unsigned long) randomIdObject);
         if (existingMutable)
             continue;
 
@@ -449,305 +700,16 @@ ProtoObject *ProtoContext::newMutable(ProtoObject *value) {
         oldRoot,
         currentRoot->setAt(
             this,
-            randomIdObject,
-            value
+            randomId,
+            (new(this) ProtoSparseList(this))->asObject(this)
         )
     ));
 
-    ProtoObjectPointer p;
-    p.oid.oid = NULL;
-    p.mutableObject.pointer_tag = POINTER_TAG_MUTABLEOBJECT;
-    p.mutableObject.mutableID = randomId;
-
-    return p.oid.oid;
+    
 };
 
 ProtoThread *ProtoContext::getCurrentThread() {
     return this->thread;
 }
-
-int compareStrings(ProtoList *string1, ProtoList *string2) {
-    int string1Size = string1->getSize(&globalContext);
-    int string2Size = string2->getSize(&globalContext);
-
-    int i;
-    for (i = 0; i <= string1Size && i <= string2Size; i++) {
-        ProtoObjectPointer string1Char;
-        string1Char.oid.oid = string1->getAt(&globalContext, i);
-        ProtoObjectPointer string2Char;
-        string2Char.oid.oid = string2->getAt(&globalContext, i);
-
-        if (string1Char.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE || 
-            string1Char.op.embedded_type != EMBEDED_TYPE_UNICODECHAR)
-            return -1;
-        
-        if (string2Char.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE || 
-            string2Char.op.embedded_type != EMBEDED_TYPE_UNICODECHAR)
-            return 1;
-        
-        if (string1Char.unicodeChar.unicodeValue < string2Char.unicodeChar.unicodeValue)
-            return -1;
-        else if (string1Char.unicodeChar.unicodeValue > string2Char.unicodeChar.unicodeValue)
-            return 1;
-    }
-    if (i > string1Size)
-        return -1;
-    else if (i > string2Size)
-        return 1;
-    return 0;
-}
-
-ProtoList *LiteralDictionary::getFromString(
-    ProtoList *string
-) {
-	if (!this->key)
-		return NULL;
-
-    LiteralDictionary *node = this;
-	while (node) {
-		if (node->key == key)
-			return node->key;
-        int cmp = compareStrings(string, this->key);
-        if (cmp < 0)
-            node = node->previous;
-        else if (cmp > 1)
-            node = node->next;
-	}
-
-    if (node)
-        return node->key;
-    else
-        return NULL;
-};
-
-ProtoList *LiteralDictionary::get(char *zeroTerminatedUTF8CharString) {
-	if (!this->key)
-		return NULL;
-
-    LiteralDictionary *node = this;
-	while (node) {
-		if (node->key == key)
-			return node->key;
-
-        char *currentChar = zeroTerminatedUTF8CharString;
-        int keySize = node->key->getSize(context);
-        int cmp = 0;
-        int i;
-        for (i = 0; i <= keySize && *currentChar; i++) {
-            ProtoObjectPointer keyChar;
-            keyChar.oid.oid = node->key->getAt(context, i);
-            ProtoObjectPointer stringChar;
-            stringChar.oid.oid = context->fromUTF8Char(currentChar);
-            if (( currentChar[0] & 0x80 ) == 0 )
-                // 0000 0000-0000 007F | 0xxxxxxx
-                currentChar += 1;
-            else if (( currentChar[0] & 0xE0 ) == 0xC0 )
-                // 0000 0080-0000 07FF | 110xxxxx 10xxxxxx
-                currentChar += 2;
-            else if (( currentChar[0] & 0xF0 ) == 0xE0 ) 
-                // 0000 0800-0000 FFFF | 1110xxxx 10xxxxxx 10xxxxxx
-                currentChar += 3;
-            else if (( currentChar[0] & 0xF8 ) == 0xF0 )
-                currentChar += 4;
-
-            if (keyChar.unicodeChar.unicodeValue > stringChar.unicodeChar.unicodeValue) {
-                cmp = -1;
-                node = node->previous;
-                break;
-            }
-            else if (keyChar.unicodeChar.unicodeValue < stringChar.unicodeChar.unicodeValue) {
-                cmp = 1;
-                node = node->next;
-                break;
-            }
-        }
-
-        if (cmp == 0 && i > keySize)
-            node = node->previous;
-        else if (cmp == 0 && *currentChar)
-            node = node->next;
-        else if (cmp == 0 && i == keySize && *currentChar)
-            break;
-	}
-
-    if (node)
-        return node->key;
-    else
-        return NULL;
-
-};
-
-LiteralDictionary::LiteralDictionary(
-    ProtoContext *context,
-
-    ProtoList *key = NULL,
-    LiteralDictionary *previous = NULL,
-    LiteralDictionary *next = NULL
-):Cell(
-    context, 
-    type = CELL_TYPE_LITERAL_DICT,
-    height = 1 + max(previous? previous->height : 0, next? next->height : 0),
-    count = (key? 1: 0) + (previous? previous->count : 0) + (next? next->count : 0)
-) {
-    this->key = key;
-    this->previous = previous;
-    this->next = next;
-};
-
-LiteralDictionary::~LiteralDictionary() {
-
-};
-
-int getBalance(LiteralDictionary *self) {
-	if (self->next && self->previous)
-		return self->next->height - self->previous->height;
-	else if (self->previous)
-		return -self->previous->height;
-	else if (self->next)
-		return self->next->height;
-	else
-		return 0;
-}
-
-// A utility function to right rotate subtree rooted with y
-// See the diagram given above.
-LiteralDictionary *rightRotate(LiteralDictionary *n)
-{
-    LiteralDictionary *newRight = new(&globalContext) LiteralDictionary(
-        &globalContext,
-        n->key,
-        n->previous->next,
-        n->next
-    );
-    return new(&globalContext) LiteralDictionary(
-        &globalContext,
-        n->previous->key,
-        n->previous->previous,
-        newRight
-    );
-}
-
-// A utility function to left rotate subtree rooted with x
-// See the diagram given above.
-LiteralDictionary *leftRotate(LiteralDictionary *n) {
-    LiteralDictionary *newLeft = new(&globalContext) LiteralDictionary(
-        &globalContext,
-        n->key,
-        n->previous,
-        n->next->previous
-    );
-    return new(&globalContext) LiteralDictionary(
-        &globalContext,
-        n->next->key,
-        newLeft,
-        n->next->next
-    );
-}
-
-LiteralDictionary *rebalance(LiteralDictionary *newNode) {
-    while (TRUE) {
-        int balance = getBalance(newNode);
-
-        // If this node becomes unbalanced, then
-        // there are 4 cases
-
-        // Left Left Case
-        if (balance < -1 && getBalance(newNode->previous) < 0) {
-            newNode = rightRotate(newNode);
-        }
-        else {
-            // Right Right Case
-            if (balance > 1 && getBalance(newNode->previous) > 0) {
-                newNode = leftRotate(newNode);
-            }
-            // Left Right Case
-            else {
-                if (balance < 0 && getBalance(newNode->previous) > 0) {
-                    newNode = new(&globalContext) LiteralDictionary(
-                        &globalContext,
-                        newNode->key,
-                        leftRotate(newNode->previous),
-                        newNode->next
-                    );
-                    newNode = rightRotate(newNode);
-                }
-                else {
-                    // Right Left Case
-                    if (balance > 0 && getBalance(newNode->next) < 0) {
-                        newNode = new(&globalContext) LiteralDictionary(
-                            &globalContext,
-                            newNode->key,
-                            newNode->previous,
-                            rightRotate(newNode->next)
-                        );
-                        newNode = leftRotate(newNode);
-                    }
-                    else
-                        return newNode;
-                }
-            }
-        }
-    }
-}
-
-LiteralDictionary *LiteralDictionary::set(ProtoList *string) {
-	LiteralDictionary *newNode;
-	int cmp;
-
-	// Empty tree case
-	if (!this->key)
-        return new(&globalContext) LiteralDictionary(
-            &globalContext,
-            key = string
-        );
-
-    cmp = compareStrings(string, this->key);
-    if (cmp > 0) {
-        if (this->next) {
-            newNode = new(&globalContext) LiteralDictionary(
-                &globalContext,
-                key = this->key,
-                previous = this->previous,
-                next = this->next->set(string)
-            );
-        }
-        else {
-            newNode = new(&globalContext) LiteralDictionary(
-                &globalContext,
-                key = this->key,
-                previous = this->previous,
-                next = new(&globalContext) LiteralDictionary(
-                    &globalContext,
-                    key = this->key
-                )
-            );
-        }
-    }
-    else if (cmp < 0) {
-        if (this->previous) {
-            newNode = new(&globalContext) LiteralDictionary(
-                &globalContext,
-                key = this->key,
-                previous = this->previous->set(string),
-                next = this->next
-            );
-        }
-        else {
-            newNode = new(&globalContext) LiteralDictionary(
-                &globalContext,
-                key = this->key,
-                previous = new(&globalContext) LiteralDictionary(
-                    &globalContext,
-                    key = this->key
-                ),
-                next = this->next
-            );
-        }
-    }
-    else 
-        return this;
-
-    return rebalance(newNode);
-};
 
 };

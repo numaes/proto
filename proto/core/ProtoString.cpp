@@ -16,60 +16,31 @@ namespace proto {
 #define max(a, b) (((a) > (b))? (a):(b))
 #endif
 
-ProtoTuple::ProtoTuple(
-    Cell *nextCell,
-    unsigned long element_count,
-    ProtoTuple *continuation,
-    ProtoObject *data, ...
-) : Cell(
-    nextCell
-) {
-    this->element_count = element_count;
-    this->continuation = continuation;
-    for (int i = 0; i < 4; i++) {
-        if (i < element_count)
-            this->data[i] = ((ProtoObject **) &data)[i];
-        else 
-            this->data[i] = NULL;
-    }
+ProtoString::ProtoString(
+    ProtoContext *context,
+    ProtoTuple *baseTuple
+) : Cell(context) {
+    this->baseTuple = baseTuple;
 };
 
 ProtoTuple::~ProtoTuple() {
 
 };
 
-ProtoObject *ProtoTuple::getAt(ProtoContext *context, int index) {
-    if (index < 0) {
-        index = this->element_count + index;
-        if (index < 0)
-            index = 0;
-    }
-
-    if (index < this->element_count)
-        return this->data[element_count];
-    else {
-        ProtoTuple *first_indirection = (ProtoTuple *) this->continuation->getAt(context, (index - 4) / 4); 
-        return first_indirection->data[(index - 4) % 4];
-    }
+ProtoObject *ProtoString::getAt(ProtoContext *context, int index) {
+    return this->baseTuple->getAt(context, index);
 };
 
-ProtoObject *ProtoTuple::getFirst(ProtoContext *context) {
-    return this->getAt(context, 0);
-};
-
-ProtoObject *ProtoTuple::getLast(ProtoContext *context) {
-    return this->getAt(context, -1);
-};
-
-ProtoTuple *ProtoTuple::getSlice(ProtoContext *context, int from, int to) {
+ProtoString *ProtoString::getSlice(ProtoContext *context, int from, int to) {
+    int thisSize = this->baseTuple->getSize(context) 
     if (from < 0) {
-        from = this->count + from;
+        from = thisSize + from;
         if (from < 0)
             from = 0;
     }
 
     if (to < 0) {
-        to = this->count + to;
+        to = thisSize + to;
         if (to < 0)
             to = 0;
     }
@@ -82,16 +53,8 @@ ProtoTuple *ProtoTuple::getSlice(ProtoContext *context, int from, int to) {
         return new(context) ProtoList(context);
 };
 
-unsigned long ProtoTuple::getSize(ProtoContext *context) {
-    return this->count;
-};
-
-BOOLEAN	ProtoTuple::has(ProtoContext *context, ProtoObject* value) {
-    for (unsigned long i=0; i <= this->count; i++)
-        if (this->getAt(context, i) == value)
-            return TRUE;
-
-    return FALSE;
+unsigned long ProtoString::getSize(ProtoContext *context) {
+    return this->baseTuple->getSize(context);
 };
 
 ProtoTuple *ProtoTuple::setAt(ProtoContext *context, int index, ProtoObject* value) {

@@ -17,11 +17,11 @@ namespace proto {
 #endif
 
 ProtoTuple::ProtoTuple(
-    Cell *nextCell,
+    ProtoContext *context,
     unsigned long element_count,
-    ProtoTuple *continuation,
+    ProtoIndirectTuple *continuation,
     ProtoObject **data
-) : ProtoList(nextCell, NULL, NULL, NULL), Cell(nextCell) {
+) : Cell(context) {
     this->element_count = element_count;
     this->continuation = continuation;
     for (int i = 0; i < 4; i++) {
