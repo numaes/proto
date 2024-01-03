@@ -784,6 +784,52 @@ public:
 	void *pointer;
 };
 
+// In order to compile a method the folling structure is recommended:
+// method (p1, p2, p3, p4=init4, p5=init5)
+
+// ProtoObject *method(ProtoContext *previousContext, ProtoList *unnamedParameters, ProtoSparseList *keywordParameters)
+//		ProtoObject *p1, *p2, *p3, *p4, *p5;
+//		ProtoContext context(previousContext);
+//
+//		p4 = alreadyInitializedConstantForInit4;
+//		p5 = alreadyInitializedConstantForInit5;
+//
+// 		int unnamedSize = unnameParameters->getSize(&context);
+//
+//      if (unnamedSize < 3)
+//			raise "Too few parameters. At least 3 unnamed parameters are expected"
+//
+//		p1 = unnamedParameters->getAt(&context, 0);
+//		p2 = unnamedParameters->getAt(&context, 1);
+//		p3 = unnamedParameters->getAt(&context, 2);
+//
+//      if (unnamedSize > 3)
+//			p4 = unnamedParameters->getAt(&context, 3);
+//
+//      if (unnamedSize > 4)
+//			p5 = unnamedParameters->getAt(&context, 4);
+//
+//		if (unnamedSize > 5)
+//			raise "Too many parameters"
+//
+//      if (keywordParameters->has(&context, literalForP4))
+//		    if (unnamedSize > 4)
+//			    raise "Double assignment on p4"
+//
+//			p4 = unnamedParameters->getAt(&context, literalForP4);
+//
+//      if (keywordParameters->has(&context, literalForP5))
+//		    if (unnamedSize > 5)
+//			    raise "Double assignment on p5"
+//
+//			p5 = unnamedParameters->getAt(&context, literalForP4);
+//
+// Not used keywordParameters are not detected
+// This provides a similar behaviour as Python, and it can be automatically generated based on compilation time info
+//
+
+
+
 class ProtoMethodCell: public Cell {
 public:
 	ProtoMethodCell(
