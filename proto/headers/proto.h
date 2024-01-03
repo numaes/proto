@@ -75,7 +75,7 @@ namespace proto {
 #define POINTER_TAG_TUPLE_ITERATOR     	(0x0ALU)
 #define POINTER_TAG_STRING_ITERATOR    	(0x0BLU)
 #define POINTER_TAG_TUPLE_ITERATOR     	(0x0CLU)
-#define POINTER_TAG_UNASSIGNED_D     	(0x0DLU)
+#define POINTER_TAG_SPARSE_LIST_ITERATOR (0x0DLU)
 #define POINTER_TAG_UNASSIGNED_E     	(0x0ELU)
 #define POINTER_TAG_UNASSIGNED_F     	(0x0FLU)
 
@@ -333,8 +333,9 @@ public:
 
 class ProtoIterator: virtual public Cell {
 public:
-	virtual int hasNext() = 0;
-	virtual ProtoObject *next() = 0;
+	virtual int hasNext(ProtoContext *context) = 0;
+	virtual ProtoObject *next(ProtoContext *context) = 0;
+	virtual ProtoIterator *advance(ProtoContext *context);
 
 	virtual void finalize() = 0;
 
@@ -356,6 +357,7 @@ public:
 
 	virtual int hasNext();
 	virtual ProtoObject *next();
+	virtual ProtoIterator *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual void finalize();
@@ -444,6 +446,7 @@ public:
 
 	virtual int hasNext();
 	virtual ProtoObject *next();
+	virtual ProtoIterator *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual void finalize();
@@ -527,6 +530,7 @@ public:
 
 	virtual int hasNext();
 	virtual ProtoObject *next();
+	virtual ProtoStringIterator *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual void finalize();
@@ -597,14 +601,26 @@ public:
 
 };
 
+
+#define ITERATOR_NEXT_PREVIOUS 0
+#define ITERATOR_NEXT_THIS 1
+#define ITERATOR_NEXT_NEXT 2
+
 class ProtoSparseListIterator: public ProtoIterator {
 public:
-	ProtoSparseListIterator(ProtoContext *context);
+	ProtoSparseListIterator(
+		ProtoContext *context,
+		int state,
+		ProtoSparseList *current,
+		ProtoSparseListIterator *queue = NULL
+	);
 	virtual ~ProtoSparseListIterator();
 
-	virtual int hasNext();
-	virtual ProtoObject *next();
-	virtual unsigned long nextIndex();
+	virtual int hasNext(ProtoContext *context);
+	virtual ProtoObject *next(ProtoContext *context);
+	virtual ProtoSparseListIterator *advance(ProtoContext *context);
+
+	virtual unsigned long nextIndex(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual void finalize();
@@ -618,6 +634,10 @@ public:
 			Cell *cell
 		)
 	);
+
+	int state = ITERATOR_NEXT_PREVIOUS;
+	ProtoSparseList *current;
+	ProtoSparseListIterator *queue = NULL;
 
 };
 
@@ -642,7 +662,7 @@ public:
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
-	virtual ProtoStringIterator *getIterator(ProtoContext *context);
+	virtual ProtoSparseListIterator *getIterator(ProtoContext *context);
 	
 	virtual void finalize();
 

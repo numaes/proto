@@ -13,6 +13,84 @@ namespace proto {
 #define max(a, b) (((a) > (b))? (a):(b))
 #endif
 
+ProtoSparseListIterator::ProtoSparseListIterator(
+		ProtoContext *context,
+		int state,
+		ProtoSparseList *current,
+		ProtoSparseListIterator *queue = NULL
+	) : Cell(context) {
+	this->state = state;
+	this->current = current;
+	this->queue = queue;
+};
+
+ProtoSparseListIterator::~ProtoSparseListIterator() {};
+
+int ProtoSparseListIterator::hasNext(ProtoContext *context) {
+	if (this->state == ITERATOR_NEXT_PREVIOUS && this->current->previous)
+		return TRUE;
+	if (this->state == ITERATOR_NEXT_THIS)
+		return TRUE;
+	if (this->state == ITERATOR_NEXT_NEXT && this->current->next)
+		return TRUE;
+	if (this->queue)
+		return this->queue->hasNext(context);
+};
+
+ProtoObject *ProtoSparseListIterator::next(ProtoContext *context) {
+	if (this->state == ITERATOR_NEXT_PREVIOUS && this->current->previous)
+		return this->current->previous->value;
+	if (this->state == ITERATOR_NEXT_THIS)
+		return this->current->value;
+	if (this->state == ITERATOR_NEXT_NEXT && this->current->next)
+		return this->current->next->value;
+};
+
+ProtoSparseListIterator *ProtoSparseListIterator::advance(ProtoContext *context) {
+	if (this->state == ITERATOR_NEXT_PREVIOUS)
+		return new(context) ProtoSparseListIterator(
+			context,
+			ITERATOR_NEXT_THIS,
+			this->current,
+			this->queue
+		);
+	if (this->state == ITERATOR_NEXT_THIS && this->current->next)
+		return this->current->next->getIterator(context);
+	if (this->state == ITERATOR_NEXT_THIS)
+		if (this->queue)
+			return this->queue->advance(context);
+		return NULL;
+	if (this->state == ITERATOR_NEXT_NEXT && this->current->next)
+		if (this->queue)
+			return this->queue->advance(context);
+	return NULL;
+
+};
+
+ProtoObject	  *ProtoSparseListIterator::asObject(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+    p.op.pointer_tag = POINTER_TAG_SPARSE_LIST_ITERATOR;
+
+    return p.oid.oid;
+};
+
+void ProtoSparseListIterator::finalize() {};
+
+void ProtoSparseListIterator::processReferences(
+		ProtoContext *context,
+		void *self,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			Cell *cell
+		)
+	) {
+
+	// TODO
+
+};
+
 ProtoSparseList::ProtoSparseList(
 	ProtoContext *context,
 
@@ -471,6 +549,23 @@ unsigned long ProtoSparseList::getHash(ProtoContext *context) {
     return p.asHash.hash;
 };
 
+ProtoSparseListIterator *ProtoSparseList::getIterator(ProtoContext *context) {
+	ProtoSparseList *node = this;
+	ProtoSparseListIterator *iterator = NULL;
 
+	while (node) {
+		if (node->previous) {
+			iterator = new(context) ProtoSparseListIterator(
+				context,
+				node->previous->previous? ITERATOR_NEXT_PREVIOUS : ITERATOR_NEXT_THIS,
+				node->previous,
+				iterator
+			);
+			node = node->previous->previous;
+		}
+	}
+
+	return iterator;
+}
 
 };
