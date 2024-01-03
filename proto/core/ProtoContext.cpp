@@ -463,12 +463,71 @@ ProtoTuple *ProtoContext::newTuple() {
     return tuple;
 }
 
-
 ProtoTuple *ProtoContext::tupleFromList(ProtoList *list) {
     unsigned long size = list->getSize(this);
     ProtoTuple *newTuple;
+    ProtoList *nextLevel;
+    ProtoTuple *indirectData[TUPLE_SIZE];
+    ProtoObject *data[TUPLE_SIZE];
 
-    // TODO
+    ProtoList *indirectPointers = new(this) ProtoList(this);
+    int i, j;
+    for (i = 0, j = 0; i < size; i++, j++) {
+        if (j == TUPLE_SIZE) {
+            newTuple = new(this) ProtoTuple(
+                this,
+                TUPLE_SIZE,
+                data
+            );
+            indirectPointers = indirectPointers->appendLast(this, (ProtoObject *) newTuple);
+            j = 0;
+        }
+        data[j] = list->getAt(this, i);
+    }
+
+    newTuple = new(this) ProtoTuple(
+        this,
+        j,
+        data
+    );
+    indirectPointers = indirectPointers->appendLast(this, (ProtoObject *) newTuple);
+    
+    int indirectSize = 0;
+    while (indirectPointers->getSize(this) > 0) {
+        nextLevel = new(this) ProtoList(this);
+        indirectSize = 0;
+        for (i = 0, j = 0; i < indirectPointers->getSize(this); i++, j++) {
+            if (j == TUPLE_SIZE) {
+                newTuple = new(this) ProtoTuple(
+                    this,
+                    indirectSize,
+                    NULL,
+                    indirectData
+                );
+                indirectSize = 0;
+                j = 0;
+                nextLevel = nextLevel->appendLast(this, (ProtoObject *) newTuple);
+            }
+            indirectData[j] = (ProtoTuple *) indirectPointers->getAt(this, i);
+            indirectSize += indirectData[j]->elementCount;
+        }
+        newTuple = new(this) ProtoTuple(
+            this,
+            indirectSize,
+            NULL,
+            indirectData
+        );
+        nextLevel = nextLevel->appendLast(this, (ProtoObject *) newTuple);
+
+        indirectPointers = nextLevel;
+    }
+
+    newTuple = new(this) ProtoTuple(
+        this,
+        indirectSize,
+        NULL,
+        indirectData
+    );
 
     return newTuple;
 }

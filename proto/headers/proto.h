@@ -477,7 +477,7 @@ class ProtoTuple: public Cell {
 public:
 	ProtoTuple(
 		ProtoContext *context,
-		unsigned long element_count = 0,
+		unsigned long elementCount = 0,
 		ProtoObject **data = NULL,
 		ProtoTuple **indirect = NULL
 	);
@@ -486,23 +486,21 @@ public:
 	virtual ProtoObject   *getAt(ProtoContext *context, int index);
 	virtual ProtoObject   *getFirst(ProtoContext *context);
 	virtual ProtoObject   *getLast(ProtoContext *context);
-	virtual ProtoList	  *getSlice(ProtoContext *context, int from, int to);
+	virtual ProtoTuple	  *getSlice(ProtoContext *context, int from, int to);
 	virtual unsigned long  getSize(ProtoContext *context);
 
 	virtual BOOLEAN		   has(ProtoContext *context, ProtoObject* value);
 	virtual ProtoTuple    *setAt(ProtoContext *context, int index, ProtoObject* value);
 	virtual ProtoTuple    *insertAt(ProtoContext *context, int index, ProtoObject* value);
 
-	virtual ProtoTuple 	  *appendFirst(ProtoContext *context, ProtoObject* value);
-	virtual ProtoTuple 	  *appendLast(ProtoContext *context, ProtoObject* value);
+	virtual ProtoTuple 	  *appendFirst(ProtoContext *context, ProtoTuple* otherTuple);
+	virtual ProtoTuple 	  *appendLast(ProtoContext *context, ProtoTuple* otherTuple);
 
-	virtual ProtoTuple 	  *extend(ProtoContext *context, ProtoList* other);
+	virtual ProtoTuple	  *splitFirst(ProtoContext *context, int count = 1);
+	virtual ProtoTuple    *splitLast(ProtoContext *context, int count = 1);
 
-	virtual ProtoTuple	  *splitFirst(ProtoContext *context, int index);
-	virtual ProtoTuple    *splitLast(ProtoContext *context, int index);
-
-	virtual ProtoTuple	  *removeFirst(ProtoContext *context);
-	virtual ProtoTuple	  *removeLast(ProtoContext *context);
+	virtual ProtoTuple	  *removeFirst(ProtoContext *context, int count = 1);
+	virtual ProtoTuple	  *removeLast(ProtoContext *context, int count = 1);
 	virtual ProtoTuple	  *removeAt(ProtoContext *context, int index);
 	virtual ProtoTuple 	  *removeSlice(ProtoContext *context, int from, int to);
 
@@ -523,7 +521,7 @@ public:
 		)
 	);
 
-	unsigned long element_count;
+	unsigned long elementCount;
 
 	union {
 		ProtoObject   *data[TUPLE_SIZE];
@@ -572,7 +570,7 @@ public:
 	~ProtoString();
 
 
-	int	cmp_to_string(ProtoContext *context, ProtoString *other_string);
+	int	cmp_to_string(ProtoContext *context, ProtoString *otherString);
 
 	virtual ProtoObject    *getAt(ProtoContext *context, int index);
 	virtual ProtoString    *setAt(ProtoContext *context, int index, ProtoObject* character);
@@ -580,17 +578,17 @@ public:
 	unsigned long    	    getSize(ProtoContext *context);
 	virtual ProtoString	   *getSlice(ProtoContext *context, int from, int to);
 
-	virtual ProtoString    *setAtString(ProtoContext *context, int index, ProtoString* other_string);
-	virtual ProtoString    *insertAtString(ProtoContext *context, int index, ProtoString* other_string);
+	virtual ProtoString    *setAtString(ProtoContext *context, int index, ProtoString* otherString);
+	virtual ProtoString    *insertAtString(ProtoContext *context, int index, ProtoString* otherString);
 
-	virtual ProtoString    *appendFirst(ProtoContext *context, ProtoString* other_string);
-	virtual ProtoString    *appendLast(ProtoContext *context, ProtoString* other_string);
+	virtual ProtoString    *appendFirst(ProtoContext *context, ProtoString* otherString);
+	virtual ProtoString    *appendLast(ProtoContext *context, ProtoString* otherString);
 
-	virtual ProtoString	   *splitFirst(ProtoContext *context, int count);
-	virtual ProtoString    *splitLast(ProtoContext *context, int count);
+	virtual ProtoString	   *splitFirst(ProtoContext *context, int count = 1);
+	virtual ProtoString    *splitLast(ProtoContext *context, int count = 1);
 
 	virtual ProtoString	   *removeFirst(ProtoContext *context, int count = 1);
-	virtual ProtoString	   *removeLast(ProtoContext *context, int counte = 1);
+	virtual ProtoString	   *removeLast(ProtoContext *context, int count = 1);
 	virtual ProtoString	   *removeAt(ProtoContext *context, int index);
 	virtual ProtoString    *removeSlice(ProtoContext *context, int from, int to);
 

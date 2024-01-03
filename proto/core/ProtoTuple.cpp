@@ -70,29 +70,292 @@ void ProtoTupleIterator::processReferences(
 
 ProtoTuple::~ProtoTuple() {};
 
-ProtoObject   *getAt(ProtoContext *context, int index) {};
-ProtoObject   *getFirst(ProtoContext *context) {};
-ProtoObject   *getLast(ProtoContext *context) {};
-ProtoList	  *getSlice(ProtoContext *context, int from, int to) {};
-unsigned long  getSize(ProtoContext *context) {};
-BOOLEAN		   has(ProtoContext *context, ProtoObject* value) {};
-ProtoTuple    *setAt(ProtoContext *context, int index, ProtoObject* value) {};
-ProtoTuple    *insertAt(ProtoContext *context, int index, ProtoObject* value) {};
-ProtoTuple 	  *appendFirst(ProtoContext *context, ProtoObject* value) {};
-ProtoTuple 	  *appendLast(ProtoContext *context, ProtoObject* value) {};
-ProtoTuple 	  *extend(ProtoContext *context, ProtoList* other) {};
-ProtoTuple	  *splitFirst(ProtoContext *context, int index) {};
-ProtoTuple    *splitLast(ProtoContext *context, int index) {};
-ProtoTuple	  *removeFirst(ProtoContext *context) {};
-ProtoTuple	  *removeLast(ProtoContext *context) {};
-ProtoTuple	  *removeAt(ProtoContext *context, int index) {};
-ProtoTuple 	  *removeSlice(ProtoContext *context, int from, int to) {};
-ProtoList	  *asList(ProtoContext *context) {};
-ProtoObject	  *asObject(ProtoContext *context) {};
+ProtoObject   *ProtoTuple::getAt(ProtoContext *context, int index) {
+    if (index < 0)
+        index = ((int) this->elementCount) + index;
 
-void finalize() {};
+    if (index < 0)
+        index = 0;
 
-void ProtoList::processReferences(
+    int levels = 0, acum = this->elementCount, rest;
+    do {
+        acum = acum / TUPLE_SIZE;
+        levels++;
+    } while (acum > 0);
+
+    acum = index;
+    ProtoTuple *node = this;
+    for (int i = levels; i > 0; i--) {
+        acum = index / TUPLE_SIZE;
+        rest = index % TUPLE_SIZE;
+        node = node->pointers.indirect[rest];
+    }
+
+    return node->pointers.data[rest];
+};
+
+ProtoObject   *ProtoTuple::getFirst(ProtoContext *context) {
+    return this->getAt(context, 0);
+};
+
+ProtoObject   *ProtoTuple::getLast(ProtoContext *context) {
+    if (this->elementCount > 0)
+        return this->getAt(context, this->elementCount - 1);
+};
+
+ProtoTuple *ProtoTuple::getSlice(ProtoContext *context, int from, int to) {
+    int thisSize = this->elementCount;
+    if (from < 0) {
+        from = thisSize + from;
+        if (from < 0)
+            from = 0;
+    }
+
+    if (to < 0) {
+        to = thisSize + to;
+        if (to < 0)
+            to = 0;
+    }
+
+    ProtoList *sourceList = context->newList();
+    for (int i = from; i <= to; i++)
+        if (i < thisSize)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+    return context->tupleFromList(sourceList);    
+};
+
+unsigned long  ProtoTuple::getSize(ProtoContext *context) {
+    return this->elementCount;
+};
+
+BOOLEAN ProtoTuple::has(ProtoContext *context, ProtoObject* value) {
+    for (int i = 0; i < this->elementCount; i++)
+        if (value == this->getAt(context, i))
+            return TRUE;
+    
+    return FALSE;
+};
+
+ProtoTuple *ProtoTuple::setAt(ProtoContext *context, int index, ProtoObject* value) {
+  	if (!value) {
+		return NULL;
+    }
+
+    int thisSize = this->elementCount;
+
+    if (index < 0) {
+        index = thisSize + index;
+        if (index < 0)
+            index = 0;
+    }
+
+    if (((unsigned long) index) >= thisSize) {
+        return NULL;
+    }
+
+    ProtoList *sourceList = context->newList();
+    for (int i = 0; i < index; i++)
+        if (i < thisSize)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+    sourceList = sourceList->appendLast(context, value);
+
+    for (int i = index + 1; i < thisSize; i++)
+        sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+
+    return context->tupleFromList(sourceList);    
+
+};
+
+ProtoTuple *ProtoTuple::insertAt(ProtoContext *context, int index, ProtoObject* value) {
+	if (!value) {
+		return NULL;
+    }
+
+    int thisSize = this->elementCount;
+
+    if (index < 0) {
+        index = thisSize + index;
+        if (index < 0)
+            index = 0;
+    }
+
+    if (((unsigned long) index) >= thisSize) {
+        return NULL;
+    }
+
+    ProtoList *sourceList = context->newList();
+    for (int i = 0; i < index; i++)
+        if (i < thisSize)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+    sourceList = sourceList->appendLast(context, value);
+
+    for (int i = index; i < thisSize; i++)
+        sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+
+    return context->tupleFromList(sourceList);    
+
+};
+
+ProtoTuple *ProtoTuple::appendFirst(ProtoContext *context, ProtoTuple* otherTuple) {
+	if (!otherTuple) {
+		return NULL;
+    }
+
+    int thisSize = this->elementCount;
+
+    ProtoList *sourceList = context->newList();
+    int otherSize = otherTuple->getSize(context);
+    for (int i = 0; i < otherSize; i++)
+        sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+    for (int i = 0; i < thisSize; i++)
+        if (i < thisSize)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+    return context->tupleFromList(sourceList);    
+
+};
+
+ProtoTuple 	  *ProtoTuple::appendLast(ProtoContext *context, ProtoTuple *otherTuple) {
+	if (!otherTuple) {
+		return NULL;
+    }
+
+    int thisSize = this->elementCount;
+
+    ProtoList *sourceList = context->newList();
+    for (int i = 0; i < thisSize; i++)
+        if (i < thisSize)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+    int otherSize = otherTuple->getSize(context);
+    for (int i = 0; i < otherSize; i++)
+        sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+    return context->tupleFromList(sourceList);    
+
+};
+
+ProtoTuple *ProtoTuple::splitFirst(ProtoContext *context, int count) {
+    int thisSize = this->elementCount;
+
+    ProtoList *sourceList = context->newList();
+    for (int i = 0; i < count; i++)
+        if (i < thisSize)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+    return context->tupleFromList(sourceList);    
+
+};
+
+ProtoTuple *ProtoTuple::splitLast(ProtoContext *context, int count) {
+    int thisSize = this->elementCount;
+    int first = thisSize - count;
+    if (first < 0)
+        first = 0;
+
+    ProtoList *sourceList = context->newList();
+    for (int i = first; i < thisSize; i++)
+        if (i < thisSize)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+    return context->tupleFromList(sourceList);    
+
+};
+
+ProtoTuple *ProtoTuple::removeFirst(ProtoContext *context, int count) {
+    int thisSize = this->elementCount;
+
+    ProtoList *sourceList = context->newList();
+    for (int i = count; i < thisSize; i++)
+        sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+    return context->tupleFromList(sourceList);    
+
+};
+
+ProtoTuple *ProtoTuple::removeLast(ProtoContext *context, int count) {
+    int thisSize = this->elementCount;
+
+    ProtoList *sourceList = context->newList();
+    for (int i = 0; i < thisSize - count; i++)
+        if (i < thisSize)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+        else
+            break;
+
+    return context->tupleFromList(sourceList);
+
+};
+
+ProtoTuple *ProtoTuple::removeAt(ProtoContext *context, int index) {
+    int thisSize = this->elementCount;
+
+    if (index < 0) {
+        index = thisSize + index;
+        if (index < 0)
+            index = 0;
+    }
+
+    if (((unsigned long) index) >= thisSize) {
+        return NULL;
+    }
+
+    ProtoList *sourceList = context->newList();
+    for (int i = 0; i < index; i++)
+        if (i < thisSize)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+    for (int i = index + 1; i < thisSize; i++)
+        sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+    return context->tupleFromList(sourceList);    
+
+};
+
+ProtoTuple *ProtoTuple::removeSlice(ProtoContext *context, int from, int to) {
+    int thisSize = this->elementCount;
+
+    if (from < 0) {
+        from = thisSize + from;
+        if (from < 0)
+            from = 0;
+    }
+
+    if (to < 0) {
+        to = thisSize + from;
+        if (to < 0)
+            to = 0;
+    }
+
+    ProtoList *sourceList = context->newList();
+    for (int i = from; i < to; i++)
+        if (i < thisSize)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+        else
+            break;
+
+    return context->tupleFromList(sourceList);    
+
+};
+
+ProtoList *ProtoTuple::asList(ProtoContext *context) {
+    ProtoList *sourceList = context->newList();
+    for (int i = 0; i < this->elementCount; i++)
+        sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+    return sourceList;    
+
+};
+
+void ProtoTuple::finalize() {};
+
+void ProtoTuple::processReferences(
     ProtoContext *context,
     void *self,
     void (*method) (

@@ -172,15 +172,15 @@ ProtoString *ProtoString::insertAt(ProtoContext *context, int index, ProtoObject
 
 }
 
-ProtoString *ProtoString::appendFirst(ProtoContext *context, ProtoString* other_string) {
-	if (!other_string) {
+ProtoString *ProtoString::appendFirst(ProtoContext *context, ProtoString* otherString) {
+	if (!otherString) {
 		return NULL;
     }
 
     int thisSize = this->baseTuple->getSize(context);
 
     ProtoList *sourceList = context->newList();
-    int otherSize = other_string->getSize(context);
+    int otherSize = otherString->getSize(context);
     for (int i = 0; i < otherSize; i++)
         sourceList = sourceList->appendLast(context, this->getAt(context, i));
 
@@ -192,8 +192,8 @@ ProtoString *ProtoString::appendFirst(ProtoContext *context, ProtoString* other_
 
 };
 
-ProtoString *ProtoString::appendLast(ProtoContext *context, ProtoString* other_string) {
-	if (!other_string) {
+ProtoString *ProtoString::appendLast(ProtoContext *context, ProtoString* otherString) {
+	if (!otherString) {
 		return NULL;
     }
 
@@ -204,7 +204,7 @@ ProtoString *ProtoString::appendLast(ProtoContext *context, ProtoString* other_s
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
 
-    int otherSize = other_string->getSize(context);
+    int otherSize = otherString->getSize(context);
     for (int i = 0; i < otherSize; i++)
         sourceList = sourceList->appendLast(context, this->getAt(context, i));
 
