@@ -647,6 +647,22 @@ ProtoList *ProtoList::removeSlice(ProtoContext *context, int from, int to) {
     return slice;
 };
 
+ProtoObject *ProtoList::asObject(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+    p.op.pointer_tag = POINTER_TAG_LIST;
+
+    return p.oid.oid;
+};
+
+unsigned long ProtoList::getHash(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+
+    return p.asHash.hash;
+};
+
+
 void ProtoList::finalize() {};
 
 void ProtoList::processReferences(

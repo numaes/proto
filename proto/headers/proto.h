@@ -144,7 +144,11 @@ union ProtoObjectPointer {
 	struct {
 		ProtoObject	*oid;
 	} oid;
-	
+
+	struct {
+		int	hash;
+	} asHash;
+
 	struct {
 		Cell *cell;
 	} cell;
@@ -262,6 +266,8 @@ public:
 
 	void *operator new(size_t size, ProtoContext *context);
 
+	virtual unsigned long getHash(ProtoContext *context);
+
 	// Called before discarding the Cell by garbage collector
 	virtual void finalize();
 
@@ -342,7 +348,7 @@ public:
 	virtual unsigned long  getSize(ProtoContext *context);
 
 	virtual BOOLEAN		   has(ProtoContext *context, ProtoObject* value);
-	virtual ProtoList     *setAt(ProtoContext *context, int index, ProtoObject* value);
+	virtual ProtoList     *setAt(ProtoContext *context, int index, ProtoObject* value = PROTO_NONE);
 	virtual ProtoList     *insertAt(ProtoContext *context, int index, ProtoObject* value);
 
 	virtual ProtoList  	  *appendFirst(ProtoContext *context, ProtoObject* value);
@@ -360,6 +366,7 @@ public:
 
 	virtual ProtoTuple    *asTuple(ProtoContext *context);
 	virtual ProtoObject	  *asObject(ProtoContext *context);
+	virtual unsigned long getHash(ProtoContext *context);
 
 	virtual void finalize();
 
@@ -426,8 +433,6 @@ public:
 	);
 	~ProtoTuple();
 
-	virtual ProtoTuple    *newTupleFromArray(unsigned long array_length, ProtoObject **data);
-
 	virtual ProtoObject   *getAt(ProtoContext *context, int index);
 	virtual ProtoObject   *getFirst(ProtoContext *context);
 	virtual ProtoObject   *getLast(ProtoContext *context);
@@ -453,6 +458,7 @@ public:
 
 	virtual ProtoList	  *asList(ProtoContext *context);
 	virtual ProtoObject	  *asObject(ProtoContext *context);
+	virtual unsigned long  getHash(ProtoContext *context);
 
 	virtual void finalize();
 
@@ -496,18 +502,29 @@ public:
 	virtual ProtoString    *appendFirst(ProtoContext *context, ProtoString* other_string);
 	virtual ProtoString    *appendLast(ProtoContext *context, ProtoString* other_string);
 
-	virtual ProtoString    *extend(ProtoContext *context, ProtoString* other_string);
+	virtual ProtoString	   *splitFirst(ProtoContext *context, int count);
+	virtual ProtoString    *splitLast(ProtoContext *context, int count);
 
-	virtual ProtoString	   *splitFirst(ProtoContext *context, int index);
-	virtual ProtoString    *splitLast(ProtoContext *context, int index);
-
-	virtual ProtoString	   *removeFirst(ProtoContext *context);
-	virtual ProtoString	   *removeLast(ProtoContext *context);
+	virtual ProtoString	   *removeFirst(ProtoContext *context, int count = 1);
+	virtual ProtoString	   *removeLast(ProtoContext *context, int counte = 1);
 	virtual ProtoString	   *removeAt(ProtoContext *context, int index);
 	virtual ProtoString    *removeSlice(ProtoContext *context, int from, int to);
 
 	virtual ProtoObject	   *asObject(ProtoContext *context);
 	virtual ProtoList	   *asList(ProtoContext *context);
+	virtual unsigned long getHash(ProtoContext *context);
+
+	virtual void finalize();
+
+	virtual void processReferences(
+		ProtoContext *context,
+		void *self,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			Cell *cell
+		)
+	);
 
 	ProtoTuple *baseTuple;
 
@@ -517,7 +534,7 @@ class ProtoSparseList: public Cell {
 public:
 	ProtoSparseList(
 		ProtoContext *context,
-		ProtoObject *key = PROTO_NONE,
+		unsigned long index = 0,
 		ProtoObject *value = PROTO_NONE,
 		ProtoSparseList *previous = NULL,
 		ProtoSparseList *next = NULL
@@ -526,13 +543,14 @@ public:
 
 	virtual BOOLEAN			has(ProtoContext *context, unsigned long index);
 	virtual ProtoObject     *getAt(ProtoContext *context, unsigned long index);
-	virtual ProtoSparseList *setAt(ProtoContext *context, unsigned long index, ProtoObject *value);
+	virtual ProtoSparseList *setAt(ProtoContext *context, unsigned long index, ProtoObject *value = PROTO_NONE);
 	virtual ProtoSparseList *removeAt(ProtoContext *context, unsigned long index);
 	virtual int				isEqual(ProtoContext *context, ProtoSparseList *otherDict);
 
 	unsigned long 	getSize(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
+	virtual unsigned long getHash(ProtoContext *context);
 	
 	virtual void finalize();
 
@@ -552,7 +570,7 @@ public:
 		void (*method) (
 			ProtoContext *context,
 			void *self,
-			ProtoObject *key,
+			unsigned long index,
 			ProtoObject *value
 		)
 	);
@@ -598,6 +616,7 @@ public:
 	~ProtoByteBuffer();
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
+	virtual unsigned long getHash(ProtoContext *context);
 	
 	virtual void finalize();
 
@@ -624,6 +643,7 @@ public:
 	~ProtoExternalPointer();
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
+	virtual unsigned long getHash(ProtoContext *context);
 	
 	virtual void finalize();
 
@@ -650,6 +670,7 @@ public:
 	~ProtoMethodCell();
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
+	virtual unsigned long getHash(ProtoContext *context);
 	
 	virtual void finalize();
 
@@ -702,9 +723,10 @@ public:
 	);
 	 ~ProtoObjectCell();
 
-	virtual ProtoObject *addParent(ProtoContext *context, ProtoObject *object);
+	virtual ProtoObjectCell *addParent(ProtoContext *context, ProtoObjectCell *object);
 
 	virtual ProtoObject	*asObject(ProtoContext *context);
+	virtual unsigned long getHash(ProtoContext *context);
 	
 	virtual void finalize();
 
@@ -728,7 +750,7 @@ class ProtoThread: public Cell {
 public:
 	ProtoThread(
 		ProtoContext *context,
-		ProtoObject *name,
+		ProtoString *name,
 		ProtoSpace	*space,
 		ProtoMethod *code = NULL,
 		ProtoObject *args = NULL,
@@ -745,6 +767,7 @@ public:
 	void		synchToGC();
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
+	virtual unsigned long getHash(ProtoContext *context);
 	
 	virtual void finalize();
 
@@ -761,7 +784,7 @@ public:
 
 	Cell	    *allocCell();
 
-	ProtoObject			*name;
+	ProtoString			*name;
 	std::thread			*osThread;
 	ProtoSpace			*space;
 	BigCell				*freeCells;

@@ -12,12 +12,11 @@ namespace proto {
 ProtoObjectCell::ProtoObjectCell(
 	ProtoContext *context,
 	ParentLink	*parent,
-	IdentityDict *attributes
-) : Cell(
-	context,
-	type = CELL_TYPE_PROTO_OBJECT
-) {
+	ProtoMutableReference *mutable_ref,
+	ProtoSparseList *attributes
+) : Cell(context) {
 	this->parent = parent;
+	this->mutable_ref = mutable_ref;
 	this->attributes = attributes;
 };
 
@@ -25,18 +24,17 @@ ProtoObjectCell::~ProtoObjectCell() {
 
 };
 
-ProtoObject *ProtoObjectCell::addParent(
+ProtoObjectCell *ProtoObjectCell::addParent(
 	ProtoContext *context, 
-	ProtoObject *object
+	ProtoObjectCell *object
 ) {
 	return new(context) ProtoObjectCell(
 		context,
 		new(context) ParentLink(
 			context,
 			this->parent,
-			(ProtoObjectCell *) object
-		),
-		this->attributes
+			object
+		)
 	);
 };
 
@@ -55,5 +53,21 @@ void ProtoObjectCell::processReferences(
 
 	method(context, self, this);
 };
+
+ProtoObject *ProtoObjectCell::asObject(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+    p.op.pointer_tag = POINTER_TAG_OBJECT;
+
+    return p.oid.oid;
+};
+
+unsigned long ProtoObjectCell::getHash(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+
+    return p.asHash.hash;
+};
+
 
 };

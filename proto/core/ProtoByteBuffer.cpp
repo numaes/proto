@@ -14,13 +14,11 @@ namespace proto {
 
 ProtoByteBuffer::ProtoByteBuffer (
     ProtoContext *context,
-    unsigned long size
-) : Cell (
-    context,
-    type = CELL_TYPE_BYTE_BUFFER
-) {
+    unsigned long size,
+    char *buffer
+) : Cell (context) {
     this->size = size;
-    this->buffer = (char *) malloc((size_t) size);
+    this->buffer = buffer;
 };
 
 ProtoByteBuffer::~ProtoByteBuffer() {
@@ -40,5 +38,21 @@ void ProtoByteBuffer::processReferences(
 ) {
     method(context, self, this);
 };
+
+ProtoObject *ProtoByteBuffer::asObject(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+    p.op.pointer_tag = POINTER_TAG_BYTE_BUFFER;
+
+    return p.oid.oid;
+};
+
+unsigned long ProtoByteBuffer::getHash(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+
+    return p.asHash.hash;
+};
+
 
 };

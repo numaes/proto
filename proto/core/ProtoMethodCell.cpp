@@ -35,5 +35,20 @@ void ProtoMethodCell::processReferences(
 	method(context, self, this);
 }
 
+ProtoObject *ProtoMethodCell::asObject(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+    p.op.pointer_tag = POINTER_TAG_METHOD_CELL;
+
+    return p.oid.oid;
+};
+
+unsigned long ProtoMethodCell::getHash(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+
+    return p.asHash.hash;
+};
+
 };
 

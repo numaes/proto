@@ -12,10 +12,7 @@ namespace proto {
 ProtoExternalPointer::ProtoExternalPointer (
     ProtoContext *context,
     void 		 *pointer
-) : Cell (
-    context,
-    type = CELL_TYPE_EXTERNAL_POINTER
-) {
+) : Cell (context) {
     this->pointer = pointer;
 };
 
@@ -33,6 +30,21 @@ void ProtoExternalPointer::processReferences(
     )
 ) {
     method(context, self, this);
+};
+
+ProtoObject *ProtoExternalPointer::asObject(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+    p.op.pointer_tag = POINTER_TAG_EXTERNAL_POINTER;
+
+    return p.oid.oid;
+};
+
+unsigned long ProtoExternalPointer::getHash(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+
+    return p.asHash.hash;
 };
 
 };

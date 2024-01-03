@@ -32,13 +32,13 @@ void gcCollectCells(ProtoContext *context, void *self, Cell *value) {
      ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) value;
 
-    ProtoSet *&cellSet = (ProtoSet *&) self;
+    ProtoSparseList *cellSet = new(context) ProtoSparseList(context);
 
     // Go further in the scanning only if it is a cell and the cell belongs to current context!
-    if (p.op.pointer_tag == POINTER_TAG_CELL) {
+    if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
         // It is an object pointer with references
-        if (! cellSet->has(context, p.oid.oid)) {
-            cellSet = cellSet->add(context, p.oid.oid);
+        if (! cellSet->has(context, p.asHash.hash)) {
+            cellSet = cellSet->setAt(context, p.asHash.hash, PROTO_NONE);
             p.cell.cell->processReferences(context, (void *) cellSet, gcCollectCells);
         }
     }
@@ -48,13 +48,13 @@ void gcCollectObjects(ProtoContext *context, void *self, ProtoObject *value) {
      ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) value;
 
-    ProtoSet *&cellSet = (ProtoSet *&) self;
+    ProtoSparseList *cellSet = new(context) ProtoSparseList(context);
 
     // Go further in the scanning only if it is a cell and the cell belongs to current context!
-    if (p.op.pointer_tag == POINTER_TAG_CELL) {
+    if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
         // It is an object pointer with references
-        if (! cellSet->has(context, p.oid.oid)) {
-            cellSet = cellSet->add(context, p.oid.oid);
+        if (! cellSet->has(context, p.asHash.hash)) {
+            cellSet = cellSet->setAt(context, p.asHash.hash, PROTO_NONE);
             p.cell.cell->processReferences(context, (void *) cellSet, gcCollectCells);
         }
     }
@@ -124,10 +124,10 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
 
     // cellSet: a set of all referenced Cells
 
-    ProtoSet *cellSet = new(&gcContext) ProtoSet(&gcContext);
+    ProtoSparseList *cellSet = new(context) ProtoSparseList(context);
 
     // Add all mutables to cellSet
-    ((IdentityDict *) space->mutableRoot.load())->processValues(
+    ((ProtoSparseList *) space->mutableRoot.load())->processValues(
         &gcContext,
         &cellSet,
         gcCollectObjects
@@ -140,12 +140,12 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
         ProtoThread *thread = (ProtoThread *) space->threads->getAt(&gcContext, threadCount);
 
         // Collect allocated objects
-        ProtoContext *currentContext = thread->context;
+        ProtoContext *currentContext = thread->currentContext;
         while (currentContext) {
             Cell * currentCell = currentContext->lastAllocatedCell;
             while (currentCell) {
-                if (! cellSet->has(context, (ProtoObject *) currentCell)) {
-                    cellSet = cellSet->add(context, (ProtoObject *) currentCell);
+                if (! cellSet->has(context, currentCell->getHash(context))) {
+                    cellSet = cellSet->setAt(context, currentCell->getHash(context));
                 }
 
                 currentCell = currentCell->nextCell;
@@ -156,19 +156,15 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
                 for (int n = currentContext->localsCount;
                      n > 0;
                      n--) {
-                    if (p->op.pointer_tag == POINTER_TAG_CELL) {
-                        if (p->cell.cell->type != CELL_TYPE_UNASSIGNED && p->cell.cell->type < CELL_TYPE_UNASSIGNED_C) {
-                            if (! cellSet->has(context, (ProtoObject *) p)) {
-                                cellSet = cellSet->add(context, (ProtoObject *) p);
-                            }
-                        }
+                    if (p->op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
+                            cellSet = cellSet->setAt(context, p->asHash.hash);
                     }
                 }
             }
 
             currentContext = currentContext->previous;
         }
-    }
+    };
 
     // Free the world. Let them run
     space->state = SPACE_STATE_RUNNING;
@@ -188,7 +184,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
         while (block) {
             Cell *nextCell = block->nextCell;
 
-            if (!cellSet->has(&gcContext, (ProtoObject *) block)) {
+            if (!cellSet->has(&gcContext, block->getHash(context))) {
                 block->~Cell();
 
                 void **p = (void **) block;
@@ -269,7 +265,7 @@ ProtoSpace::ProtoSpace() {
     this->mutableLock.store(FALSE);
     this->threadsLock.store(FALSE);
     this->gcLock.store(FALSE);
-    this->mutableRoot.store(new(&creationContext) IdentityDict(&creationContext));
+    this->mutableRoot.store(new(&creationContext) ProtoSparseList(&creationContext));
 
     this->maxAllocatedCellsPerContext = MAX_ALLOCATED_CELLS_PER_CONTEXT;
     this->blocksPerAllocation = BLOCKS_PER_ALLOCATION;
@@ -291,12 +287,11 @@ ProtoSpace::ProtoSpace() {
         this->gcCV.wait_for(lk, 100ms);
     }
 
-    ProtoObject *threadName = creationContext.literalFromUTF8String((char *) "Main thread");
+    ProtoString *threadName = creationContext.fromUTF8String("Main thread");
     firstThread->name = threadName;
     this->threads = (new(&creationContext) ProtoList(
-        &creationContext,
-        firstThread
-    ))->appendFirst(&creationContext, firstThread);
+        &creationContext
+    ))->appendFirst(&creationContext, firstThread->asObject(&creationContext));
 };
 
 void scanThreads(ProtoContext *context, void *self, ProtoObject *value) {
@@ -308,18 +303,13 @@ void scanThreads(ProtoContext *context, void *self, ProtoObject *value) {
 ProtoSpace::~ProtoSpace() {
     ProtoContext finalContext(NULL);
 
-    IdentityDict *threads = ((IdentityDict *) (this->threads->currentValue(&finalContext)));
-    ProtoList *threadList = new(&finalContext) ProtoList(&finalContext);
-
-    threads->processValues(&finalContext, &threadList, scanThreads);
-
-    int threadCount = threadList->getSize(&finalContext);
+    int threadCount = this->threads->getSize(&finalContext);
 
     this->state = SPACE_STATE_ENDING;
 
     // Wait till all threads are ended
     for (int i = 0; i < threadCount; i++) {
-        ProtoThread *t = (ProtoThread *) threadList->getAt(
+        ProtoThread *t = (ProtoThread *) this->threads->getAt(
             &finalContext,
             i
         );
@@ -342,7 +332,7 @@ void ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread) {
         TRUE
     )) std::this_thread::yield();
 
-    this->threads = this->threads->appendLast(context, thread);
+    this->threads = this->threads->appendLast(context, thread->asObject(context));
 
     this->threadsLock.store(FALSE);
 };

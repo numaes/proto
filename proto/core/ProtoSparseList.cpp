@@ -1,5 +1,5 @@
 /*
- * IdentityDict.cpp
+ * ProtoSparseList.cpp
  *
  *  Created on: 2017-05-01
  *      Author: gamarino
@@ -13,34 +13,25 @@ namespace proto {
 #define max(a, b) (((a) > (b))? (a):(b))
 #endif
 
-IdentityDict::IdentityDict(
+ProtoSparseList::ProtoSparseList(
 	ProtoContext *context,
 
-	ProtoObject *key,
-	ProtoObject *value,
-	IdentityDict *previous,
-	IdentityDict *next
-) : Cell(
-	context,
-	type = CELL_TYPE_IDENTITY_DICT,
-    height = 1 + max(previous? previous->height : 0, next? next->height : 0),
-    count = (key? 1: 0) + (previous? previous->count : 0) + (next? next->count : 0)
-) {
-	this->key = key;
+	unsigned long index = 0,
+	ProtoObject *value = PROTO_NONE,
+	ProtoSparseList *previous = NULL,
+	ProtoSparseList *next = NULL
+) : Cell(context) {
+	this->index = index;
 	this->value = value;
 	this->previous = previous;
 	this->next = next;
-    this->hash = context->fromInteger(
-        (((long) value) ^ 
-         (previous? (long) previous->hash : 0L) ^ 
-         (next? (long) next->hash : 0L)));
 };
 
-IdentityDict::~IdentityDict() {
+ProtoSparseList::~ProtoSparseList() {
 
 };
 
-int getBalance(IdentityDict *self) {
+int getBalance(ProtoSparseList *self) {
 	if (!self)
 		return 0;
 	if (self->next && self->previous)
@@ -55,18 +46,18 @@ int getBalance(IdentityDict *self) {
 
 // A utility function to right rotate subtree rooted with y
 // See the diagram given above.
-IdentityDict *rightRotate(ProtoContext *context, IdentityDict *n)
+ProtoSparseList *rightRotate(ProtoContext *context, ProtoSparseList *n)
 {
-    IdentityDict *newRight = new(context) IdentityDict(
+    ProtoSparseList *newRight = new(context) ProtoSparseList(
         context,
-        n->key,
+        n->index,
         n->value,
         n->previous->next,
         n->next
     );
-    return new(context) IdentityDict(
+    return new(context) ProtoSparseList(
         context,
-        n->previous->key,
+        n->previous->index,
         n->previous->value,
         n->previous->previous,
         newRight
@@ -75,24 +66,24 @@ IdentityDict *rightRotate(ProtoContext *context, IdentityDict *n)
 
 // A utility function to left rotate subtree rooted with x
 // See the diagram given above.
-IdentityDict *leftRotate(ProtoContext *context, IdentityDict *n) {
-    IdentityDict *newLeft = new(context) IdentityDict(
+ProtoSparseList *leftRotate(ProtoContext *context, ProtoSparseList *n) {
+    ProtoSparseList *newLeft = new(context) ProtoSparseList(
         context,
-        n->key,
+        n->index,
         n->value,
         n->previous,
         n->next->previous
     );
-    return new(context) IdentityDict(
+    return new(context) ProtoSparseList(
         context,
-        n->next->key,
+        n->next->index,
         n->next->value,
         newLeft,
         n->next->next
     );
 };
 
-IdentityDict *rebalance(ProtoContext *context, IdentityDict *newNode) {
+ProtoSparseList *rebalance(ProtoContext *context, ProtoSparseList *newNode) {
     while (TRUE) {
         int balance = getBalance(newNode);
 
@@ -111,9 +102,9 @@ IdentityDict *rebalance(ProtoContext *context, IdentityDict *newNode) {
             // Left Right Case
             else {
                 if (balance < 0 && getBalance(newNode->previous) > 0) {
-                    newNode = new(context) IdentityDict(
+                    newNode = new(context) ProtoSparseList(
                         context,
-						newNode->key,
+						newNode->index,
                         newNode->value,
                         leftRotate(context, newNode->previous),
                         newNode->next
@@ -123,9 +114,9 @@ IdentityDict *rebalance(ProtoContext *context, IdentityDict *newNode) {
                 else {
                     // Right Left Case
                     if (balance > 0 && getBalance(newNode->next) < 0) {
-                        newNode = new(context) IdentityDict(
+                        newNode = new(context) ProtoSparseList(
                             context,
-							newNode->key,
+							newNode->index,
                             newNode->value,
                             newNode->previous,
                             rightRotate(context, newNode->next)
@@ -140,15 +131,15 @@ IdentityDict *rebalance(ProtoContext *context, IdentityDict *newNode) {
     }
 }
 
-BOOLEAN IdentityDict::has(ProtoContext *context, ProtoObject *key) {
-	if (!this->key)
+BOOLEAN ProtoSparseList::has(ProtoContext *context, unsigned long index) {
+	if (!this->index)
 		return FALSE;
 
-    IdentityDict *node = this;
+    ProtoSparseList *node = this;
 	while (node) {
-		if (node->key == key)
+		if (node->index == index)
 			return TRUE;
-        int cmp = ((long) key) - ((long) this->key);
+        int cmp = ((long) index) - ((long) this->index);
         if (cmp < 0)
             node = node->previous;
         else if (cmp > 1)
@@ -161,15 +152,15 @@ BOOLEAN IdentityDict::has(ProtoContext *context, ProtoObject *key) {
         return FALSE;
 };
 
-ProtoObject *IdentityDict::getAt(ProtoContext *context, ProtoObject *key) {
-	if (!this->key)
+ProtoObject *ProtoSparseList::getAt(ProtoContext *context, unsigned long index) {
+	if (!this->index)
 		return PROTO_NONE;
 
-    IdentityDict *node = this;
+    ProtoSparseList *node = this;
 	while (node) {
-		if (node->key == key)
+		if (node->index == index)
 			return node->value;
-        int cmp = ((long) key) - ((long) this->key);
+        int cmp = ((long) index) - ((long) this->index);
         if (cmp < 0)
             node = node->previous;
         else if (cmp > 1)
@@ -183,38 +174,38 @@ ProtoObject *IdentityDict::getAt(ProtoContext *context, ProtoObject *key) {
 
 };
 
-IdentityDict *IdentityDict::setAt(ProtoContext *context, ProtoObject *key, ProtoObject *value) {
-	IdentityDict *newNode;
+ProtoSparseList *ProtoSparseList::setAt(ProtoContext *context, unsigned long index, ProtoObject *value) {
+	ProtoSparseList *newNode;
 	int cmp;
 
 	// Empty tree case
-	if (!this->key)
-        return new(context) IdentityDict(
+	if (!this->index)
+        return new(context) ProtoSparseList(
             context,
-            key,
+            index,
 			value
         );
 
-    cmp = ((long) key) - ((long)this->key);
+    cmp = ((long) index) - ((long)this->index);
     if (cmp > 0) {
         if (this->next) {
-            newNode = new(context) IdentityDict(
+            newNode = new(context) ProtoSparseList(
                 context,
-                this->key,
+                this->index,
 				this->value,
                 this->previous,
-                this->next->setAt(context, key, value)
+                this->next->setAt(context, index, value)
             );
         }
         else {
-            newNode = new(context) IdentityDict(
+            newNode = new(context) ProtoSparseList(
                 context,
-                this->key,
+                this->index,
 				this->value,
                 previous = this->previous,
-                next = new(context) IdentityDict(
+                next = new(context) ProtoSparseList(
                     context,
-                    key,
+                    index,
 					value
                 )
             );
@@ -223,22 +214,22 @@ IdentityDict *IdentityDict::setAt(ProtoContext *context, ProtoObject *key, Proto
     else {
 		if (cmp < 0) {
 			if (this->previous) {
-				newNode = new(context) IdentityDict(
+				newNode = new(context) ProtoSparseList(
 					context,
-					this->key,
+					this->index,
 					this->value,
-					previous = this->previous->setAt(context, key, value),
+					previous = this->previous->setAt(context, index, value),
 					this->next
 				);
 			}
 			else {
-				newNode = new(context) IdentityDict(
+				newNode = new(context) ProtoSparseList(
 					context,
-					this->key,
+					this->index,
 					this->value,
-					new(context) IdentityDict(
+					new(context) ProtoSparseList(
 						context,
-						key,
+						index,
 						value
 					),
 					this->next
@@ -246,9 +237,9 @@ IdentityDict *IdentityDict::setAt(ProtoContext *context, ProtoObject *key, Proto
 			}
 		}
 		else {
-			newNode = new(context) IdentityDict(
+			newNode = new(context) ProtoSparseList(
 				context,
-				this->key,
+				this->index,
 				value,
 				this->previous,
 				this->next
@@ -259,33 +250,33 @@ IdentityDict *IdentityDict::setAt(ProtoContext *context, ProtoObject *key, Proto
 	return rebalance(context, newNode);
 };
 
-ProtoObject *firstKey(ProtoContext *context, IdentityDict *self) {
+unsigned long firstindex(ProtoContext *context, ProtoSparseList *self) {
 	while (self->previous)
 		self = self->previous;
 	
-	return self->key;
+	return self->index;
 };
 
-ProtoObject *firstValue(ProtoContext *context, IdentityDict *self) {
+ProtoObject *firstValue(ProtoContext *context, ProtoSparseList *self) {
 	while (self->previous)
 		self = self->previous;
 	
 	return self->value;
 };
 
-IdentityDict *removeFirst(ProtoContext *context, IdentityDict *self) {
-	if (!self->key)
+ProtoSparseList *removeFirst(ProtoContext *context, ProtoSparseList *self) {
+	if (!self->index)
         return self;
 
-    IdentityDict *newNode;
+    ProtoSparseList *newNode;
 
     if (self->previous) {
         newNode = removeFirst(context, self->previous);
-        if (newNode->key == NULL)
+        if (newNode->index == NULL)
             newNode = NULL; 
-        newNode = new(context) IdentityDict(
+        newNode = new(context) ProtoSparseList(
             context,
-			self->key,
+			self->index,
 			self->value,
             newNode,
             self->next
@@ -295,7 +286,7 @@ IdentityDict *removeFirst(ProtoContext *context, IdentityDict *self) {
         if (self->next)
             return self->next;
         
-        newNode = new(context) IdentityDict(
+        newNode = new(context) ProtoSparseList(
             context
 		);
     }
@@ -303,27 +294,27 @@ IdentityDict *removeFirst(ProtoContext *context, IdentityDict *self) {
     return rebalance(context, newNode);
 }
 
-IdentityDict *IdentityDict::removeAt(ProtoContext *context, ProtoObject *key) {
-	if (key == this->key && !this->next && !this->previous)
-		return new(context) IdentityDict(context);
+ProtoSparseList *ProtoSparseList::removeAt(ProtoContext *context, unsigned long index) {
+	if (index == this->index && !this->next && !this->previous)
+		return new(context) ProtoSparseList(context);
 
-	if (key == this->key) {
+	if (index == this->index) {
 		if (!this->next && this->previous)
 			return this->previous;
 
 		return this->next;
 	}
 
-	int cmp = ((long) key) - ((long) this->key);
-	IdentityDict *newNode;
+	int cmp = ((long) index) - ((long) this->index);
+	ProtoSparseList *newNode;
 	if (cmp < 0) {
 		if (!this->previous)
 			return this;
-		newNode = this->previous->removeAt(context, key);
+		newNode = this->previous->removeAt(context, index);
 		if (newNode->getSize(context) == 0)
-			newNode = new(context) IdentityDict(
+			newNode = new(context) ProtoSparseList(
 				context,
-				this->key,
+				this->index,
 				this->value,
 				NULL,
 				this->next
@@ -334,13 +325,13 @@ IdentityDict *IdentityDict::removeAt(ProtoContext *context, ProtoObject *key) {
 			if (!this->next)
 				return this;
 
-			newNode = this->next->removeAt(context, key);
+			newNode = this->next->removeAt(context, index);
 			if (newNode->getSize(context) == 0)
 				newNode = NULL;
 
-			newNode = new(context) IdentityDict(
+			newNode = new(context) ProtoSparseList(
 				context,
-				this->key,
+				this->index,
 				this->value,
 				this->previous,
 				newNode
@@ -351,9 +342,9 @@ IdentityDict *IdentityDict::removeAt(ProtoContext *context, ProtoObject *key) {
 				newNode = removeFirst(context, this->next);
 				if (newNode->count == 0)
 					newNode = NULL; 
-				newNode = new(context) IdentityDict(
+				newNode = new(context) ProtoSparseList(
 					context,
-					firstKey(context, this->next),
+					firstindex(context, this->next),
 					firstValue(context, this->next),
 					this->previous,
 					newNode
@@ -368,20 +359,20 @@ IdentityDict *IdentityDict::removeAt(ProtoContext *context, ProtoObject *key) {
 };
 
 struct matchState {
-	IdentityDict *otherDictionary;
+	ProtoSparseList *otherDictionary;
 	BOOLEAN match;
 };
 
-void match(ProtoContext *context, void *self, ProtoObject *key, ProtoObject *value) {
+void match(ProtoContext *context, void *self, unsigned long index, ProtoObject *value) {
 	struct matchState *state = (struct matchState *) self;
 
-	if (!state->otherDictionary->has(context, key) || 
-	    state->otherDictionary->getAt(context, key) != value)
+	if (!state->otherDictionary->has(context, index) || 
+	    state->otherDictionary->getAt(context, index) != value)
 		state->match = FALSE;
 
 };
 
-int	IdentityDict::isEqual(ProtoContext *context, IdentityDict *otherDict) {
+int	ProtoSparseList::isEqual(ProtoContext *context, ProtoSparseList *otherDict) {
 	if (this->count != otherDict->count)
 		return FALSE;
 
@@ -394,11 +385,11 @@ int	IdentityDict::isEqual(ProtoContext *context, IdentityDict *otherDict) {
 	return state.match;
 };
 
-unsigned long IdentityDict::getSize(ProtoContext *context) {
+unsigned long ProtoSparseList::getSize(ProtoContext *context) {
 	return this->count;
 };
 
-void IdentityDict::processReferences (
+void ProtoSparseList::processReferences (
 	ProtoContext *context,
 	void *self,
 	void (*method) (
@@ -412,13 +403,9 @@ void IdentityDict::processReferences (
 
 	ProtoObjectPointer p;
 
-	if (this->key != NULL) {
-		p.oid.oid = this->key;
-		if (p.op.pointer_tag == POINTER_TAG_CELL)
-			method(context, self, p.cell.cell);
-
+	if (this->index != NULL) {
 		p.oid.oid = this->value;
-		if (p.op.pointer_tag == POINTER_TAG_CELL)
+		if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE)
 			method(context, self, p.cell.cell);
 	}
 
@@ -428,48 +415,28 @@ void IdentityDict::processReferences (
 	method(context, self, this);
 };
 
-void IdentityDict::processElements (
+void ProtoSparseList::processElements (
 	ProtoContext *context,
 	void *self,
 	void (*method) (
 		ProtoContext *context,
 		void *self,
-		ProtoObject *key,
+		unsigned long index,
 		ProtoObject *value
 	)
 ) {
 	if (this->previous)
 		this->previous->processElements(context, self, method);
 
-	if (this->key != NULL)
-		method(context, self, this->key, this->value);
+	if (this->index != NULL)
+		method(context, self, this->index, this->value);
 
 	if (this->next)
 		this->next->processElements(context, self, method);
 
 };
 
-void IdentityDict::processKeys (
-	ProtoContext *context,
-	void *self,
-	void (*method) (
-		ProtoContext *context,
-		void *self,
-		ProtoObject *element
-	)
-) {
-	if (this->previous)
-		this->previous->processKeys(context, self, method);
-
-	if (this->key != NULL)
-		method(context, self, this->key);
-
-	if (this->next)
-		this->next->processKeys(context, self, method);
-
-};
-
-void IdentityDict::processValues (
+void ProtoSparseList::processValues (
 	ProtoContext *context,
 	void *self,
 	void (*method) (
@@ -481,12 +448,29 @@ void IdentityDict::processValues (
 	if (this->previous)
 		this->previous->processValues(context, self, method);
 
-	if (this->key != NULL)
+	if (this->index != NULL)
 		method(context, self, this->value);
 
 	if (this->next)
 		this->next->processValues(context, self, method);
 
 };
+
+ProtoObject *ProtoSparseList::asObject(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+    p.op.pointer_tag = POINTER_TAG_SPARSE_LIST;
+
+    return p.oid.oid;
+};
+
+unsigned long ProtoSparseList::getHash(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+
+    return p.asHash.hash;
+};
+
+
 
 };

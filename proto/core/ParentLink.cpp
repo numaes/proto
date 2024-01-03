@@ -18,10 +18,7 @@ ParentLink::ParentLink(
 	ProtoContext *context,
 	ParentLink *parent,
 	ProtoObjectCell *object
-) : Cell(
-	context,
-	type = CELL_TYPE_PARENT_LINK
-) {
+) : Cell(context) {
 	this->parent = parent;
 	this->object = object;
 };
