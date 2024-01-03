@@ -21,31 +21,6 @@ namespace proto {
 #define max(a, b) (((a) > (b))? (a):(b))
 #endif
 
-// Global literal dictionary
-class LiteralDictionary: public Cell {
-public:
-	LiteralDictionary(
-		ProtoContext *context,
-
-		ProtoList *key,
-		LiteralDictionary *previous,
-		LiteralDictionary *next
-	);
-	~LiteralDictionary();
-
-    ProtoList           *key;
-    ProtoObject         *hash;
-    LiteralDictionary   *previous;
-    LiteralDictionary   *next;
-    unsigned long        count:52;
-    unsigned long        balance:4;
-    unsigned long        height:8;
-
-    ProtoList           *getFromString(ProtoList *string);
-	ProtoList			*get(char *zeroTerminatedUTF8CharString);
-	LiteralDictionary	*set(ProtoList *string);
-};
-
 std::atomic<BOOLEAN> literalMutex(FALSE);
 
 BigCell *literalFreeCells = NULL;
@@ -488,89 +463,12 @@ ProtoTuple *ProtoContext::newTuple() {
     return tuple;
 }
 
-ProtoIndirectTuple *createIndirectTuples(ProtoContext *context, ProtoList *list, int from, int to) {
-    int list_size = list->getSize(context);
-    int size = to - from + 1;
-    ProtoTuple *leaves[TUPLE_ATOM_SIZE];
-
-    for (int i = 0; i < TUPLE_INDIRECT_SIZE; i++) {
-        ProtoObject *data[TUPLE_ATOM_SIZE];
-        for (int j = 0; j < TUPLE_ATOM_SIZE; j++) {
-            int index = i * TUPLE_ATOM_SIZE + j;
-            if (index < list_size) 
-                data[j] = list->getAt(context, index);
-            else
-                data[j] = NULL;
-        }
-        leaves[i] = new(context) ProtoTuple(
-            context,
-            size,
-            NULL,
-            data);
-    }
-
-    if (size < TUPLE_INDIRECT_SIZE * TUPLE_ATOM_SIZE) {
-        return new(context) ProtoIndirectTuple(
-            context,
-            size,
-            NULL,
-            &leaves[0]);
-    }
-    else {
-        ProtoIndirectTuple *indirect = createIndirectTuples(context, list, from + TUPLE_ATOM_SIZE, to);
-
-        return new(context) ProtoIndirectTuple(
-            context,
-            size,
-            indirect,
-            &leaves[0]);
-    }
-}
-
 
 ProtoTuple *ProtoContext::tupleFromList(ProtoList *list) {
     unsigned long size = list->getSize(this);
-
-    ProtoObject *data[TUPLE_ATOM_SIZE];
-    
-
-    for (int i = 0; i < TUPLE_ATOM_SIZE; i++)
-        if (i < size)
-            data[i] = list->getAt(this, 0);
-
     ProtoTuple *newTuple;
 
-    if (size < TUPLE_ATOM_SIZE) {
-        newTuple = new(this) ProtoTuple(
-            this,
-            size,
-            NULL,
-            data);
-    }
-    else {
-        ProtoIndirectTuple *indirect = createIndirectTuples(this, list, TUPLE_ATOM_SIZE, size - 1);
-
-        newTuple = new(this) ProtoTuple(
-            this,
-            size,
-            indirect,
-            data);
-
-    }
-
-    TupleDictionary *currentRoot, *newRoot;
-    do {
-        currentRoot = this->space->tupleRoot;
-
-        ProtoTuple *entry = currentRoot->hasList(this, list);
-        if (entry)
-            newTuple = entry;
-            
-        newRoot = currentRoot->set(this, newTuple);
-    } while (!this->space->tupleRoot.compare_exchange_strong(
-        currentRoot, 
-        newRoot
-    ));
+    // TODO
 
     return newTuple;
 }

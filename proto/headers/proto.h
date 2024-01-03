@@ -71,10 +71,10 @@ namespace proto {
 #define POINTER_TAG_EXTERNAL_POINTER	(0x06LU)
 #define POINTER_TAG_METHOD_CELL     	(0x07LU)
 #define POINTER_TAG_STRING		     	(0x08LU)
-#define POINTER_TAG_UNASSIGNED_9     	(0x09LU)
-#define POINTER_TAG_UNASSIGNED_A     	(0x0ALU)
-#define POINTER_TAG_UNASSIGNED_B     	(0x0BLU)
-#define POINTER_TAG_UNASSIGNED_C     	(0x0CLU)
+#define POINTER_TAG_LIST_ITERATOR     	(0x09LU)
+#define POINTER_TAG_TUPLE_ITERATOR     	(0x0ALU)
+#define POINTER_TAG_STRING_ITERATOR    	(0x0BLU)
+#define POINTER_TAG_TUPLE_ITERATOR     	(0x0CLU)
 #define POINTER_TAG_UNASSIGNED_D     	(0x0DLU)
 #define POINTER_TAG_UNASSIGNED_E     	(0x0ELU)
 #define POINTER_TAG_UNASSIGNED_F     	(0x0FLU)
@@ -114,7 +114,7 @@ class BigCell;
 class ProtoContext;
 class ProtoList;
 class ProtoSparseList;
-class TupleDictionary;
+class ProtoTuple;
 
 class AllocatedSegment {
 public:
@@ -331,7 +331,49 @@ public:
 	ProtoObjectCell *object;
 };
 
-class ProtoList: virtual public Cell {
+class ProtoIterator: virtual public Cell {
+public:
+	virtual int hasNext() = 0;
+	virtual ProtoObject *next() = 0;
+
+	virtual void finalize() = 0;
+
+	virtual void processReferences(
+		ProtoContext *context,
+		void *self,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			Cell *cell
+		)
+	) = 0;
+};
+
+class ProtoListIterator: public ProtoIterator {
+public:
+	ProtoListIterator(ProtoContext *context);
+	virtual ~ProtoListIterator();
+
+	virtual int hasNext();
+	virtual ProtoObject *next();
+
+	virtual ProtoObject	  *asObject(ProtoContext *context);
+	virtual void finalize();
+
+	virtual void processReferences(
+		ProtoContext *context,
+		void *self,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			Cell *cell
+		)
+	);
+
+	unsigned long currentIndex;
+};
+
+class ProtoList: public Cell {
 public:
 	ProtoList(
 		ProtoContext *context,
@@ -367,6 +409,7 @@ public:
 	virtual ProtoTuple    *asTuple(ProtoContext *context);
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
+	virtual ProtoStringIterator *getIterator(ProtoContext *context);
 
 	virtual void finalize();
 
@@ -390,22 +433,19 @@ public:
 	unsigned long type:4;
 };
 
+#define TUPLE_SIZE 5
 
-#define TUPLE_ATOM_SIZE 4
-#define TUPLE_INDIRECT_SIZE 4
-
-class ProtoIndirectTuple: public Cell {
+class ProtoTupleIterator: public ProtoIterator {
 public:
-	ProtoIndirectTuple(
-		ProtoContext *context,
-		unsigned long element_count = 0,
-		ProtoIndirectTuple *continuation = NULL,
-		ProtoTuple **data = NULL
+	ProtoTupleIterator (
+		ProtoContext *context
 	);
-	virtual ~ProtoIndirectTuple();
+	virtual ~ProtoTupleIterator();
 
-	virtual ProtoObject   *getAt(ProtoContext *context, int index);
+	virtual int hasNext();
+	virtual ProtoObject *next();
 
+	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual void finalize();
 
 	virtual void processReferences(
@@ -418,9 +458,7 @@ public:
 		)
 	);
 
-	ProtoIndirectTuple    *continuation;
-
-	ProtoTuple   *data[TUPLE_INDIRECT_SIZE];
+	unsigned long currentIndex;
 };
 
 class ProtoTuple: public Cell {
@@ -428,8 +466,8 @@ public:
 	ProtoTuple(
 		ProtoContext *context,
 		unsigned long element_count = 0,
-		ProtoIndirectTuple *continuation = NULL,
-		ProtoObject **data = NULL
+		ProtoObject **data = NULL,
+		ProtoTuple **indirect = NULL
 	);
 	~ProtoTuple();
 
@@ -459,6 +497,7 @@ public:
 	virtual ProtoList	  *asList(ProtoContext *context);
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long  getHash(ProtoContext *context);
+	virtual ProtoStringIterator *getIterator(ProtoContext *context);
 
 	virtual void finalize();
 
@@ -473,9 +512,36 @@ public:
 	);
 
 	unsigned long element_count;
-	ProtoIndirectTuple    *continuation;
 
-	ProtoObject   *data[4];
+	union {
+		ProtoObject   *data[TUPLE_SIZE];
+		ProtoTuple    *indirect[TUPLE_SIZE]; 
+	} pointers;
+
+};
+
+class ProtoStringIterator: public ProtoIterator {
+public:
+	ProtoStringIterator(ProtoContext *context);
+	virtual ~ProtoStringIterator();
+
+	virtual int hasNext();
+	virtual ProtoObject *next();
+
+	virtual ProtoObject	  *asObject(ProtoContext *context);
+	virtual void finalize();
+
+	virtual void processReferences(
+		ProtoContext *context,
+		void *self,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			Cell *cell
+		)
+	);
+
+	unsigned long currentIndex;
 };
 
 class ProtoString: public Cell {
@@ -513,6 +579,7 @@ public:
 	virtual ProtoObject	   *asObject(ProtoContext *context);
 	virtual ProtoList	   *asList(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
+	virtual ProtoStringIterator *getIterator(ProtoContext *context);
 
 	virtual void finalize();
 
@@ -527,6 +594,30 @@ public:
 	);
 
 	ProtoTuple *baseTuple;
+
+};
+
+class ProtoSparseListIterator: public ProtoIterator {
+public:
+	ProtoSparseListIterator(ProtoContext *context);
+	virtual ~ProtoSparseListIterator();
+
+	virtual int hasNext();
+	virtual ProtoObject *next();
+	virtual unsigned long nextIndex();
+
+	virtual ProtoObject	  *asObject(ProtoContext *context);
+	virtual void finalize();
+
+	virtual void processReferences(
+		ProtoContext *context,
+		void *self,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			Cell *cell
+		)
+	);
 
 };
 
@@ -551,6 +642,7 @@ public:
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
+	virtual ProtoStringIterator *getIterator(ProtoContext *context);
 	
 	virtual void finalize();
 
@@ -880,7 +972,7 @@ public:
 	void		triggerGC();
 
 	// TODO Should it has a dictionary to access threads by name?
-	std::atomic<TupleDictionary *> tupleRoot;
+	std::atomic<ProtoSparseList *> tupleRoot;
 	
 
 	ProtoList			*threads;

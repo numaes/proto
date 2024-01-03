@@ -17,20 +17,35 @@ namespace proto {
 #endif
 
 // TODO Redefinir la implementación de Tuplas
+ProtoTupleIterator::ProtoTupleIterator (ProtoContext *context) : Cell(context) {
+
+};
+
+ProtoTupleIterator::~ProtoTupleIterator() {};
 
 ProtoTuple::ProtoTuple(
-    ProtoContext *context,
-    unsigned long element_count,
-    ProtoIndirectTuple *continuation,
-    ProtoObject **data
+		ProtoContext *context,
+		unsigned long element_count = 0,
+		ProtoObject **data = NULL,
+		ProtoTuple **indirect = NULL
 ) : Cell(context) {
     this->element_count = element_count;
-    this->continuation = continuation;
-    for (int i = 0; i < 4; i++) {
-        if (i < element_count)
-            this->data[i] = data[i];
-        else 
-            this->data[i] = NULL;
+    if (element_count <= TUPLE_SIZE) {
+        for (int i = 0; i < TUPLE_SIZE; i++) {
+            if (i < element_count)
+                this->pointers.data[i] = data[i];
+            else 
+                this->pointers.data[i] = NULL;
+        }
+    }
+    else {
+        for (int i = 0; i < TUPLE_SIZE; i++) {
+            if (i < element_count)
+                this->pointers.indirect[i] = indirect[i];
+            else 
+                this->pointers.indirect[i] = NULL;
+        }
+
     }
 };
 
