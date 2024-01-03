@@ -16,6 +16,57 @@ namespace proto {
 #define max(a, b) (((a) > (b))? (a):(b))
 #endif
 
+ProtoListIterator::ProtoListIterator(
+		ProtoContext *context,
+        ProtoList *base,
+		unsigned long currentIndex
+	) : Cell(context) {
+    this->base = base;
+	this->currentIndex = currentIndex;
+};
+
+ProtoListIterator::~ProtoListIterator() {};
+
+int ProtoListIterator::hasNext(ProtoContext *context) {
+    if (this->currentIndex >= this->base->getSize(context))
+        return FALSE;
+    else
+        return TRUE;
+};
+
+ProtoObject *ProtoListIterator::next(ProtoContext *context) {
+    return this->base->getAt(context, this->currentIndex);
+};
+
+ProtoListIterator *ProtoListIterator::advance(ProtoContext *context) {
+    return new(context) ProtoListIterator(context, this->base, this->currentIndex);
+};
+
+ProtoObject	  *ProtoListIterator::asObject(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+    p.op.pointer_tag = POINTER_TAG_LIST_ITERATOR;
+
+    return p.oid.oid;
+};
+
+void ProtoListIterator::finalize() {};
+
+void ProtoListIterator::processReferences(
+		ProtoContext *context,
+		void *self,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			Cell *cell
+		)
+	) {
+
+	// TODO
+
+};
+
+
 ProtoList::ProtoList(
     ProtoContext *context,
 

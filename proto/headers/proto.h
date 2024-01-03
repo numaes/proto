@@ -352,12 +352,16 @@ public:
 
 class ProtoListIterator: public ProtoIterator {
 public:
-	ProtoListIterator(ProtoContext *context);
+	ProtoListIterator(
+		ProtoContext *context,
+		ProtoList *base,
+		unsigned long currentIndex
+	);
 	virtual ~ProtoListIterator();
 
-	virtual int hasNext();
-	virtual ProtoObject *next();
-	virtual ProtoIterator *advance(ProtoContext *context);
+	virtual int hasNext(ProtoContext *context);
+	virtual ProtoObject *next(ProtoContext *context);
+	virtual ProtoListIterator *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual void finalize();
@@ -372,7 +376,9 @@ public:
 		)
 	);
 
+	ProtoList *base;
 	unsigned long currentIndex;
+
 };
 
 class ProtoList: public Cell {
@@ -440,13 +446,15 @@ public:
 class ProtoTupleIterator: public ProtoIterator {
 public:
 	ProtoTupleIterator (
-		ProtoContext *context
+		ProtoContext *context,
+		ProtoTuple *base,
+		unsigned long currentIndex
 	);
 	virtual ~ProtoTupleIterator();
 
-	virtual int hasNext();
-	virtual ProtoObject *next();
-	virtual ProtoIterator *advance(ProtoContext *context);
+	virtual int hasNext(ProtoContext *context);
+	virtual ProtoObject *next(ProtoContext *context);
+	virtual ProtoTupleIterator *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual void finalize();
@@ -461,6 +469,7 @@ public:
 		)
 	);
 
+	ProtoTuple *base;
 	unsigned long currentIndex;
 };
 
@@ -525,11 +534,15 @@ public:
 
 class ProtoStringIterator: public ProtoIterator {
 public:
-	ProtoStringIterator(ProtoContext *context);
+	ProtoStringIterator(
+		ProtoContext *context,
+		ProtoString *base,
+		unsigned long currentIndex = 0
+	);
 	virtual ~ProtoStringIterator();
 
-	virtual int hasNext();
-	virtual ProtoObject *next();
+	virtual int hasNext(ProtoContext *context);
+	virtual ProtoObject *next(ProtoContext *context);
 	virtual ProtoStringIterator *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
@@ -545,6 +558,7 @@ public:
 		)
 	);
 
+	ProtoString *base;
 	unsigned long currentIndex;
 };
 

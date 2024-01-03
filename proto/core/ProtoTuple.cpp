@@ -17,36 +17,55 @@ namespace proto {
 #endif
 
 // TODO Redefinir la implementación de Tuplas
-ProtoTupleIterator::ProtoTupleIterator (ProtoContext *context) : Cell(context) {
 
+ProtoTupleIterator::ProtoTupleIterator(
+		ProtoContext *context,
+        ProtoTuple *base,
+		unsigned long currentIndex
+	) : Cell(context) {
+    this->base = base;
+	this->currentIndex = currentIndex;
 };
 
 ProtoTupleIterator::~ProtoTupleIterator() {};
 
-ProtoTuple::ProtoTuple(
-		ProtoContext *context,
-		unsigned long element_count = 0,
-		ProtoObject **data = NULL,
-		ProtoTuple **indirect = NULL
-) : Cell(context) {
-    this->element_count = element_count;
-    if (element_count <= TUPLE_SIZE) {
-        for (int i = 0; i < TUPLE_SIZE; i++) {
-            if (i < element_count)
-                this->pointers.data[i] = data[i];
-            else 
-                this->pointers.data[i] = NULL;
-        }
-    }
-    else {
-        for (int i = 0; i < TUPLE_SIZE; i++) {
-            if (i < element_count)
-                this->pointers.indirect[i] = indirect[i];
-            else 
-                this->pointers.indirect[i] = NULL;
-        }
+int ProtoTupleIterator::hasNext(ProtoContext *context) {
+    if (this->currentIndex >= this->base->getSize(context))
+        return FALSE;
+    else
+        return TRUE;
+};
 
-    }
+ProtoObject *ProtoTupleIterator::next(ProtoContext *context) {
+    return this->base->getAt(context, this->currentIndex);
+};
+
+ProtoTupleIterator *ProtoTupleIterator::advance(ProtoContext *context) {
+    return new(context) ProtoTupleIterator(context, this->base, this->currentIndex);
+};
+
+ProtoObject	  *ProtoTupleIterator::asObject(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+    p.op.pointer_tag = POINTER_TAG_LIST_ITERATOR;
+
+    return p.oid.oid;
+};
+
+void ProtoTupleIterator::finalize() {};
+
+void ProtoTupleIterator::processReferences(
+		ProtoContext *context,
+		void *self,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			Cell *cell
+		)
+	) {
+
+	// TODO
+
 };
 
 ProtoTuple::~ProtoTuple() {};

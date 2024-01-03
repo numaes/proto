@@ -18,62 +18,34 @@ namespace proto {
 
 ProtoStringIterator::ProtoStringIterator(
 		ProtoContext *context,
-		int state,
-		ProtoSparseList *current,
-		ProtoSringterator *queue = NULL
+        ProtoString *base,
+		unsigned long currentIndex
 	) : Cell(context) {
-	this->state = state;
-	this->current = current;
-	this->queue = queue;
+    this->base = base;
+	this->currentIndex = currentIndex;
 };
 
-ProtoStringIterator::~ProtoSringterator() {};
+ProtoStringIterator::~ProtoStringIterator() {};
 
 int ProtoStringIterator::hasNext(ProtoContext *context) {
-	if (this->state == ITERATOR_NEXT_PREVIOUS && this->current->previous)
-		return TRUE;
-	if (this->state == ITERATOR_NEXT_THIS)
-		return TRUE;
-	if (this->state == ITERATOR_NEXT_NEXT && this->current->next)
-		return TRUE;
-	if (this->queue)
-		return this->queue->hasNext(context);
+    if (this->currentIndex >= this->base->getSize(context))
+        return FALSE;
+    else
+        return TRUE;
 };
 
 ProtoObject *ProtoStringIterator::next(ProtoContext *context) {
-	if (this->state == ITERATOR_NEXT_PREVIOUS && this->current->previous)
-		return this->current->previous->value;
-	if (this->state == ITERATOR_NEXT_THIS)
-		return this->current->value;
-	if (this->state == ITERATOR_NEXT_NEXT && this->current->next)
-		return this->current->next->value;
+    return this->base->getAt(context, this->currentIndex);
 };
 
 ProtoStringIterator *ProtoStringIterator::advance(ProtoContext *context) {
-	if (this->state == ITERATOR_NEXT_PREVIOUS)
-		return new(context) ProtoSparseListIterator(
-			context,
-			ITERATOR_NEXT_THIS,
-			this->current,
-			this->queue
-		);
-	if (this->state == ITERATOR_NEXT_THIS && this->current->next)
-		return this->current->next->getIterator(context);
-	if (this->state == ITERATOR_NEXT_THIS)
-		if (this->queue)
-			return this->queue->advance(context);
-		return NULL;
-	if (this->state == ITERATOR_NEXT_NEXT && this->current->next)
-		if (this->queue)
-			return this->queue->advance(context);
-	return NULL;
-
+    return new(context) ProtoStringIterator(context, this->base, this->currentIndex);
 };
 
 ProtoObject	  *ProtoStringIterator::asObject(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
-    p.op.pointer_tag = POINTER_TAG_SPARSE_LIST_ITERATOR;
+    p.op.pointer_tag = POINTER_TAG_LIST_ITERATOR;
 
     return p.oid.oid;
 };
