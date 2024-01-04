@@ -12,7 +12,7 @@ namespace proto {
 ProtoObjectCell::ProtoObjectCell(
 	ProtoContext *context,
 	ParentLink	*parent,
-	ProtoMutableReference *mutable_ref,
+	unsigned long mutable_ref,
 	ProtoSparseList *attributes
 ) : Cell(context) {
 	this->parent = parent;

@@ -218,14 +218,14 @@ public:
 	ProtoObject *getType(ProtoContext *c);
 	ProtoObject *getAttribute(ProtoContext *c, ProtoString *name);
 	ProtoObject *hasAttribute(ProtoContext *c, ProtoString *name);
-	ProtoObject *hasOwnAttribute(ProtoContext *c, ProtoObject *name);
+	ProtoObject *hasOwnAttribute(ProtoContext *c, ProtoString *name);
 	ProtoObject *setAttribute(ProtoContext *c, ProtoString *name, ProtoObject *value);
 
-	ProtoList   *getAttributes(ProtoContext *c);
-	ProtoList   *getOwnAttributes(ProtoContext *c);
-	ProtoList   *getParent(ProtoContext *c);
+	ProtoSparseList   *getAttributes(ProtoContext *c);
+	ProtoSparseList   *getOwnAttributes(ProtoContext *c);
+	ProtoList   	  *getParents(ProtoContext *c);
 
-	ProtoObject *addParent(ProtoContext *c, ProtoObject *newParent);
+	ProtoObject *addParent(ProtoContext *c, ProtoObjectCell *newParent);
 	ProtoObject *isInstanceOf(ProtoContext *c, ProtoObject *prototype);
 
 	ProtoObject *call(ProtoContext *c,
@@ -664,7 +664,7 @@ public:
 #define ITERATOR_NEXT_THIS 1
 #define ITERATOR_NEXT_NEXT 2
 
-class ProtoSparseListIterator: public ProtoIterator {
+class ProtoSparseListIterator: public Cell {
 public:
 	ProtoSparseListIterator(
 		ProtoContext *context,
@@ -675,7 +675,7 @@ public:
 	virtual ~ProtoSparseListIterator();
 
 	virtual int hasNext(ProtoContext *context);
-	virtual ProtoObject *next(ProtoContext *context);
+	virtual ProtoTuple *next(ProtoContext *context);
 	virtual ProtoSparseListIterator *advance(ProtoContext *context);
 
 	virtual unsigned long nextIndex(ProtoContext *context);
@@ -934,7 +934,7 @@ public:
 	ProtoObjectCell(
 		ProtoContext *context,
 		ParentLink	*parent = NULL,
-		ProtoMutableReference *mutable_ref = NULL,
+		unsigned long mutable_ref = 0,
 		ProtoSparseList  *attributes = NULL
 	);
 	 ~ProtoObjectCell();
@@ -957,7 +957,7 @@ public:
 		)
 	);
 
-	ProtoMutableReference *mutable_ref;
+	unsigned long mutable_ref;
 	ParentLink	*parent;
 	ProtoSparseList  *attributes;
 };
@@ -1069,8 +1069,9 @@ public:
 	ProtoObject *getThreads();
 
 	ProtoObject	*objectPrototype;
-	ProtoObject *integerPrototype;
-	ProtoObject *charPrototype;
+	ProtoObject *smallIntegerPrototype;
+	ProtoObject *smallFloatPrototype;
+	ProtoObject *unicodeCharPrototype;
 	ProtoObject *bytePrototype;
 	ProtoObject *nonePrototype;
 	ProtoObject *methodPrototype;
@@ -1082,8 +1083,14 @@ public:
 	ProtoObject *timestampPrototype;
 	ProtoObject *timedeltaPrototype;
 	ProtoObject *identityDictPrototype;
-	ProtoObject *protoSetPrototype;
-	ProtoObject *protoListPrototype;
+	ProtoObject *listPrototype;
+	ProtoObject *tuplePrototype;
+	ProtoObject *stringPrototype;
+	ProtoObject *sparseListPrototype;
+	ProtoObject *listIteratorPrototype;
+	ProtoObject *tupleIteratorPrototype;
+	ProtoObject *sparseListIteratorPrototype;
+	ProtoObject *stringIteratorPrototype;
 	ProtoObject *threadPrototype;
 
 	ProtoObject *rootObject;

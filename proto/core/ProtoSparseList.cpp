@@ -37,13 +37,18 @@ int ProtoSparseListIterator::hasNext(ProtoContext *context) {
 		return this->queue->hasNext(context);
 };
 
-ProtoObject *ProtoSparseListIterator::next(ProtoContext *context) {
+ProtoTuple *ProtoSparseListIterator::next(ProtoContext *context) {
 	if (this->state == ITERATOR_NEXT_PREVIOUS && this->current->previous)
-		return this->current->previous->value;
-	if (this->state == ITERATOR_NEXT_THIS)
-		return this->current->value;
+		return NULL;
+	if (this->state == ITERATOR_NEXT_THIS) {
+		ProtoList *tupleList = new(context) ProtoList(context);
+		tupleList = tupleList->appendLast(context, context->fromInteger(this->current->index));
+		tupleList = tupleList->appendLast(context, this->current->value);
+		ProtoTuple *tuple = context->tupleFromList(tupleList);
+		return tuple;
+	}
 	if (this->state == ITERATOR_NEXT_NEXT && this->current->next)
-		return this->current->next->value;
+		return NULL;
 };
 
 ProtoSparseListIterator *ProtoSparseListIterator::advance(ProtoContext *context) {
@@ -57,14 +62,31 @@ ProtoSparseListIterator *ProtoSparseListIterator::advance(ProtoContext *context)
 	if (this->state == ITERATOR_NEXT_THIS && this->current->next)
 		return this->current->next->getIterator(context);
 	if (this->state == ITERATOR_NEXT_THIS)
-		if (this->queue)
-			return this->queue->advance(context);
-		return NULL;
+		if (this->queue) {
+			ProtoSparseListIterator *newState = new(context) ProtoSparseListIterator(
+				context,
+				ITERATOR_NEXT_NEXT,
+				this->current,
+				this->queue
+			);
+			ProtoSparseList *node = this->queue->current;
+			while (node->previous) {
+				newState = new(context) ProtoSparseListIterator(
+					context,
+					node->previous? ITERATOR_NEXT_PREVIOUS : ITERATOR_NEXT_THIS,
+					node,
+					newState
+				);
+				node = node->previous;
+			}
+			return newState;
+		}
+		else		
+			return NULL;
 	if (this->state == ITERATOR_NEXT_NEXT && this->current->next)
 		if (this->queue)
 			return this->queue->advance(context);
 	return NULL;
-
 };
 
 ProtoObject	  *ProtoSparseListIterator::asObject(ProtoContext *context) {
@@ -547,6 +569,29 @@ unsigned long ProtoSparseList::getHash(ProtoContext *context) {
     p.oid.oid = (ProtoObject *) this;
 
     return p.asHash.hash;
+};
+
+ProtoSparseListIterator *ProtoSparseList::getIterator(ProtoContext *context) {
+	ProtoSparseListIterator *newState = new(context) ProtoSparseListIterator(
+				context,
+				this->previous? ITERATOR_NEXT_PREVIOUS : ITERATOR_NEXT_THIS,
+				this,
+				NULL
+	);
+
+	ProtoSparseList *node = this;
+	while (node->previous) {
+		newState = new(context) ProtoSparseListIterator(
+			context,
+			node->previous? ITERATOR_NEXT_PREVIOUS : ITERATOR_NEXT_THIS,
+			node,
+			newState
+		);
+		node = node->previous;
+	}
+
+	return newState;
+
 };
 
 ProtoSparseListIterator *ProtoSparseList::getIterator(ProtoContext *context) {
