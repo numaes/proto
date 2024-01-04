@@ -12,7 +12,7 @@ using namespace std;
 
 namespace proto {
 
-ProtoObject *getBase(ProtoContext *context, ProtoObject *p) {
+ProtoObject *getPrototype(ProtoContext *context, ProtoObject *p) {
     ProtoObjectPointer pa;
 
     pa.oid.oid = p;
@@ -338,6 +338,7 @@ ProtoObject *ProtoObject::isInstanceOf(ProtoContext *context, ProtoObject *proto
 ProtoObject *ProtoObject::call(
     ProtoContext *context,
     ProtoString *methodName,
+    ProtoObject *self,
     ProtoList *unnamedParametersList = NULL,
     ProtoSparseList *keywordParametersDict = NULL
 ) {
@@ -354,7 +355,7 @@ ProtoObject *ProtoObject::call(
 
             return (*m->method)(
                 context, 
-                this,
+                self,
                 this,
                 unnamedParametersList, 
                 keywordParametersDict);

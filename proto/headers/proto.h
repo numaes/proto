@@ -230,6 +230,7 @@ public:
 
 	ProtoObject *call(ProtoContext *c,
 					  ProtoString *method,
+					  ProtoObject *self,
 					  ProtoList *unnamedParametersList,
 			          ProtoSparseList *keywordParametersDict);
 
