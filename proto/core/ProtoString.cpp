@@ -50,7 +50,7 @@ ProtoObject	  *ProtoStringIterator::asObject(ProtoContext *context) {
     return p.oid.oid;
 };
 
-void ProtoStringIterator::finalize() {};
+void ProtoStringIterator::finalize(ProtoContext *context) {};
 
 void ProtoStringIterator::processReferences(
 		ProtoContext *context,

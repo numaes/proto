@@ -50,7 +50,7 @@ ProtoObject	  *ProtoListIterator::asObject(ProtoContext *context) {
     return p.oid.oid;
 };
 
-void ProtoListIterator::finalize() {};
+void ProtoListIterator::finalize(ProtoContext *context) {};
 
 void ProtoListIterator::processReferences(
 		ProtoContext *context,
@@ -714,7 +714,7 @@ unsigned long ProtoList::getHash(ProtoContext *context) {
 };
 
 
-void ProtoList::finalize() {};
+void ProtoList::finalize(ProtoContext *context) {};
 
 void ProtoList::processReferences(
     ProtoContext *context,

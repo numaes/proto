@@ -52,7 +52,7 @@ ProtoObject	  *ProtoTupleIterator::asObject(ProtoContext *context) {
     return p.oid.oid;
 };
 
-void ProtoTupleIterator::finalize() {};
+void ProtoTupleIterator::finalize(ProtoContext *context) {};
 
 void ProtoTupleIterator::processReferences(
 		ProtoContext *context,
@@ -68,6 +68,25 @@ void ProtoTupleIterator::processReferences(
 
 };
 
+ProtoTuple::ProtoTuple(
+    ProtoContext *context,
+    unsigned long elementCount = 0,
+    unsigned long height=0,
+    ProtoObject **data = NULL,
+    ProtoTuple **indirect = NULL
+) : Cell(context) {
+    this->elementCount = elementCount;
+    this->height = height;
+    if (height > 0) {
+        for (int i = 0; i < TUPLE_SIZE; i++)
+            this->pointers.indirect[i] = indirect[i]; 
+    }
+    else {
+        for (int i = 0; i < TUPLE_SIZE; i++)
+            this->pointers.data[i] = data[i]; 
+    }
+};
+
 ProtoTuple::~ProtoTuple() {};
 
 ProtoObject   *ProtoTuple::getAt(ProtoContext *context, int index) {
@@ -77,18 +96,11 @@ ProtoObject   *ProtoTuple::getAt(ProtoContext *context, int index) {
     if (index < 0)
         index = 0;
 
-    int levels = 0, acum = this->elementCount, rest;
-    do {
-        acum = acum / TUPLE_SIZE;
-        levels++;
-    } while (acum > 0);
-
-    acum = index;
+    int rest = index % TUPLE_SIZE;
     ProtoTuple *node = this;
-    for (int i = levels; i > 0; i--) {
-        acum = index / TUPLE_SIZE;
-        rest = index % TUPLE_SIZE;
-        node = node->pointers.indirect[rest];
+    for (int i = this->height; i > 0; i--) {
+        index = index / TUPLE_SIZE;
+        node = node->pointers.indirect[index];
     }
 
     return node->pointers.data[rest];
@@ -353,7 +365,11 @@ ProtoList *ProtoTuple::asList(ProtoContext *context) {
 
 };
 
-void ProtoTuple::finalize() {};
+void ProtoTuple::finalize(ProtoContext *context) {
+    // TODO SYNCH
+    context->space->tupleRoot = 
+        context->space->tupleRoot->removeAt(context, this);
+};
 
 void ProtoTuple::processReferences(
     ProtoContext *context,
@@ -364,8 +380,14 @@ void ProtoTuple::processReferences(
         Cell *cell
     )
 ) {
-    // TODO
-
+    int size = (this->elementCount > TUPLE_SIZE)? TUPLE_SIZE : this->elementCount;
+    for (int i = 0; i < size; i++)
+        if (this->height > 0)
+            method(context, self, this->pointers.indirect[i]);
+        else {
+            if (this->pointers.data[i]->isCell(context))
+                method(context, self, this->pointers.data[i]->asCell(context));
+        }
 };
 
 ProtoObject *ProtoTuple::asObject(ProtoContext *context) {

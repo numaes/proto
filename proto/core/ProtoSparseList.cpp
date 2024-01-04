@@ -75,7 +75,7 @@ ProtoObject	  *ProtoSparseListIterator::asObject(ProtoContext *context) {
     return p.oid.oid;
 };
 
-void ProtoSparseListIterator::finalize() {};
+void ProtoSparseListIterator::finalize(ProtoContext *context) {};
 
 void ProtoSparseListIterator::processReferences(
 		ProtoContext *context,

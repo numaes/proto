@@ -115,6 +115,7 @@ class ProtoContext;
 class ProtoList;
 class ProtoSparseList;
 class ProtoTuple;
+class TupleDictionary;
 
 class AllocatedSegment {
 public:
@@ -233,8 +234,10 @@ public:
 			          ProtoSparseList *keywordParametersDict);
 
 	unsigned long getHash(ProtoContext *context);
+	int isCell(ProtoContext *context);
+	Cell *asCell(ProtoContext *context);
 
-	void finalize();
+	void finalize(ProtoContext *context);
 
 	void processReferences(
 		ProtoContext *context, 
@@ -269,7 +272,7 @@ public:
 	virtual unsigned long getHash(ProtoContext *context);
 
 	// Called before discarding the Cell by garbage collector
-	virtual void finalize();
+	virtual void finalize(ProtoContext *context);
 
 	// Apply method recursivelly to all referenced objects, except itself
     virtual void processReferences(
@@ -314,7 +317,7 @@ public:
 
 	~ParentLink();
 
-	virtual void finalize();
+	virtual void finalize(ProtoContext *context);
 
 	// Apply method recursivelly to all referenced objects, except itself
     virtual void processReferences(
@@ -337,7 +340,7 @@ public:
 	virtual ProtoObject *next(ProtoContext *context) = 0;
 	virtual ProtoIterator *advance(ProtoContext *context);
 
-	virtual void finalize() = 0;
+	virtual void finalize(ProtoContext *context) = 0;
 
 	virtual void processReferences(
 		ProtoContext *context,
@@ -364,7 +367,7 @@ public:
 	virtual ProtoListIterator *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
-	virtual void finalize();
+	virtual void finalize(ProtoContext *context);
 
 	virtual void processReferences(
 		ProtoContext *context,
@@ -419,7 +422,7 @@ public:
 	virtual unsigned long getHash(ProtoContext *context);
 	virtual ProtoStringIterator *getIterator(ProtoContext *context);
 
-	virtual void finalize();
+	virtual void finalize(ProtoContext *context);
 
 	virtual void processReferences(
 		ProtoContext *context,
@@ -457,7 +460,7 @@ public:
 	virtual ProtoTupleIterator *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
-	virtual void finalize();
+	virtual void finalize(ProtoContext *context);
 
 	virtual void processReferences(
 		ProtoContext *context,
@@ -473,11 +476,53 @@ public:
 	unsigned long currentIndex;
 };
 
+class TupleDictionary: Cell {
+private:
+    TupleDictionary *next;
+    TupleDictionary *previous;
+    ProtoTuple *key;
+    int count;
+    int height;
+
+    int compareTuple(ProtoContext *context, ProtoTuple *tuple);
+    TupleDictionary *rightRotate(ProtoContext *context, TupleDictionary *n);
+    TupleDictionary *leftRotate(ProtoContext *context, TupleDictionary *n);
+    TupleDictionary *rebalance(ProtoContext *context, TupleDictionary *newNode);
+
+public:
+    TupleDictionary(
+        ProtoContext *context,
+        ProtoTuple *key,
+        TupleDictionary *next = NULL,
+        TupleDictionary *previous = NULL
+    );
+
+	virtual void finalize(ProtoContext *context) {}
+
+	virtual void processReferences(
+		ProtoContext *context,
+		void *self,
+		void (*method) (
+			ProtoContext *context,
+			void *self,
+			Cell *cell
+		)
+	);
+
+    int compareList(ProtoContext *context, ProtoList *list);
+    ProtoTuple *hasList(ProtoContext *context, ProtoList *list);
+    int has(ProtoContext *context, ProtoTuple *tuple);
+    ProtoTuple getAt(ProtoContext *context, ProtoTuple *tuple);
+    TupleDictionary *set(ProtoContext *context, ProtoTuple *tuple);
+    TupleDictionary *removeAt(ProtoContext *context, ProtoTuple *tuple);
+};
+
 class ProtoTuple: public Cell {
 public:
 	ProtoTuple(
 		ProtoContext *context,
 		unsigned long elementCount = 0,
+		unsigned long height=0,
 		ProtoObject **data = NULL,
 		ProtoTuple **indirect = NULL
 	);
@@ -509,7 +554,7 @@ public:
 	virtual unsigned long  getHash(ProtoContext *context);
 	virtual ProtoStringIterator *getIterator(ProtoContext *context);
 
-	virtual void finalize();
+	virtual void finalize(ProtoContext *context);
 
 	virtual void processReferences(
 		ProtoContext *context,
@@ -521,7 +566,8 @@ public:
 		)
 	);
 
-	unsigned long elementCount;
+	unsigned long elementCount:56;
+	unsigned long height:8;
 
 	union {
 		ProtoObject   *data[TUPLE_SIZE];
@@ -544,7 +590,7 @@ public:
 	virtual ProtoStringIterator *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
-	virtual void finalize();
+	virtual void finalize(ProtoContext *context);
 
 	virtual void processReferences(
 		ProtoContext *context,
@@ -597,7 +643,7 @@ public:
 	virtual unsigned long getHash(ProtoContext *context);
 	virtual ProtoStringIterator *getIterator(ProtoContext *context);
 
-	virtual void finalize();
+	virtual void finalize(ProtoContext *context);
 
 	virtual void processReferences(
 		ProtoContext *context,
@@ -635,7 +681,7 @@ public:
 	virtual unsigned long nextIndex(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
-	virtual void finalize();
+	virtual void finalize(ProtoContext *context);
 
 	virtual void processReferences(
 		ProtoContext *context,
@@ -676,7 +722,7 @@ public:
 	virtual unsigned long getHash(ProtoContext *context);
 	virtual ProtoSparseListIterator *getIterator(ProtoContext *context);
 	
-	virtual void finalize();
+	virtual void finalize(ProtoContext *context);
 
 	virtual void processReferences (
 		ProtoContext *context,
@@ -742,7 +788,7 @@ public:
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
 	
-	virtual void finalize();
+	virtual void finalize(ProtoContext *context);
 
 	virtual void processReferences(
 		ProtoContext *context,
@@ -769,7 +815,7 @@ public:
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
 	
-	virtual void finalize();
+	virtual void finalize(ProtoContext *context);
 
 	virtual void processReferences(
 		ProtoContext *context,
@@ -842,7 +888,7 @@ public:
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
 	
-	virtual void finalize();
+	virtual void finalize(ProtoContext *context);
 
 	virtual void processReferences(
 		ProtoContext *context,
@@ -868,7 +914,7 @@ public:
 	);
 	~ProtoMutableReference();
 
-	virtual void finalize();
+	virtual void finalize(ProtoContext *context);
 
 	virtual void processReferences(
 		ProtoContext *context,
@@ -898,7 +944,7 @@ public:
 	virtual ProtoObject	*asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
 	
-	virtual void finalize();
+	virtual void finalize(ProtoContext *context);
 
 	// Apply method recursivelly to all referenced objects, except itself
     virtual void processReferences(
@@ -939,7 +985,7 @@ public:
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
 	
-	virtual void finalize();
+	virtual void finalize(ProtoContext *context);
 
 	// Apply method recursivelly to all referenced objects, except itself
     virtual void processReferences(
@@ -1050,7 +1096,7 @@ public:
 	void		triggerGC();
 
 	// TODO Should it has a dictionary to access threads by name?
-	std::atomic<ProtoSparseList *> tupleRoot;
+	std::atomic<TupleDictionary *> tupleRoot;
 	
 
 	ProtoList			*threads;

@@ -17,7 +17,7 @@ Cell::Cell (ProtoContext *context) {
 
 Cell::~Cell() {};
 
-void Cell::finalize() {};
+void Cell::finalize(ProtoContext *context) {};
 
 void *Cell::operator new(size_t size, ProtoContext *context) {
     return context->allocCell();
