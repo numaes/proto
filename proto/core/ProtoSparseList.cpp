@@ -506,7 +506,7 @@ void ProtoSparseList::processElements (
 	if (this->previous)
 		this->previous->processElements(context, self, method);
 
-	if (this->index != NULL)
+	if (this->value != NULL)
 		method(context, self, this->index, this->value);
 
 	if (this->next)

@@ -51,7 +51,9 @@ void ProtoObjectCell::processReferences(
 	if (this->parent)
 		method(context, self, this->parent);
 
-	method(context, self, this);
+	if (this->attributes)
+		method(context, self, this->attributes);
+
 };
 
 ProtoObject *ProtoObjectCell::asObject(ProtoContext *context) {

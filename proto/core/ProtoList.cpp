@@ -62,7 +62,7 @@ void ProtoListIterator::processReferences(
 		)
 	) {
 
-	// TODO
+    method(context, self, this->base);
 
 };
 

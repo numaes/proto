@@ -320,7 +320,7 @@ void ProtoString::processReferences(
         Cell *cell
     )
 ) {
-    // TODO
+    method(context, self, this->baseTuple);
 };
 
 ProtoObject *ProtoString::asObject(ProtoContext *context) {

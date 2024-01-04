@@ -366,9 +366,14 @@ ProtoList *ProtoTuple::asList(ProtoContext *context) {
 };
 
 void ProtoTuple::finalize(ProtoContext *context) {
-    // TODO SYNCH
-    context->space->tupleRoot = 
-        context->space->tupleRoot->removeAt(context, this);
+    TupleDictionary *newRoot, *currentRoot;
+    do {
+        currentRoot = context->space->tupleRoot.load();
+        newRoot = currentRoot->removeAt(context, this);
+    } while (context->space->tupleRoot.compare_exchange_strong(
+        currentRoot,
+        newRoot
+    ));
 };
 
 void ProtoTuple::processReferences(

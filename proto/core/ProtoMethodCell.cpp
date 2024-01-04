@@ -32,7 +32,7 @@ void ProtoMethodCell::processReferences(
 		Cell *cell
 	)
 ) {
-	method(context, self, this);
+
 }
 
 ProtoObject *ProtoMethodCell::asObject(ProtoContext *context) {

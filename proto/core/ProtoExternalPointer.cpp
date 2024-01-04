@@ -29,7 +29,7 @@ void ProtoExternalPointer::processReferences(
         Cell *cell
     )
 ) {
-    method(context, self, this);
+
 };
 
 ProtoObject *ProtoExternalPointer::asObject(ProtoContext *context) {
