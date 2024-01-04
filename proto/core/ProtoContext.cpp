@@ -612,19 +612,34 @@ ProtoTuple *ProtoContext::tupleFromList(ProtoList *list) {
         );
     }
 
-    if (size < TUPLE_SIZE)
-        return newTuple;
-
-    indirectPointers = indirectPointers->appendLast(this, (ProtoObject *) newTuple);
-    
-    int indirectSize = 0;
-    int levelCount = 0;
-    while (indirectPointers->getSize(this) > 0) {
-        nextLevel = new(this) ProtoList(this);
-        levelCount++;
-        indirectSize = 0;
-        for (i = 0, j = 0; i < indirectPointers->getSize(this); i++, j++) {
-            if (j == TUPLE_SIZE) {
+    if (size >= TUPLE_SIZE) {
+        indirectPointers = indirectPointers->appendLast(this, (ProtoObject *) newTuple);
+        
+        int indirectSize = 0;
+        int levelCount = 0;
+        while (indirectPointers->getSize(this) > 0) {
+            nextLevel = new(this) ProtoList(this);
+            levelCount++;
+            indirectSize = 0;
+            for (i = 0, j = 0; i < indirectPointers->getSize(this); i++, j++) {
+                if (j == TUPLE_SIZE) {
+                    newTuple = new(this) ProtoTuple(
+                        this,
+                        indirectSize,
+                        levelCount,
+                        NULL,
+                        indirectData
+                    );
+                    indirectSize = 0;
+                    j = 0;
+                    nextLevel = nextLevel->appendLast(this, (ProtoObject *) newTuple);
+                }
+                indirectData[j] = (ProtoTuple *) indirectPointers->getAt(this, i);
+                indirectSize += indirectData[j]->elementCount;
+            }
+            if (j != TUPLE_SIZE) {
+                for (; j < TUPLE_SIZE; j++)
+                    indirectData[j] = NULL;
                 newTuple = new(this) ProtoTuple(
                     this,
                     indirectSize,
@@ -632,57 +647,46 @@ ProtoTuple *ProtoContext::tupleFromList(ProtoList *list) {
                     NULL,
                     indirectData
                 );
-                indirectSize = 0;
-                j = 0;
-                nextLevel = nextLevel->appendLast(this, (ProtoObject *) newTuple);
             }
-            indirectData[j] = (ProtoTuple *) indirectPointers->getAt(this, i);
-            indirectSize += indirectData[j]->elementCount;
-        }
-        if (j != TUPLE_SIZE) {
-            for (; j < TUPLE_SIZE; j++)
-                indirectData[j] = NULL;
+            nextLevel = nextLevel->appendLast(this, (ProtoObject *) newTuple);
+
+            lastLevel = indirectPointers;
+            indirectPointers = nextLevel;
+        };
+        
+        if (lastLevel->getSize(this) > 1) {
+            for (j = 0; j < TUPLE_SIZE; j++)
+                if (j < lastLevel->getSize(this))
+                    indirectData[j] = (ProtoTuple *) lastLevel->getAt(this, j);
+                else
+                    indirectData[j] = NULL;
             newTuple = new(this) ProtoTuple(
                 this,
-                indirectSize,
-                levelCount,
+                list->getSize(this),
+                levelCount + 1,
                 NULL,
                 indirectData
             );
         }
-        nextLevel = nextLevel->appendLast(this, (ProtoObject *) newTuple);
-
-        lastLevel = indirectPointers;
-        indirectPointers = nextLevel;
-    };
-    
-    if (lastLevel->getSize(this) > 1) {
-        for (j = 0; j < TUPLE_SIZE; j++)
-            if (j < lastLevel->getSize(this))
-                indirectData[j] = (ProtoTuple *) lastLevel->getAt(this, j);
-            else
-                indirectData[j] = NULL;
-        newTuple = new(this) ProtoTuple(
-            this,
-            list->getSize(this),
-            levelCount + 1,
-            NULL,
-            indirectData
-        );
     }
 
     TupleDictionary *currentRoot, *newRoot;
     do {
         currentRoot = this->space->tupleRoot.load();
 
-        if (currentRoot->has(this, newTuple))
-            return currentRoot->getAt(this, newTuple);
+        if (currentRoot->has(this, newTuple)) {
+            newTuple = currentRoot->getAt(this, newTuple);
+            break;
+        }
+        else
+            newRoot = currentRoot->set(this, newTuple);
 
     } while (this->space->tupleRoot.compare_exchange_strong(
         currentRoot,
         newRoot
     ));
 
+    return newTuple;
 }
 
 ProtoString *ProtoContext::fromUTF8String(char *zeroTerminatedUtf8String) {
