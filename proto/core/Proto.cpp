@@ -6,6 +6,7 @@
  */
 
 #include "../headers/proto.h"
+#include <random>
 
 
 using namespace std;
@@ -64,34 +65,59 @@ ProtoObject *getPrototype(ProtoContext *context, ProtoObject *p) {
 	};
 }
 
-ProtoObject *ProtoObject::clone(ProtoContext *context) {
+ProtoObject *ProtoObject::clone(ProtoContext *context, BOOLEAN isMutable = FALSE) {
     ProtoObjectPointer pa;
 
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
         ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
+        int mutable_ref = 0;
 
-        return (new(context) ProtoObjectCell(
+        ProtoObject *newObject = (new(context) ProtoObjectCell(
             context,
             oc->parent,
-            0,
+            NULL,
             oc->attributes
         ))->asObject(context);
+
+        if (isMutable) {
+            ProtoSparseList *currentRoot;
+            int randomId;
+            do {
+                currentRoot = context->space->mutableRoot.load();
+
+                int randomId = rand();
+
+                if (currentRoot->has(context, (unsigned long) randomId))
+                    continue;
+
+            } while (!context->space->mutableRoot.compare_exchange_strong(
+                currentRoot,
+                currentRoot->setAt(
+                    context,
+                    randomId,
+                    newObject
+                )
+            ));
+        }
+        return newObject;
+
     }
     return PROTO_NONE;
 
 }
 
-ProtoObject *ProtoObject::newChild(ProtoContext *context) {
+ProtoObject *ProtoObject::newChild(ProtoContext *context, BOOLEAN isMutable = FALSE) {
     ProtoObjectPointer pa;
 
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
         ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
+        int mutable_ref = 0;
 
-        return (new(context) ProtoObjectCell(
+        ProtoObject *newObject = (new(context) ProtoObjectCell(
             context,
             new(context) ParentLink(
                 context,
@@ -99,10 +125,34 @@ ProtoObject *ProtoObject::newChild(ProtoContext *context) {
                 oc
             ),
             0,
-            new(context) ProtoSparseList(context)
+            oc->attributes
         ))->asObject(context);
+
+        if (isMutable) {
+            ProtoSparseList *currentRoot;
+            int randomId;
+            do {
+                currentRoot = context->space->mutableRoot.load();
+
+                int randomId = rand();
+
+                if (currentRoot->has(context, (unsigned long) randomId))
+                    continue;
+
+            } while (!context->space->mutableRoot.compare_exchange_strong(
+                currentRoot,
+                currentRoot->setAt(
+                    context,
+                    randomId,
+                    newObject
+                )
+            ));
+        }
+        return newObject;
+
     }
     return PROTO_NONE;
+
 }
 
 ProtoObject *ProtoObject::getAttribute(ProtoContext *context, ProtoString *name) {
@@ -112,25 +162,18 @@ ProtoObject *ProtoObject::getAttribute(ProtoContext *context, ProtoString *name)
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
         ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
+        if (oc->mutable_ref)
+            oc = (ProtoObjectCell *)
+                context->space->mutableRoot.load()->getAt(context, oc->mutable_ref);
 
         unsigned long hash = name->getHash(context);
         do {
-            if (oc->mutable_ref) {
-                ProtoObjectCell *mutableCurrentObject = (ProtoObjectCell *)
-                    context->space->mutableRoot.load()->getAt(context, oc->mutable_ref);
-                if (mutableCurrentObject->attributes->has(context, name->getHash(context)))
-                    return mutableCurrentObject->attributes->getAt(context, hash);
-                if (oc->parent && oc->parent->object)
-                    oc = oc->parent->object;
-            }
-            else {
-                if (oc->attributes->has(context, hash))
-                    return oc->attributes->getAt(context, hash);
-                if (oc->parent && oc->parent->object)
-                    oc = oc->parent->object;
-                else
-                    oc = NULL;
-            }
+            if (oc->attributes->has(context, hash))
+                return oc->attributes->getAt(context, hash);
+            if (oc->parent && oc->parent->object)
+                oc = oc->parent->object;
+            else
+                break;
         } while (oc);
     }
 
@@ -155,25 +198,19 @@ ProtoObject *ProtoObject::hasAttribute(ProtoContext *context, ProtoString *name)
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
         ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
+        if (oc->mutable_ref) {
+            oc = (ProtoObjectCell *)
+                context->space->mutableRoot.load()->getAt(context, oc->mutable_ref);
+        }
 
         unsigned long hash = name->getHash(context);
         do {
-            if (oc->mutable_ref) {
-                ProtoObjectCell *mutableCurrentObject = (ProtoObjectCell *)
-                    context->space->mutableRoot.load()->getAt(context, oc->mutable_ref);
-                if (mutableCurrentObject->attributes->has(context, name->getHash(context)))
-                    return PROTO_TRUE;
-                if (oc->parent && oc->parent->object)
-                    oc = oc->parent->object;
-            }
-            else {
-                if (oc->attributes->has(context, hash))
-                    return oc->attributes->getAt(context, hash);
-                if (oc->parent && oc->parent->object)
-                    oc = oc->parent->object;
-                else
-                    oc = NULL;
-            }
+            if (oc->attributes->has(context, hash))
+                return oc->attributes->getAt(context, hash);
+            if (oc->parent && oc->parent->object)
+                oc = oc->parent->object;
+            else
+                break;
         } while (oc);
     }
     return PROTO_FALSE;
@@ -185,15 +222,27 @@ ProtoObject *ProtoObject::setAttribute(ProtoContext *context, ProtoString *name,
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
+        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid, *inmutableBase = NULL;
+        ProtoSparseList *currentRoot, *newRoot;
+        if (oc->mutable_ref) {
+            inmutableBase = oc;
+            currentRoot = context->space->mutableRoot.load();
+            oc = (ProtoObjectCell *) currentRoot->getAt(context, oc->mutable_ref);
+        }
 
         unsigned long hash = name->getHash(context);
-        if (oc->mutable_ref) {
-            ProtoSparseList *currentRoot, *newRoot;
+        ProtoObject *newObject = (new(context) ProtoObjectCell(
+                context,
+                oc->parent,
+                NULL,
+                oc->attributes->setAt(context, hash, value)
+            ))->asObject(context);
+
+        if (inmutableBase) {
             do {
-                ProtoObjectCell *mutableCurrentObject = (ProtoObjectCell *)
-                    context->space->mutableRoot.load()->getAt(context, oc->mutable_ref);
-                newRoot = currentRoot->setAt(context, hash, value);
+                currentRoot = context->space->mutableRoot.load();
+                newRoot = currentRoot->setAt(
+                    context, inmutableBase->mutable_ref, newObject);
             } while (context->space->mutableRoot.compare_exchange_strong(
                 currentRoot,
                 newRoot
@@ -219,16 +268,14 @@ ProtoObject *ProtoObject::hasOwnAttribute(ProtoContext *context, ProtoString *na
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
         ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
+        ProtoSparseList *currentRoot, *newRoot;
+        if (oc->mutable_ref) {
+            currentRoot = context->space->mutableRoot.load();
+            oc = (ProtoObjectCell *) currentRoot->getAt(context, oc->mutable_ref);
+        }
 
         unsigned long hash = name->getHash(context);
-        if (oc->mutable_ref) {
-            ProtoObjectCell *mutableCurrentObject = (ProtoObjectCell *)
-                context->space->mutableRoot.load()->getAt(context, oc->mutable_ref);
-            if (mutableCurrentObject->attributes->has(context, name->getHash(context)))
-                return PROTO_TRUE;
-        }
-        else
-            return oc->attributes->has(context, hash)? PROTO_TRUE : PROTO_FALSE;
+        return oc->attributes->has(context, hash)? PROTO_TRUE : PROTO_FALSE;
     }
     return PROTO_FALSE;
 };
@@ -239,18 +286,19 @@ ProtoSparseList *ProtoObject::getAttributes(ProtoContext *context) {
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
-        ProtoSparseList *attributes = new(context) ProtoSparseList(context);
+        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid, *inmutableBase = NULL;
+        ProtoSparseList *currentRoot = NULL;
+        if (oc->mutable_ref) {
+            currentRoot = context->space->mutableRoot.load();
+            oc = (ProtoObjectCell *) currentRoot->getAt(context, oc->mutable_ref);
+        }
+
+        ProtoSparseList *attributes = context->newSparseList();
 
         while (oc) {
             ProtoSparseListIterator *ai;
-            if (oc->mutable_ref) {
-                ProtoObjectCell *mutableCurrentObject = (ProtoObjectCell *)
-                    context->space->mutableRoot.load()->getAt(context, oc->mutable_ref);
-                ai = mutableCurrentObject->attributes->getIterator(context);
-            }
-            else
-                ai = oc->attributes->getIterator(context);
+
+            ai = oc->attributes->getIterator(context);
             while (ai->hasNext(context)) {
                 ProtoTuple *tuple = ai->next(context);
                 attributes = attributes->setAt(
@@ -260,6 +308,12 @@ ProtoSparseList *ProtoObject::getAttributes(ProtoContext *context) {
                 );
                 ai = ai->advance(context);
             }
+            if (oc->parent) {
+                oc = oc->parent->object;
+                if (oc->mutable_ref)
+                    oc = (ProtoObjectCell *) currentRoot->getAt(context, oc->mutable_ref);
+            }
+
         }
 
         return attributes;

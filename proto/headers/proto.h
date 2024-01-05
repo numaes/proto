@@ -212,8 +212,8 @@ union ProtoObjectPointer {
 
 class ProtoObject {
 public:
-	ProtoObject *clone(ProtoContext *c);
-	ProtoObject *newChild(ProtoContext *c);
+	ProtoObject *clone(ProtoContext *c, BOOLEAN isMutable = FALSE);
+	ProtoObject *newChild(ProtoContext *c, BOOLEAN isMutable = FALSE);
 
 	ProtoObject *getType(ProtoContext *c);
 	ProtoObject *getAttribute(ProtoContext *c, ProtoString *name);
@@ -1043,7 +1043,7 @@ public:
 	ProtoString 	*fromUTF8String(char *zeroTerminatedUtf8String);
 	ProtoMethodCell		 	*fromMethod(ProtoObject *self, ProtoMethod method);
 	ProtoExternalPointer 	*fromExternalPointer(void *pointer);
-	ProtoByteBuffer 		*fromBuffer(unsigned long length, void*buffer);
+	ProtoByteBuffer 		*fromBuffer(unsigned long length, char* buffer);
 	ProtoByteBuffer		 	*newBuffer(unsigned long length);
 	ProtoObject 	*fromBoolean(BOOLEAN value);
 	ProtoObject 	*fromByte(char c);
@@ -1053,11 +1053,8 @@ public:
 
 	ProtoList		*newList();
 	ProtoTuple		*newTuple();
+	ProtoSparseList *newSparseList();
 
-	ProtoThread 	*getCurrentThread();
-
-	ProtoObject		*newInmutable();
-	ProtoObject 	*newMutable();
 };
 
 std::mutex		globalMutex;

@@ -9,7 +9,6 @@
 #include "../headers/proto.h"
 
 #include <malloc.h>
-#include <random>
 #include <thread>
 #include <stdlib.h>
 
@@ -578,6 +577,11 @@ ProtoTuple *ProtoContext::newTuple() {
     return tuple;
 }
 
+ProtoSparseList *ProtoContext::newSparseList() {
+    ProtoSparseList *sparseList = new(this) ProtoSparseList(this);
+    return sparseList;
+}
+
 ProtoTuple *ProtoContext::tupleFromList(ProtoList *list) {
     unsigned long size = list->getSize(this);
     ProtoTuple *newTuple;
@@ -756,6 +760,10 @@ ProtoExternalPointer *ProtoContext::fromExternalPointer(void *pointer) {
     return new(this) ProtoExternalPointer(this, pointer);
 };
 
+ProtoByteBuffer *ProtoContext::fromBuffer(unsigned long length, char* buffer) {
+    return new(this) ProtoByteBuffer(this, length, buffer);
+};
+
 ProtoByteBuffer *ProtoContext::newBuffer(unsigned long length) {
     return new(this) ProtoByteBuffer(this, length, (char *) malloc((size_t) length));
 };
@@ -779,51 +787,5 @@ ProtoObject *ProtoContext::fromByte(char c) {
 
     return p.oid.oid;
 };
-
-ProtoObject *ProtoContext::newInmutable() {
-    ParentLink *newParent = new(this) ParentLink(
-        this,
-        NULL,
-        (ProtoObjectCell *) this->space->objectPrototype
-    );
-
-    ProtoObjectCell *object = new(this) ProtoObjectCell(
-        this,
-        newParent
-    );
-
-    return object->asObject(this);
-}
-
-ProtoObject *ProtoContext::newMutable() {
-    ProtoSparseList *currentRoot, *oldRoot;
-    ProtoObject *randomIdObject;
-    int randomId;
-
-    do {
-        currentRoot = this->space->mutableRoot.load();
-        oldRoot = currentRoot;
-
-        randomId = rand();
-
-        BOOLEAN existingMutable = currentRoot->has(this, (unsigned long) randomIdObject);
-        if (existingMutable)
-            continue;
-
-    } while (!this->space->mutableRoot.compare_exchange_strong(
-        oldRoot,
-        currentRoot->setAt(
-            this,
-            randomId,
-            (new(this) ProtoSparseList(this))->asObject(this)
-        )
-    ));
-
-    
-};
-
-ProtoThread *ProtoContext::getCurrentThread() {
-    return this->thread;
-}
 
 };
