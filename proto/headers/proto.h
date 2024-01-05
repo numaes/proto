@@ -1094,6 +1094,9 @@ public:
 	ProtoObject *stringIteratorPrototype;
 	ProtoObject *threadPrototype;
 
+	ProtoString		*literalGetAttribute;
+	ProtoString     *literalCallString;
+
 	ProtoObject *rootObject;
 
 	void allocThread(ProtoContext *context, ProtoThread *thread);

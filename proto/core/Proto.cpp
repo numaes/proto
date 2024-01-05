@@ -133,6 +133,18 @@ ProtoObject *ProtoObject::getAttribute(ProtoContext *context, ProtoString *name)
             }
         } while (oc);
     }
+
+    if (this->hasAttribute(context, context->space->literalGetAttribute)) {
+        ProtoList *parameters = context->newList();
+
+        return this->call(
+            context,
+            context->space->literalGetAttribute,
+            this,
+            parameters->appendFirst(context, name->asObject(context))
+        );
+    }
+
     return PROTO_NONE;
 }
 
@@ -360,6 +372,14 @@ ProtoObject *ProtoObject::call(
                 unnamedParametersList, 
                 keywordParametersDict);
         }
+        else
+            return this->call(
+                context,
+                context->space->literalCallString,
+                self,
+                unnamedParametersList->appendFirst(context, methodName->asObject(context)),
+                keywordParametersDict
+            );
     }
 
     return PROTO_NONE;
