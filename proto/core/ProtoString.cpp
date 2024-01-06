@@ -332,10 +332,7 @@ ProtoObject *ProtoString::asObject(ProtoContext *context) {
 };
 
 unsigned long ProtoString::getHash(ProtoContext *context) {
-    ProtoObjectPointer p;
-    p.oid.oid = (ProtoObject *) this;
-
-    return p.asHash.hash;
+    return (unsigned long) this->baseTuple;
 };
 
 

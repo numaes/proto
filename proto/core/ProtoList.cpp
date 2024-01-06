@@ -77,6 +77,9 @@ ProtoList::ProtoList(
     this->value = value;
     this->previous = previous;
     this->next = next;
+    this->hash = (value? value->getHash(context) : 0) ^
+                 (previous? previous->hash : 0) ^
+                 (next? next->hash : 0);
 };
 
 ProtoList::~ProtoList() {

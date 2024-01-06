@@ -125,6 +125,11 @@ ProtoSparseList::ProtoSparseList(
 	this->value = value;
 	this->previous = previous;
 	this->next = next;
+    this->hash = index ^
+				 (value? value->getHash(context) : 0) ^
+                 (previous? previous->hash : 0) ^
+                 (next? next->hash : 0);
+
 };
 
 ProtoSparseList::~ProtoSparseList() {
@@ -568,7 +573,7 @@ unsigned long ProtoSparseList::getHash(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
 
-    return p.asHash.hash;
+    return this->hash;
 };
 
 ProtoSparseListIterator *ProtoSparseList::getIterator(ProtoContext *context) {

@@ -74,8 +74,8 @@ namespace proto {
 #define POINTER_TAG_LIST_ITERATOR     	(0x09LU)
 #define POINTER_TAG_TUPLE_ITERATOR     	(0x0ALU)
 #define POINTER_TAG_STRING_ITERATOR    	(0x0BLU)
-#define POINTER_TAG_TUPLE_ITERATOR     	(0x0CLU)
-#define POINTER_TAG_SPARSE_LIST_ITERATOR (0x0DLU)
+#define POINTER_TAG_SPARSE_LIST_ITERATOR (0x0CLU)
+#define POINTER_TAG_UNASSIGNED_D     	(0x0DLU)
 #define POINTER_TAG_UNASSIGNED_E     	(0x0ELU)
 #define POINTER_TAG_UNASSIGNED_F     	(0x0FLU)
 
@@ -439,6 +439,7 @@ public:
 	ProtoList		*next;
 
 	ProtoObject 	*value;
+	unsigned long   hash;
 
 	unsigned long count:52;
 	unsigned long height:8;
@@ -569,7 +570,6 @@ public:
 
 	unsigned long elementCount:56;
 	unsigned long height:8;
-
 	union {
 		ProtoObject   *data[TUPLE_SIZE];
 		ProtoTuple    *indirect[TUPLE_SIZE]; 
@@ -771,6 +771,7 @@ public:
 
 	unsigned long 	index;
 	ProtoObject 	*value;
+	unsigned long   hash;
 
 	unsigned long count:52 = 0;
 	unsigned long height:8 = 0;
@@ -834,47 +835,60 @@ public:
 // In order to compile a method the folling structure is recommended:
 // method (p1, p2, p3, p4=init4, p5=init5)
 
-// ProtoObject *method(ProtoContext *previousContext, ProtoList *unnamedParameters, ProtoSparseList *keywordParameters)
-//		ProtoObject *p1, *p2, *p3, *p4, *p5;
-//		ProtoContext context(previousContext);
+// ProtoObject *literalForP4, *literalForP5;
+// ProtoObject *constantForInit4, *constantForInit5;
+// 
+// ProtoObject *method(ProtoContext *previousContext, ProtoList *positionalParameters, ProtoSparseList *keywordParameters)
+//      // Parameters + locals
+//		struct {
+//   		ProtoObject *p1, *p2, *p3, *p4, *p5, *l1, *l2, *l3;
+//		} locals;
+//		ProtoContext context(previousContext, &locals, sizeof(locals) / sizeof(ProtoObject *));
 //
-//		p4 = alreadyInitializedConstantForInit4;
-//		p5 = alreadyInitializedConstantForInit5;
+//		locals.p4 = alreadyInitializedConstantForInit4;
+//		locals.p5 = alreadyInitializedConstantForInit5;
 //
-// 		int unnamedSize = unnameParameters->getSize(&context);
+//      if (positionalParameters) {
+//     		int unnamedSize = positionalParameters->getSize(&context);
 //
-//      if (unnamedSize < 3)
-//			raise "Too few parameters. At least 3 unnamed parameters are expected"
+//          if (unnamedSize < 3)
+//    			raise "Too few parameters. At least 3 positional parameters are expected"
 //
-//		p1 = unnamedParameters->getAt(&context, 0);
-//		p2 = unnamedParameters->getAt(&context, 1);
-//		p3 = unnamedParameters->getAt(&context, 2);
+//	    	locals.p1 = positionalParameters->getAt(&context, 0);
+//	    	locals.p2 = positionalParameters->getAt(&context, 1);
+//	    	locals.p3 = positionalParameters->getAt(&context, 2);
 //
-//      if (unnamedSize > 3)
-//			p4 = unnamedParameters->getAt(&context, 3);
+//          if (unnamedSize > 3)
+//			    locals.p4 = positionalParameters->getAt(&context, 3);
 //
-//      if (unnamedSize > 4)
-//			p5 = unnamedParameters->getAt(&context, 4);
+//          if (unnamedSize > 4)
+//	    		locals.p5 = positionalParameters->getAt(&context, 4);
 //
-//		if (unnamedSize > 5)
-//			raise "Too many parameters"
-//
-//      if (keywordParameters->has(&context, literalForP4))
-//		    if (unnamedSize > 4)
-//			    raise "Double assignment on p4"
-//
-//			p4 = unnamedParameters->getAt(&context, literalForP4);
-//
-//      if (keywordParameters->has(&context, literalForP5))
 //		    if (unnamedSize > 5)
-//			    raise "Double assignment on p5"
+//			    raise "Too many parameters"
+//      }
+//      else
+//          raise "At least 3 positional parameters expected"
 //
-//			p5 = unnamedParameters->getAt(&context, literalForP4);
+//      if (keywordParameters) {
+//          if (keywordParameters->has(&context, literalForP4)) {
+//	    	    if (unnamedSize > 4)
+//		    	    raise "Double assignment on p4"
+//
+//			    locals.p4 = keywordParameters->getAt(&context, literalForP4);
+//          }
+//
+//          if (keywordParameters->has(&context, literalForP5)) {
+//	    	    if (unnamedSize > 5)
+//		    	    raise "Double assignment on p5"
+//
+//			    locals.p5 = keywordParameters->getAt(&context, literalForP5);
+//          }
+//      }
 //
 // Not used keywordParameters are not detected
-// This provides a similar behaviour as Python, and it can be automatically generated based on compilation time info
+// This provides a similar behaviour to Python, and it can be automatically generated based on compilation time info
 //
-
 
 
 class ProtoMethodCell: public Cell {
@@ -1015,7 +1029,7 @@ class ProtoContext {
 public:
 	ProtoContext(
 		ProtoContext *previous = NULL,
-		void *localsBase = NULL,
+		ProtoObject **localsBase = NULL,
 		unsigned int localsCount = 0, 
 		ProtoThread *thread = NULL,
 		ProtoSpace *space = NULL
@@ -1135,7 +1149,12 @@ public:
 
 // Used just to compute the number of bytes needed for a Cell at allocation time
 
-static_assert (sizeof(ProtoSparseList) == 56);
+#define max(a, b) ((a > b)? a : b)
+
+static_assert (sizeof(ProtoSparseList) <= 64);
+static_assert (sizeof(ProtoList) <= 64);
+static_assert (sizeof(ProtoTuple) <= 64);
+static_assert (sizeof(ProtoString) <= 64);
 
 // Usefull constants.
 // ATENTION: They should be kept on synch with proto_internal.h!

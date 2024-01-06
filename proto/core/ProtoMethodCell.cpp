@@ -35,6 +35,8 @@ void ProtoMethodCell::processReferences(
 
 }
 
+void ProtoMethodCell::finalize(ProtoContext *context) {};
+
 ProtoObject *ProtoMethodCell::asObject(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;

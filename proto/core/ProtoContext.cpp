@@ -30,7 +30,7 @@ ProtoContext globalContext;
 
 ProtoContext::ProtoContext(
 		ProtoContext *previous = NULL,
-		void *localsBase = NULL,
+		ProtoObject **localsBase = NULL,
 		unsigned int localsCount = 0, 
 		ProtoThread *thread = NULL,
 		ProtoSpace *space = NULL
@@ -49,10 +49,13 @@ ProtoContext::ProtoContext(
     this->lastAllocatedCell = NULL;
     this->localsBase = (ProtoObjectPointer *) localsBase;
     this->localsCount = localsCount;
+    if (localsBase)
+        for (int i = localsCount; i > 0; i++)
+            *localsBase++ = NULL;
     this->allocatedCellsCount = 0;
  
     this->thread->currentContext = this;
- };
+};
 
 ProtoContext::~ProtoContext() {
     if (this->previous && this->space && this->lastAllocatedCell) {

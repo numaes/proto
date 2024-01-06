@@ -60,6 +60,8 @@ ProtoObject *getPrototype(ProtoContext *context, ProtoObject *p) {
             return context->space->tupleIteratorPrototype;
         case POINTER_TAG_SPARSE_LIST_ITERATOR:
             return context->space->sparseListIteratorPrototype;
+        case POINTER_TAG_STRING_ITERATOR:
+            return context->space->stringIteratorPrototype;
         default:
             return NULL;
 	};
@@ -525,5 +527,50 @@ BOOLEAN ProtoObject::isByte() {
     else
         return FALSE;
 };
+
+unsigned long ProtoObject::getHash(ProtoContext *context) {
+    ProtoObjectPointer pa;
+
+    pa.oid.oid = this;
+
+    return (unsigned long) pa.oid.oid;
+};
+
+int ProtoObject::isCell(ProtoContext *context) {
+    ProtoObjectPointer pa;
+
+    pa.oid.oid = this;
+
+	switch (pa.op.pointer_tag) {
+        case POINTER_TAG_EMBEDEDVALUE:
+            return FALSE;
+        default:
+            return TRUE;
+    }
+
+};
+
+Cell *ProtoObject::asCell(ProtoContext *context) {
+    if (this->isCell(context))
+        return (Cell *) this;
+    else
+        return NULL;
+};
+
+void ProtoObject::finalize(ProtoContext *context) {};
+
+// Apply method recursivelly to all referenced objects, except itself
+void ProtoObject::processReferences(
+		ProtoContext *context, 
+		void *self,
+		void (*method)(
+			ProtoContext *context, 
+			void *self,
+			Cell *cell
+		)
+	) {
+    this->asCell(context)->processReferences(context, self, method);
+}
+
 
 };
