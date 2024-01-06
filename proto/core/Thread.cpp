@@ -18,15 +18,12 @@ namespace proto {
 ProtoThread::ProtoThread(
 		ProtoContext *context,
 
-		ProtoObject *name,
+		ProtoString *name,
 		ProtoSpace	*space,
 		ProtoMethod *code,
 		ProtoObject *args,
 		ProtoObject *kwargs
-) : Cell(
-    context, 
-    type = CELL_TYPE_PROTO_THREAD
-) {
+) : Cell(context) {
     this->name = name;
     this->space = space;
     this->freeCells = NULL;
@@ -80,7 +77,7 @@ void ProtoThread::exit(ProtoContext *context) {
 
 void ProtoThread::synchToGC() {
     if (this->state == THREAD_STATE_MANAGED && 
-        this->context->space->state != SPACE_STATE_RUNNING) {
+        this->space->state != SPACE_STATE_RUNNING) {
 
         if (this->state != SPACE_STATE_RUNNING && this->state == THREAD_STATE_MANAGED) {
             if (this->space->state != SPACE_STATE_STOPPING_WORLD) {
@@ -117,19 +114,44 @@ Cell *ProtoThread::allocCell() {
         this->freeCells = (BigCell *) this->space->getFreeCells(this);
     }
 
-    this->context->checkCellsCount();
-
     // Dealloc first free cell
     newCell = this->freeCells;
     this->freeCells = (BigCell *) newCell->nextCell;
 
-    // Add it to current working set
-    newCell->nextCell = this->context->lastAllocatedCell->nextCell;
-    this->context->lastAllocatedCell = newCell;
-    this->context->allocatedCellsCount += 1;
-
     return newCell;
 };
+
+void ProtoThread::finalize(ProtoContext *context) {
+
+};
+
+void ProtoThread::processReferences(
+    ProtoContext *context,
+    void *self,
+    void (*method) (
+        ProtoContext *context,
+        void *self,
+        Cell *cell
+    )
+) {
+    this->name->processReferences(context, self, method);
+};
+
+ProtoObject *ProtoThread::asObject(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+    p.op.pointer_tag = POINTER_TAG_TUPLE;
+
+    return p.oid.oid;
+};
+
+unsigned long ProtoThread::getHash(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+
+    return p.asHash.hash;
+};
+
 
 
 };

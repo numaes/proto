@@ -85,6 +85,10 @@ Cell *ProtoContext::allocCell(){
     if (this->thread) {
         Cell *newCell = this->thread->allocCell();
         this->allocatedCellsCount += 1;
+        this->checkCellsCount();
+
+        newCell->nextCell = this->lastAllocatedCell;
+
         return newCell;
     }
     else {
