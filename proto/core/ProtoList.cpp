@@ -80,6 +80,9 @@ ProtoList::ProtoList(
     this->hash = (value? value->getHash(context) : 0) ^
                  (previous? previous->hash : 0) ^
                  (next? next->hash : 0);
+    this->count = (value? 1 : 0) + 
+                  (previous? previous->count : 0) + 
+                  (next? next->count : 0);
 };
 
 ProtoList::~ProtoList() {

@@ -430,7 +430,7 @@ int TupleDictionary::compareTuple(ProtoContext *context, ProtoTuple *tuple) {
 
     int cmpSize = (thisSize < tupleSize)? thisSize : tupleSize;
     int i;
-    for (i = 0; i <= cmpSize; i++) {
+    for (i = 0; i < cmpSize; i++) {
         int thisElementHash = this->key->getAt(context, i)->getHash(context);
         int tupleElementHash = tuple->getAt(context, i)->getHash(context);
         if (thisElementHash > tupleElementHash)
@@ -452,13 +452,13 @@ TupleDictionary *TupleDictionary::rightRotate(ProtoContext *context, TupleDictio
     TupleDictionary *newRight = new(context) TupleDictionary(
         context,
         n->key,
-        n->previous->next,
+        n->previous? n->previous->next : NULL,
         n->next
     );
     return new(context) TupleDictionary(
         context,
-        n->previous->key,
-        n->previous->previous,
+        n->previous? n->previous->key : NULL,
+        n->previous? n->previous->previous : NULL,
         newRight
     );
 }
@@ -470,13 +470,13 @@ TupleDictionary *TupleDictionary::leftRotate(ProtoContext *context, TupleDiction
         context,
         n->key,
         n->previous,
-        n->next->previous
+        (n->next? n->next->previous : NULL)
     );
     return new(context) TupleDictionary(
         context,
-        n->next->key,
+        n->next? n->next->key : NULL,
         newLeft,
-        n->next->next
+        n->next? n->next->next : NULL
     );
 }
 
@@ -492,12 +492,12 @@ TupleDictionary *TupleDictionary::rebalance(ProtoContext *context, TupleDictiona
 
         // Left Left Case
         if (balance < -1 && newNode->previous->height < 0) {
-            newNode = rightRotate(context, newNode);
+            newNode = newNode->rightRotate(context, newNode);
         }
         else {
             // Right Right Case
             if (balance > 1 && newNode->previous->height > 0) {
-                newNode = leftRotate(context, newNode);
+                newNode = newNode->leftRotate(context, newNode);
             }
             // Left Right Case
             else {
@@ -505,10 +505,10 @@ TupleDictionary *TupleDictionary::rebalance(ProtoContext *context, TupleDictiona
                     newNode = new(context) TupleDictionary(
                         context,
                         newNode->key,
-                        leftRotate(context, newNode->previous),
+                        newNode->leftRotate(context, newNode->previous),
                         newNode->next
                     );
-                    newNode = rightRotate(context, newNode);
+                    newNode = newNode->rightRotate(context, newNode);
                 }
                 else {
                     // Right Left Case
@@ -517,9 +517,9 @@ TupleDictionary *TupleDictionary::rebalance(ProtoContext *context, TupleDictiona
                             context,
                             newNode->key,
                             newNode->previous,
-                            rightRotate(context, newNode->next)
+                            newNode->rightRotate(context, newNode->next)
                         );
-                        newNode = leftRotate(context, newNode);
+                        newNode = newNode->leftRotate(context, newNode);
                     }
                     else
                         return newNode;
@@ -553,7 +553,9 @@ ProtoTuple *ProtoContext::tupleFromList(ProtoList *list) {
 
     ProtoList *indirectPointers = new(this) ProtoList(this);
     unsigned long i, j;
-    for (i = 0, j = 0; i < size; i++, j++) {
+    for (i = 0, j = 0; i < size; i++) {
+        data[j++] = list->getAt(this, i);
+
         if (j == TUPLE_SIZE) {
             newTuple = new(this) ProtoTuple(
                 this,
@@ -564,30 +566,32 @@ ProtoTuple *ProtoContext::tupleFromList(ProtoList *list) {
             indirectPointers = indirectPointers->appendLast(this, (ProtoObject *) newTuple);
             j = 0;
         }
-        data[j] = list->getAt(this, i);
     }
 
-    if (j != TUPLE_SIZE) {
+    if (j != 0) {
+        unsigned long lastSize = j;
         for (; j < TUPLE_SIZE; j++)
             data[j] = NULL;
         newTuple = new(this) ProtoTuple(
             this,
-            j,
+            lastSize,
             0,
             data
         );
+        indirectPointers = indirectPointers->appendLast(this, (ProtoObject *) newTuple);
     }
 
     if (size >= TUPLE_SIZE) {
-        indirectPointers = indirectPointers->appendLast(this, (ProtoObject *) newTuple);
-        
         int indirectSize = 0;
         int levelCount = 0;
         while (indirectPointers->getSize(this) > 0) {
             nextLevel = new(this) ProtoList(this);
             levelCount++;
             indirectSize = 0;
-            for (i = 0, j = 0; i < indirectPointers->getSize(this); i++, j++) {
+            for (i = 0, j = 0; i < indirectPointers->getSize(this); i++) {
+                indirectData[j] = (ProtoTuple *) indirectPointers->getAt(this, i);
+                indirectSize += indirectData[j]->elementCount;
+                j++;
                 if (j == TUPLE_SIZE) {
                     newTuple = new(this) ProtoTuple(
                         this,
@@ -600,10 +604,9 @@ ProtoTuple *ProtoContext::tupleFromList(ProtoList *list) {
                     j = 0;
                     nextLevel = nextLevel->appendLast(this, (ProtoObject *) newTuple);
                 }
-                indirectData[j] = (ProtoTuple *) indirectPointers->getAt(this, i);
-                indirectSize += indirectData[j]->elementCount;
             }
-            if (j != TUPLE_SIZE) {
+            if (j != 0) {
+                unsigned long lastCount = indirectSize;
                 for (; j < TUPLE_SIZE; j++)
                     indirectData[j] = NULL;
                 newTuple = new(this) ProtoTuple(
@@ -613,16 +616,19 @@ ProtoTuple *ProtoContext::tupleFromList(ProtoList *list) {
                     NULL,
                     indirectData
                 );
+                nextLevel = nextLevel->appendLast(this, (ProtoObject *) newTuple);
             }
-            nextLevel = nextLevel->appendLast(this, (ProtoObject *) newTuple);
 
             lastLevel = indirectPointers;
             indirectPointers = nextLevel;
+
+            if (nextLevel->getSize(this) <= TUPLE_SIZE)
+                break;
         };
-        
-        if (lastLevel->getSize(this) > 1) {
+
+        if (indirectPointers->getSize(this) > 1) {
             for (j = 0; j < TUPLE_SIZE; j++)
-                if (j < lastLevel->getSize(this))
+                if (j < indirectPointers->getSize(this))
                     indirectData[j] = (ProtoTuple *) lastLevel->getAt(this, j);
                 else
                     indirectData[j] = NULL;

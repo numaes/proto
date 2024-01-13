@@ -124,10 +124,10 @@ BOOLEAN test_sparseList(ProtoContext *previousContext) {
 
     cout << "\nStep 02 Adding";
 
-    ProtoString *s1 = c.fromUTF8String((char *) "First");
-    ProtoString *s2 = c.fromUTF8String((char *) "Second");
-    ProtoString *s3 = c.fromUTF8String((char *) "Third");
-    ProtoString *s4 = c.fromUTF8String((char *) "Fourh");
+    ProtoString *s1 = c.fromUTF8String("First");
+    ProtoString *s2 = c.fromUTF8String("Second");
+    ProtoString *s3 = c.fromUTF8String("Third");
+    ProtoString *s4 = c.fromUTF8String("Fourh");
 
     d = d->setAt(&c, s1->getHash(&c), c.fromInteger(1));
     d = d->setAt(&c, s2->getHash(&c), c.fromInteger(2));
@@ -372,10 +372,10 @@ BOOLEAN test_protoContext(ProtoContext *previousContext) {
         return TRUE;
     }
 
-    if (((ProtoList *) p.cell.cell)->getAt(c, 0) != c->fromUTF8Char((char *) "Ñ") ||
-        ((ProtoList *) p.cell.cell)->getAt(c, 1) != c->fromUTF8Char((char *) "o") ||
-        ((ProtoList *) p.cell.cell)->getAt(c, 2) != c->fromUTF8Char((char *) "ñ") ||
-        ((ProtoList *) p.cell.cell)->getAt(c, 3) != c->fromUTF8Char((char *) "o")) {
+    if (sp->getAt(c, 0) != c->fromUTF8Char((char *) "Ñ") ||
+        sp->getAt(c, 1) != c->fromUTF8Char((char *) "o") ||
+        sp->getAt(c, 2) != c->fromUTF8Char((char *) "ñ") ||
+        sp->getAt(c, 3) != c->fromUTF8Char((char *) "o")) {
         cout << "\nError on UTF8 String content";
         return TRUE;
     }
