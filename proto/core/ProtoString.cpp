@@ -194,7 +194,7 @@ ProtoString *ProtoString::setAtString(ProtoContext *context, int index, ProtoStr
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
 
-    for (int i = 0; i < string->getSize(context); i++)
+    for (unsigned long i = 0; i < string->getSize(context); i++)
         sourceList = sourceList->appendLast(context, string->getAt(context, i));
 
     for (int i = index + string->getSize(context); i < thisSize; i++)
@@ -227,7 +227,7 @@ ProtoString *ProtoString::insertAtString(ProtoContext *context, int index, Proto
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
 
-    for (int i = 0; i < string->getSize(context); i++)
+    for (unsigned long i = 0; i < string->getSize(context); i++)
         sourceList = sourceList->appendLast(context, string->getAt(context, i));
 
     for (int i = index; i < thisSize; i++)

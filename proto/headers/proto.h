@@ -463,7 +463,7 @@ public:
 	unsigned long currentIndex;
 };
 
-class TupleDictionary: Cell {
+class TupleDictionary: public Cell {
 private:
     TupleDictionary *next;
     TupleDictionary *previous;
@@ -481,7 +481,7 @@ private:
 public:
     TupleDictionary(
         ProtoContext *context,
-        ProtoTuple *key,
+        ProtoTuple *key = NULL,
         TupleDictionary *next = NULL,
         TupleDictionary *previous = NULL
     );
@@ -997,10 +997,9 @@ public:
 	std::thread			*osThread;
 	ProtoSpace			*space;
 	BigCell				*freeCells;
-	ProtoContext		*firstContext;
 	ProtoContext		*currentContext;
-	unsigned int		state;
-	int					unmanagedCount;
+	long				state:4;
+	long				unmanagedCount:60;
 };
 
 class ProtoContext {

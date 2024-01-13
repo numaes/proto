@@ -243,33 +243,32 @@ void gcThreadLoop(ProtoSpace *space) {
 };
 
 ProtoSpace::ProtoSpace() {
-
-    Cell *firstCell = this->getFreeCells(NULL);
-    ProtoThread *firstThread = (ProtoThread *) firstCell;
-    firstThread->freeCells = (BigCell *) firstCell->nextCell;
-    firstThread->nextCell = NULL;
-    // Get current thread id from OS
-    firstThread->osThread = NULL;
-    firstThread->space = this;
-
-    firstCell->nextCell = NULL;
-
     this->state = SPACE_STATE_RUNNING;
 
-    ProtoContext creationContext(
+    ProtoContext *creationContext = new ProtoContext(
         NULL,
         NULL,
         0,
-        firstThread,
+        NULL,
         this
     );
+    this->threads = creationContext->newList();
+    this->tupleRoot = new(creationContext) TupleDictionary(creationContext);
+    
+    ProtoThread *mainThread = new(creationContext) ProtoThread(
+        creationContext, 
+        creationContext->fromUTF8String("Main thread"),
+        this,
+        NULL
+    );
 
+    mainThread->currentContext = creationContext;
     this->mainThreadId = std::this_thread::get_id();
 
     this->mutableLock.store(FALSE);
     this->threadsLock.store(FALSE);
     this->gcLock.store(FALSE);
-    this->mutableRoot.store(new(&creationContext) ProtoSparseList(&creationContext));
+    this->mutableRoot.store(new(creationContext) ProtoSparseList(creationContext));
 
     this->maxAllocatedCellsPerContext = MAX_ALLOCATED_CELLS_PER_CONTEXT;
     this->blocksPerAllocation = BLOCKS_PER_ALLOCATION;
@@ -290,12 +289,6 @@ ProtoSpace::ProtoSpace() {
         std::unique_lock<std::mutex> lk(globalMutex);
         this->gcCV.wait_for(lk, 100ms);
     }
-
-    ProtoString *threadName = creationContext.fromUTF8String("Main thread");
-    firstThread->name = threadName;
-    this->threads = (new(&creationContext) ProtoList(
-        &creationContext
-    ))->appendFirst(&creationContext, firstThread->asObject(&creationContext));
 };
 
 void scanThreads(ProtoContext *context, void *self, ProtoObject *value) {
@@ -336,8 +329,9 @@ void ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread) {
         TRUE
     )) std::this_thread::yield();
 
-    this->threads = this->threads->appendLast(context, thread->asObject(context));
-
+    if (this->threads)
+        this->threads = this->threads->appendLast(context, thread->asObject(context));
+    
     this->threadsLock.store(FALSE);
 };
 
@@ -362,7 +356,7 @@ void ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *thread) {
 
 Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
     Cell *freeBlocks = NULL;
-    Cell *newBlocks = NULL, *newBlock = NULL;
+    Cell *newBlock = NULL;
 
     BOOLEAN oldValue = FALSE;
     while (this->gcLock.compare_exchange_strong(
@@ -374,7 +368,7 @@ Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
         if (! this->freeCells) {
             // Alloc from OS
 
-            int toAllocBytes = sizeof(BigCell) * this->blocksPerAllocation;
+            int toAllocBytes = sizeof(BigCell) * BLOCKS_PER_MALLOC_REQUEST;
             if (this->maxHeapSize != 0 && !this->blockOnNoMemory && 
                 this->heapSize + toAllocBytes >= this->maxHeapSize) {
                 printf("\nPANIC ERROR: HEAP size will be bigger than configured maximun (%d is over %d bytes)! Exiting ...\n",
@@ -421,7 +415,7 @@ Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
                     lastBlock = currentBlock++;
                 }
 
-                this->freeCells = newBlocks;
+                this->freeCells = lastBlock;
 
                 this->heapSize += toAllocBytes;
                 this->freeCellsCount += allocatedBlocks;
@@ -429,18 +423,17 @@ Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
         }
 
         if (this->freeCells) {
-            newBlock = this->freeCells->nextCell;
+            newBlock = this->freeCells;
             this->freeCells = newBlock->nextCell;
 
             this->freeCellsCount -= 1;
-            newBlock->nextCell = newBlocks;
-            newBlocks = newBlock;
+            newBlock->nextCell = NULL;
         }
     }
 
     this->gcLock.store(FALSE);
 
-    return freeBlocks;
+    return newBlock;
 };
 
 void ProtoSpace::analyzeUsedCells(Cell *cellsChain) {

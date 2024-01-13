@@ -80,26 +80,26 @@ BOOLEAN test_proto_header() {
     if (sizeof(ProtoObjectPointer) != 8) {
         cout << "ProtoObjectPointer size is " 
              << sizeof(ProtoObjectPointer) 
-             << "! Please check it";
+             << "! Please check it\n";
         return TRUE;
     }
 
     if (sizeof(BigCell) != 64) {
-        cout << "BigCell should be 64 bytes long!";
+        cout << "BigCell should be 64 bytes long!\n";
         return TRUE;
     }
 
     if (sizeof(BigCell) < sizeof(ProtoThread)) {
         cout << "ProtoThread is bigger than BigCell" 
              << sizeof(ProtoThread) 
-             << "! Please check it";
+             << "! Please check it\n";
         return TRUE;
     }
 
     if (sizeof(BigCell) < sizeof(ProtoSparseList)) {
         cout << "Sparse is bigger than BigCell" 
              << sizeof(ProtoSparseList) 
-             << "! Please check it";
+             << "! Please check it\n";
         return TRUE;
     }
 

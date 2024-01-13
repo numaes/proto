@@ -33,13 +33,15 @@ ProtoThread::ProtoThread(
     this->state = THREAD_STATE_MANAGED;
     this->unmanagedCount = 0;
 
-    // Create and start the OS Thread
+    // Create and start the OS Thread if needed (on space init, no code is provided)
     // TODO
-    // this->osThread = new std::thread(
-    //     code, 
-    //     args, 
-    //     kwargs
-    // );
+    if (code) {
+        // this->osThread = new std::thread(
+        //     code, 
+        //     args, 
+        //     kwargs
+        // );
+    }
 };
 
 ProtoThread::~ProtoThread(

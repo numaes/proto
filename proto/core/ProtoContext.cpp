@@ -26,7 +26,7 @@ BigCell *literalFreeCells = NULL;
 unsigned   literalFreeCellsIndex = 0;
 ProtoContext globalContext;
 
-#define BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL 1024U
+#define BLOCKS_PER_MALLOC_REQUEST 1024U
 
 ProtoContext::ProtoContext(
 		ProtoContext *previous,
@@ -39,10 +39,14 @@ ProtoContext::ProtoContext(
     if (previous) {
         this->space = this->previous->space;
         this->thread = this->previous->thread;
+        if (this->thread)
+            this->thread->currentContext = this;
     }
     else {
         this->space = space;
         this->thread = thread;
+        if (thread)
+            this->thread->currentContext = this;
     }
 
     this->returnValue = NULL;
@@ -50,11 +54,10 @@ ProtoContext::ProtoContext(
     this->localsBase = (ProtoObjectPointer *) localsBase;
     this->localsCount = localsCount;
     if (localsBase)
-        for (int i = localsCount; i > 0; i++)
+        for (int i = localsCount; i >= 0; i--)
             *localsBase++ = NULL;
     this->allocatedCellsCount = 0;
  
-    this->thread->currentContext = this;
 };
 
 ProtoContext::~ProtoContext() {
@@ -79,56 +82,19 @@ void ProtoContext::checkCellsCount() {
 }
 
 Cell *ProtoContext::allocCell(){
+    Cell *newCell;
     if (this->thread) {
-        Cell *newCell = this->thread->allocCell();
+        newCell = this->thread->allocCell();
         this->allocatedCellsCount += 1;
         this->checkCellsCount();
-
-        newCell->nextCell = this->lastAllocatedCell;
-
-        return newCell;
     }
     else {
-        // Assume the only context without thread is the Literal creation,
-        // so use the literal global pool for cells
-
-        Cell *newCell;
-        BOOLEAN currentLock = FALSE;
-
-        while (literalMutex.compare_exchange_strong(
-            currentLock,
-            TRUE
-        )) {
-            currentLock = FALSE;
-            std::this_thread::yield();
-        };
-
-        if (!literalFreeCells) {
-            literalFreeCells = (BigCell *) malloc(sizeof(BigCell) * BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL);
-            if (!literalFreeCells) {
-                printf("\nPANIC ERROR: Not enough MEMORY! Exiting ...\n");
-                exit(1);
-            }
-            literalFreeCellsIndex = 0;
-
-            // Clear new allocated blocks
-            void **p =(void **) literalFreeCells;
-            unsigned n = 0;
-            while (n++ < (BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL * sizeof(BigCell) / sizeof(void *)))
-                *p++ = NULL;
-        }
-
-        // Dealloc first free cell
-        newCell = (Cell *) &literalFreeCells[literalFreeCellsIndex];
-
-        literalFreeCellsIndex++;
-        if (literalFreeCellsIndex >= BLOCKS_PER_MALLOC_REQUEST_FOR_LITERAL)
-            literalFreeCells = NULL;
-
-        literalMutex.store(FALSE);
-
-        return newCell;
+        newCell = (Cell *) malloc(sizeof(BigCell));
     }
+
+    newCell->nextCell = this->lastAllocatedCell;
+
+    return newCell;
 };
 
 ProtoObject *ProtoContext::fromInteger(int value) {
@@ -201,7 +167,7 @@ TupleDictionary::TupleDictionary(
     this->key = key;
     this->next = next;
     this->previous = previous;
-    this->height = 1 + max((previous? previous->height : 0), (next? next->height : 0)),
+    this->height = (key? 1 : 0) + max((previous? previous->height : 0), (next? next->height : 0)),
     this->count = (previous? previous->count : 0) + (key? 1 : 0) + (next? next->count : 0);
 };
 
@@ -516,10 +482,13 @@ TupleDictionary *TupleDictionary::leftRotate(ProtoContext *context, TupleDiction
 
 TupleDictionary *TupleDictionary::rebalance(ProtoContext *context, TupleDictionary *newNode) {
     while (TRUE) {
-        int balance = newNode->height;
-
         // If this node becomes unbalanced, then
         // there are 4 cases
+
+        if (!newNode->previous || !newNode->next)
+            return newNode;
+
+        int balance = newNode->next->height - newNode->previous->height;
 
         // Left Left Case
         if (balance < -1 && newNode->previous->height < 0) {
@@ -668,9 +637,8 @@ ProtoTuple *ProtoContext::tupleFromList(ProtoList *list) {
     }
 
     TupleDictionary *currentRoot, *newRoot;
+    currentRoot = this->space->tupleRoot.load();
     do {
-        currentRoot = this->space->tupleRoot.load();
-
         if (currentRoot->has(this, newTuple)) {
             newTuple = currentRoot->getAt(this, newTuple);
             break;
