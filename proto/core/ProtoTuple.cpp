@@ -70,10 +70,10 @@ void ProtoTupleIterator::processReferences(
 
 ProtoTuple::ProtoTuple(
     ProtoContext *context,
-    unsigned long elementCount = 0,
-    unsigned long height=0,
-    ProtoObject **data = NULL,
-    ProtoTuple **indirect = NULL
+    unsigned long elementCount,
+    unsigned long height,
+    ProtoObject **data,
+    ProtoTuple **indirect
 ) : Cell(context) {
     this->elementCount = elementCount;
     this->height = height;
@@ -113,6 +113,8 @@ ProtoObject   *ProtoTuple::getFirst(ProtoContext *context) {
 ProtoObject   *ProtoTuple::getLast(ProtoContext *context) {
     if (this->elementCount > 0)
         return this->getAt(context, this->elementCount - 1);
+    
+    return PROTO_NONE;
 };
 
 ProtoTuple *ProtoTuple::getSlice(ProtoContext *context, int from, int to) {
@@ -142,7 +144,7 @@ unsigned long  ProtoTuple::getSize(ProtoContext *context) {
 };
 
 BOOLEAN ProtoTuple::has(ProtoContext *context, ProtoObject* value) {
-    for (int i = 0; i < this->elementCount; i++)
+    for (unsigned long i = 0; i < this->elementCount; i++)
         if (value == this->getAt(context, i))
             return TRUE;
     
@@ -162,7 +164,7 @@ ProtoTuple *ProtoTuple::setAt(ProtoContext *context, int index, ProtoObject* val
             index = 0;
     }
 
-    if (((unsigned long) index) >= thisSize) {
+    if (index >= thisSize) {
         return NULL;
     }
 
@@ -194,7 +196,7 @@ ProtoTuple *ProtoTuple::insertAt(ProtoContext *context, int index, ProtoObject* 
             index = 0;
     }
 
-    if (((unsigned long) index) >= thisSize) {
+    if (index >= thisSize) {
         return NULL;
     }
 
@@ -314,7 +316,7 @@ ProtoTuple *ProtoTuple::removeAt(ProtoContext *context, int index) {
             index = 0;
     }
 
-    if (((unsigned long) index) >= thisSize) {
+    if (index >= thisSize) {
         return NULL;
     }
 
@@ -358,7 +360,7 @@ ProtoTuple *ProtoTuple::removeSlice(ProtoContext *context, int from, int to) {
 
 ProtoList *ProtoTuple::asList(ProtoContext *context) {
     ProtoList *sourceList = context->newList();
-    for (int i = 0; i < this->elementCount; i++)
+    for (unsigned long i = 0; i < this->elementCount; i++)
         sourceList = sourceList->appendLast(context, this->getAt(context, i));
 
     return sourceList;    

@@ -31,13 +31,13 @@ char ProtoByteBuffer::getAt(ProtoContext *context, int index) {
     if (index < 0)
         index = this->size + index;
 
-    if (index >= this->size)
+    if (index >= (int) this->size)
         index = this->size - 1;
 
     if (index < 0)
         index = 0;
 
-    if (index < size)
+    if (index < (int) this->size)
         return this->buffer[index];
     else
         return 0;
@@ -47,13 +47,13 @@ void ProtoByteBuffer::setAt(ProtoContext *context, int index, char value) {
     if (index < 0)
         index = this->size + index;
 
-    if (index >= this->size)
+    if (index >= (int) this->size)
         index = this->size - 1;
 
     if (index < 0)
         index = 0;
 
-    if (index < size)
+    if (index < (int) this->size)
         this->buffer[index] = value;
 
 }

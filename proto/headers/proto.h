@@ -1,4 +1,4 @@
-/* /*
+/* 
  * proto.h
  *
  *  Created on: November, 2017
@@ -235,8 +235,8 @@ public:
 	ProtoObject *call(ProtoContext *c,
 					  ProtoString *method,
 					  ProtoObject *self,
-					  ProtoList *unnamedParametersList,
-			          ProtoSparseList *keywordParametersDict);
+					  ProtoList *unnamedParametersList = NULL,
+			          ProtoSparseList *keywordParametersDict = NULL);
 
 	unsigned long getHash(ProtoContext *context);
 	int isCell(ProtoContext *context);
@@ -339,26 +339,7 @@ public:
 	ProtoObjectCell *object;
 };
 
-class ProtoIterator: virtual public Cell {
-public:
-	virtual int hasNext(ProtoContext *context) = 0;
-	virtual ProtoObject *next(ProtoContext *context) = 0;
-	virtual ProtoIterator *advance(ProtoContext *context);
-
-	virtual void finalize(ProtoContext *context) = 0;
-
-	virtual void processReferences(
-		ProtoContext *context,
-		void *self,
-		void (*method) (
-			ProtoContext *context,
-			void *self,
-			Cell *cell
-		)
-	) = 0;
-};
-
-class ProtoListIterator: public ProtoIterator {
+class ProtoListIterator: public Cell {
 public:
 	ProtoListIterator(
 		ProtoContext *context,
@@ -452,7 +433,7 @@ public:
 
 #define TUPLE_SIZE 5
 
-class ProtoTupleIterator: public ProtoIterator {
+class ProtoTupleIterator: public Cell {
 public:
 	ProtoTupleIterator (
 		ProtoContext *context,
@@ -494,6 +475,8 @@ private:
     TupleDictionary *rightRotate(ProtoContext *context, TupleDictionary *n);
     TupleDictionary *leftRotate(ProtoContext *context, TupleDictionary *n);
     TupleDictionary *rebalance(ProtoContext *context, TupleDictionary *newNode);
+	TupleDictionary *removeFirst(ProtoContext *context);
+	ProtoTuple *getFirst(ProtoContext *context);
 
 public:
     TupleDictionary(
@@ -503,7 +486,7 @@ public:
         TupleDictionary *previous = NULL
     );
 
-	virtual void finalize(ProtoContext *context) {}
+	virtual void finalize(ProtoContext *context);
 
 	virtual void processReferences(
 		ProtoContext *context,
@@ -518,7 +501,7 @@ public:
     int compareList(ProtoContext *context, ProtoList *list);
     ProtoTuple *hasList(ProtoContext *context, ProtoList *list);
     int has(ProtoContext *context, ProtoTuple *tuple);
-    ProtoTuple getAt(ProtoContext *context, ProtoTuple *tuple);
+    ProtoTuple *getAt(ProtoContext *context, ProtoTuple *tuple);
     TupleDictionary *set(ProtoContext *context, ProtoTuple *tuple);
     TupleDictionary *removeAt(ProtoContext *context, ProtoTuple *tuple);
 };
@@ -581,7 +564,7 @@ public:
 
 };
 
-class ProtoStringIterator: public ProtoIterator {
+class ProtoStringIterator: public Cell {
 public:
 	ProtoStringIterator(
 		ProtoContext *context,
@@ -1060,8 +1043,8 @@ public:
 	ProtoObject 	*fromInteger(int value);
 	ProtoObject 	*fromDouble(double value);
 	ProtoTuple      *tupleFromList(ProtoList *list);
-	ProtoObject 	*fromUTF8Char(char *utf8OneCharString);
-	ProtoString 	*fromUTF8String(char *zeroTerminatedUtf8String);
+	ProtoObject 	*fromUTF8Char(const char *utf8OneCharString);
+	ProtoString 	*fromUTF8String(const char *zeroTerminatedUtf8String);
 	ProtoMethodCell		 	*fromMethod(ProtoObject *self, ProtoMethod method);
 	ProtoExternalPointer 	*fromExternalPointer(void *pointer);
 	ProtoByteBuffer 		*fromBuffer(unsigned long length, char* buffer);

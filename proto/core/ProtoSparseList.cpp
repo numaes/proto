@@ -17,7 +17,7 @@ ProtoSparseListIterator::ProtoSparseListIterator(
 		ProtoContext *context,
 		int state,
 		ProtoSparseList *current,
-		ProtoSparseListIterator *queue = NULL
+		ProtoSparseListIterator *queue
 	) : Cell(context) {
 	this->state = state;
 	this->current = current;
@@ -35,11 +35,11 @@ int ProtoSparseListIterator::hasNext(ProtoContext *context) {
 		return TRUE;
 	if (this->queue)
 		return this->queue->hasNext(context);
+
+	return FALSE;
 };
 
 ProtoTuple *ProtoSparseListIterator::next(ProtoContext *context) {
-	if (this->state == ITERATOR_NEXT_PREVIOUS && this->current->previous)
-		return NULL;
 	if (this->state == ITERATOR_NEXT_THIS) {
 		ProtoList *tupleList = new(context) ProtoList(context);
 		tupleList = tupleList->appendLast(context, context->fromInteger(this->current->index));
@@ -47,8 +47,7 @@ ProtoTuple *ProtoSparseListIterator::next(ProtoContext *context) {
 		ProtoTuple *tuple = context->tupleFromList(tupleList);
 		return tuple;
 	}
-	if (this->state == ITERATOR_NEXT_NEXT && this->current->next)
-		return NULL;
+	return NULL;
 };
 
 ProtoSparseListIterator *ProtoSparseListIterator::advance(ProtoContext *context) {
@@ -59,9 +58,11 @@ ProtoSparseListIterator *ProtoSparseListIterator::advance(ProtoContext *context)
 			this->current,
 			this->queue
 		);
+
 	if (this->state == ITERATOR_NEXT_THIS && this->current->next)
 		return this->current->next->getIterator(context);
-	if (this->state == ITERATOR_NEXT_THIS)
+
+	if (this->state == ITERATOR_NEXT_THIS) {
 		if (this->queue) {
 			ProtoSparseListIterator *newState = new(context) ProtoSparseListIterator(
 				context,
@@ -83,9 +84,12 @@ ProtoSparseListIterator *ProtoSparseListIterator::advance(ProtoContext *context)
 		}
 		else		
 			return NULL;
+	}
+
 	if (this->state == ITERATOR_NEXT_NEXT && this->current->next)
 		if (this->queue)
 			return this->queue->advance(context);
+
 	return NULL;
 };
 
@@ -116,10 +120,10 @@ void ProtoSparseListIterator::processReferences(
 ProtoSparseList::ProtoSparseList(
 	ProtoContext *context,
 
-	unsigned long index = 0,
-	ProtoObject *value = PROTO_NONE,
-	ProtoSparseList *previous = NULL,
-	ProtoSparseList *next = NULL
+	unsigned long index,
+	ProtoObject *value,
+	ProtoSparseList *previous,
+	ProtoSparseList *next
 ) : Cell(context) {
 	this->index = index;
 	this->value = value;
@@ -377,8 +381,6 @@ ProtoSparseList *removeFirst(ProtoContext *context, ProtoSparseList *self) {
 
     if (self->previous) {
         newNode = removeFirst(context, self->previous);
-        if (newNode->index == NULL)
-            newNode = NULL; 
         newNode = new(context) ProtoSparseList(
             context,
 			self->index,
@@ -506,14 +508,6 @@ void ProtoSparseList::processReferences (
 	if (this->previous)
 		this->previous->processReferences(context, self, method);
 
-	ProtoObjectPointer p;
-
-	if (this->index != NULL) {
-		p.oid.oid = this->value;
-		if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE)
-			method(context, self, p.cell.cell);
-	}
-
 	if (this->next)
 		this->next->processReferences(context, self, method);
 
@@ -553,9 +547,6 @@ void ProtoSparseList::processValues (
 	if (this->previous)
 		this->previous->processValues(context, self, method);
 
-	if (this->index != NULL)
-		method(context, self, this->value);
-
 	if (this->next)
 		this->next->processValues(context, self, method);
 
@@ -570,9 +561,6 @@ ProtoObject *ProtoSparseList::asObject(ProtoContext *context) {
 };
 
 unsigned long ProtoSparseList::getHash(ProtoContext *context) {
-    ProtoObjectPointer p;
-    p.oid.oid = (ProtoObject *) this;
-
     return this->hash;
 };
 
@@ -598,24 +586,5 @@ ProtoSparseListIterator *ProtoSparseList::getIterator(ProtoContext *context) {
 	return newState;
 
 };
-
-ProtoSparseListIterator *ProtoSparseList::getIterator(ProtoContext *context) {
-	ProtoSparseList *node = this;
-	ProtoSparseListIterator *iterator = NULL;
-
-	while (node) {
-		if (node->previous) {
-			iterator = new(context) ProtoSparseListIterator(
-				context,
-				node->previous->previous? ITERATOR_NEXT_PREVIOUS : ITERATOR_NEXT_THIS,
-				node->previous,
-				iterator
-			);
-			node = node->previous->previous;
-		}
-	}
-
-	return iterator;
-}
 
 };

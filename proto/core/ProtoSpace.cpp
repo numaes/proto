@@ -207,7 +207,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
     }
 
     // Update space freeCells
-    BOOLEAN oldValue = FALSE;
+    oldValue = FALSE;
     while (space->gcLock.compare_exchange_strong(
         oldValue,
         TRUE
@@ -359,7 +359,6 @@ void ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *thread) {
 Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
     Cell *freeBlocks = NULL;
     Cell *newBlocks, *newBlock;
-    AllocatedSegment *newSegment;
 
     BOOLEAN oldValue = FALSE;
     while (this->gcLock.compare_exchange_strong(
@@ -408,7 +407,7 @@ Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
                 for (int n = 0; n < allocatedBlocks; n++) {
                     // Clear new allocated block
                     void **p =(void **) newBlocks;
-                    for (int count = 0;
+                    for (unsigned long count = 0;
                         count < sizeof(BigCell) / sizeof(void *);
                         count++)
                         *p++ = NULL;

@@ -121,7 +121,7 @@ ProtoString *ProtoString::setAt(ProtoContext *context, int index, ProtoObject* v
             index = 0;
     }
 
-    if (((unsigned long) index) >= thisSize) {
+    if (index >= thisSize) {
         return NULL;
     }
 
@@ -153,7 +153,7 @@ ProtoString *ProtoString::insertAt(ProtoContext *context, int index, ProtoObject
             index = 0;
     }
 
-    if (((unsigned long) index) >= thisSize) {
+    if (index >= thisSize) {
         return NULL;
     }
 
@@ -237,7 +237,7 @@ ProtoString *ProtoString::splitLast(ProtoContext *context, int count) {
     return new(context) ProtoString(context, context->tupleFromList(sourceList));    
 };
 
-ProtoString *ProtoString::removeFirst(ProtoContext *context, int count = 1) {
+ProtoString *ProtoString::removeFirst(ProtoContext *context, int count) {
     int thisSize = this->baseTuple->getSize(context);
 
     ProtoList *sourceList = context->newList();
@@ -247,7 +247,7 @@ ProtoString *ProtoString::removeFirst(ProtoContext *context, int count = 1) {
     return new(context) ProtoString(context, context->tupleFromList(sourceList));    
 };
 
-ProtoString *ProtoString::removeLast(ProtoContext *context, int count = 1) {
+ProtoString *ProtoString::removeLast(ProtoContext *context, int count) {
     int thisSize = this->baseTuple->getSize(context);
 
     ProtoList *sourceList = context->newList();
@@ -269,7 +269,7 @@ ProtoString *ProtoString::removeAt(ProtoContext *context, int index) {
             index = 0;
     }
 
-    if (((unsigned long) index) >= thisSize) {
+    if (index >= thisSize) {
         return NULL;
     }
 

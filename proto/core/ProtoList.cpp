@@ -71,8 +71,8 @@ ProtoList::ProtoList(
     ProtoContext *context,
 
     ProtoObject *value,
-    ProtoList *previous = NULL,
-    ProtoList *next = NULL
+    ProtoList *previous,
+    ProtoList *next
 ) : Cell(context) {
     this->value = value;
     this->previous = previous;
@@ -442,15 +442,15 @@ ProtoList *ProtoList::splitFirst(ProtoContext *context, int index) {
         return this;
 
     if (index < 0) {
-        index = this->count + index;
+        index = (int) this->count + index;
         if (index < 0)
             index = 0;
     }
 
-    if (((unsigned long) index) >= this->count)
-        index = this->count - 1;
+    if (index >= (int) this->count)
+        index = (int) this->count - 1;
 
-    if (index == this->count - 1)
+    if (index == (int) this->count - 1)
         return this;
 
     if (index == 0)
@@ -460,11 +460,11 @@ ProtoList *ProtoList::splitFirst(ProtoContext *context, int index) {
 
     int thisIndex = (this->previous? this->previous->count : 0);
 
-    if (thisIndex == ((unsigned long) index))
+    if (thisIndex == index)
         return this->previous;
     else {
         if (index > thisIndex) {
-            ProtoList *newNext = this->next->splitFirst(context, index - thisIndex - 1);
+            ProtoList *newNext = this->next->splitFirst(context, (unsigned long) index - thisIndex - 1);
             if (newNext->count == 0)
                 newNext = NULL;
             newNode = new(context) ProtoList(
@@ -510,7 +510,7 @@ ProtoList *ProtoList::splitLast(ProtoContext *context, int index) {
 
     int thisIndex = (this->previous? this->previous->count : 0);
 
-    if (thisIndex == ((unsigned long) index)) {
+    if (thisIndex == index) {
         if (!this->previous)
             return this;
         else {
@@ -523,7 +523,7 @@ ProtoList *ProtoList::splitLast(ProtoContext *context, int index) {
         }
     }
     else {
-        if (((unsigned long) index) < thisIndex) {
+        if (index < thisIndex) {
             newNode = new(context) ProtoList(
                 context,
                 this->value,

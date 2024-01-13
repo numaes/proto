@@ -5,8 +5,8 @@
  *      Author: gamarino
  */
 
-#include "../headers/proto.h"
 #include <random>
+#include "../headers/proto.h"
 
 
 using namespace std;
@@ -67,29 +67,30 @@ ProtoObject *getPrototype(ProtoContext *context, ProtoObject *p) {
 	};
 }
 
-ProtoObject *ProtoObject::clone(ProtoContext *context, BOOLEAN isMutable = FALSE) {
+ProtoObject *ProtoObject::clone(ProtoContext *context, BOOLEAN isMutable) {
     ProtoObjectPointer pa;
 
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
         ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
-        int mutable_ref = 0;
 
         ProtoObject *newObject = (new(context) ProtoObjectCell(
             context,
             oc->parent,
-            NULL,
+            0,
             oc->attributes
         ))->asObject(context);
 
         if (isMutable) {
             ProtoSparseList *currentRoot;
-            int randomId;
+            int randomId = 0;
             do {
                 currentRoot = context->space->mutableRoot.load();
 
                 int randomId = rand();
+                if (randomId == 0)
+                    continue;
 
                 if (currentRoot->has(context, (unsigned long) randomId))
                     continue;
@@ -110,14 +111,13 @@ ProtoObject *ProtoObject::clone(ProtoContext *context, BOOLEAN isMutable = FALSE
 
 }
 
-ProtoObject *ProtoObject::newChild(ProtoContext *context, BOOLEAN isMutable = FALSE) {
+ProtoObject *ProtoObject::newChild(ProtoContext *context, BOOLEAN isMutable) {
     ProtoObjectPointer pa;
 
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
         ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
-        int mutable_ref = 0;
 
         ProtoObject *newObject = (new(context) ProtoObjectCell(
             context,
@@ -132,11 +132,14 @@ ProtoObject *ProtoObject::newChild(ProtoContext *context, BOOLEAN isMutable = FA
 
         if (isMutable) {
             ProtoSparseList *currentRoot;
-            int randomId;
+            int randomId = 0;
             do {
                 currentRoot = context->space->mutableRoot.load();
 
                 int randomId = rand();
+
+                if (randomId == 0)
+                    continue;
 
                 if (currentRoot->has(context, (unsigned long) randomId))
                     continue;
@@ -236,7 +239,7 @@ ProtoObject *ProtoObject::setAttribute(ProtoContext *context, ProtoString *name,
         ProtoObject *newObject = (new(context) ProtoObjectCell(
                 context,
                 oc->parent,
-                NULL,
+                0,
                 oc->attributes->setAt(context, hash, value)
             ))->asObject(context);
 
@@ -255,7 +258,7 @@ ProtoObject *ProtoObject::setAttribute(ProtoContext *context, ProtoString *name,
             return (new(context) ProtoObjectCell(
                 context,
                 oc->parent,
-                NULL,
+                0,
                 oc->attributes->setAt(context, hash, value)
             ))->asObject(context);
         }
@@ -270,7 +273,7 @@ ProtoObject *ProtoObject::hasOwnAttribute(ProtoContext *context, ProtoString *na
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
         ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
-        ProtoSparseList *currentRoot, *newRoot;
+        ProtoSparseList *currentRoot;
         if (oc->mutable_ref) {
             currentRoot = context->space->mutableRoot.load();
             oc = (ProtoObjectCell *) currentRoot->getAt(context, oc->mutable_ref);
@@ -288,7 +291,7 @@ ProtoSparseList *ProtoObject::getAttributes(ProtoContext *context) {
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid, *inmutableBase = NULL;
+        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
         ProtoSparseList *currentRoot = NULL;
         if (oc->mutable_ref) {
             currentRoot = context->space->mutableRoot.load();
@@ -407,8 +410,8 @@ ProtoObject *ProtoObject::call(
     ProtoContext *context,
     ProtoString *methodName,
     ProtoObject *self,
-    ProtoList *unnamedParametersList = NULL,
-    ProtoSparseList *keywordParametersDict = NULL
+    ProtoList *unnamedParametersList,
+    ProtoSparseList *keywordParametersDict
 ) {
     ProtoObjectPointer pa;
 
