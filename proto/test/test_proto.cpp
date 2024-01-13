@@ -15,7 +15,7 @@ using namespace proto;
 int failedTests = 0;
 
 
-void printString(ProtoContext *context, ProtoObject *string) {
+void printString(ProtoContext *context, ProtoString *string) {
     ProtoList *s = (ProtoList *) string;
     int size = (int) s->getSize(context);
 
@@ -67,8 +67,8 @@ ProtoObject *testMethod(
     ProtoContext *context, 
     ProtoObject *self, 
     ProtoObject *base, 
-    ProtoObject *args, 
-    ProtoObject *kwargs) {
+    ProtoList *args, 
+    ProtoSparseList *kwargs) {
     return PROTO_NONE;
 };
 
@@ -96,9 +96,9 @@ BOOLEAN test_proto_header() {
         return TRUE;
     }
 
-    if (sizeof(BigCell) < sizeof(IdentityDict)) {
-        cout << "IdentityDict is bigger than BigCell" 
-             << sizeof(IdentityDict) 
+    if (sizeof(BigCell) < sizeof(ProtoSparseList)) {
+        cout << "Sparse is bigger than BigCell" 
+             << sizeof(ProtoSparseList) 
              << "! Please check it";
         return TRUE;
     }
@@ -113,134 +113,78 @@ BOOLEAN test_cell(ProtoContext *previousContext) {
     return FALSE;
 };
 
-BOOLEAN test_identityDict(ProtoContext *previousContext) {
-    cout << "\n\nTesting IdentitySet";
+BOOLEAN test_sparseList(ProtoContext *previousContext) {
+    cout << "\n\nTesting Sparse List";
 
     ProtoContext c(previousContext);
 
     cout << "\nStep 01 Creating";
 
-    IdentityDict *d = new(&c) IdentityDict(&c);
+    ProtoSparseList *d = new(&c) ProtoSparseList(&c);
 
     cout << "\nStep 02 Adding";
 
-    ProtoObject *s1 = c.fromUTF8String((char *) "First");
-    ProtoObject *s2 = c.fromUTF8String((char *) "Second");
-    ProtoObject *s3 = c.fromUTF8String((char *) "Third");
-    ProtoObject *s4 = c.fromUTF8String((char *) "Fourh");
+    ProtoString *s1 = c.fromUTF8String((char *) "First");
+    ProtoString *s2 = c.fromUTF8String((char *) "Second");
+    ProtoString *s3 = c.fromUTF8String((char *) "Third");
+    ProtoString *s4 = c.fromUTF8String((char *) "Fourh");
 
-    d = d->setAt(&c, s1, c.fromInteger(1));
-    d = d->setAt(&c, s2, c.fromInteger(2));
-    d = d->setAt(&c, s3, c.fromInteger(3));
-    d = d->setAt(&c, s4, c.fromInteger(4));
+    d = d->setAt(&c, s1->getHash(&c), c.fromInteger(1));
+    d = d->setAt(&c, s2->getHash(&c), c.fromInteger(2));
+    d = d->setAt(&c, s3->getHash(&c), c.fromInteger(3));
+    d = d->setAt(&c, s4->getHash(&c), c.fromInteger(4));
 
     if (d->getSize(&c) != 4) {
         cout << "\nError on size";
         return TRUE;
     }
 
-    if (d->getAt(&c, s1) != c.fromInteger(1)) {
+    if (d->getAt(&c, s1->getHash(&c)) != c.fromInteger(1)) {
         cout << "\nMismatch on adding";
         return TRUE;
     }
 
     cout << "\nStep 03 Replace";
 
-    d = d->setAt(&c, s2, c.fromInteger(1));
+    d = d->setAt(&c, s2->getHash(&c), c.fromInteger(1));
 
     if (d->getSize(&c) != 4 ||
-        d->getAt(&c, s2) != c.fromInteger(1)) {
+        d->getAt(&c, s2->getHash(&c)) != c.fromInteger(1)) {
         cout << "\nReplace is not working";
         return TRUE;
     }
 
     cout << "\nStep 04 Remove";
 
-    d = d->removeAt(&c, s2);
+    d = d->removeAt(&c, s2->getHash(&c));
 
     if (d->getSize(&c) != 3 ||
-        !d->has(&c, s1) ||
-        !d->has(&c, s3) ||
-        !d->has(&c, s4) ||
-        d->has(&c, s2)) {
+        !d->has(&c, s1->getHash(&c)) ||
+        !d->has(&c, s3->getHash(&c)) ||
+        !d->has(&c, s4->getHash(&c)) ||
+        d->has(&c, s2->getHash(&c))) {
         cout << "\nRemove is not working";
         return TRUE;
     }
 
     cout << "\nStep 05 isEqual";
 
-    IdentityDict *d2 = new(&c) IdentityDict(&c);
+    ProtoSparseList *d2 = new(&c) ProtoSparseList(&c);
 
-    d2 = d2->setAt(&c, s1, c.fromInteger(1));
-    d2 = d2->setAt(&c, s3, c.fromInteger(3));
+    d2 = d2->setAt(&c, s1->getHash(&c), c.fromInteger(1));
+    d2 = d2->setAt(&c, s3->getHash(&c), c.fromInteger(3));
 
     if (d->isEqual(&c, d2)) {
         cout << "\nisEqual with diferent dicts is not working";
         return TRUE;
     }
 
-    d2 = d2->setAt(&c, s4, c.fromInteger(4));
+    d2 = d2->setAt(&c, s4->getHash(&c), c.fromInteger(4));
 
     if (!d->isEqual(&c, d2)) {
         cout << "\nisEqual with equal dicts is not working";
         return TRUE;
     }
-
-    return FALSE;
-};
-
-BOOLEAN test_protoSet(ProtoContext *previousContext) {
-    cout << "\n\nTesting ProtoSet";
-
-    ProtoContext c(previousContext);
-
-    cout << "\nStep 01 Creating";
-
-    ProtoSet *s1 = new(&c) ProtoSet(&c);
-    int i, j;
-
-    cout << "\nStep 01 Add";
-
-    for (i = 0; i < 10; i++)
-        s1 = s1->add(&c, c.fromInteger(i));
-
-    for (i = 0; i < 10; i++) {
-        if (!s1->has(&c, c.fromInteger(i))) {
-            cout << "\nSomething wrong with add";
-            return TRUE;
-        }
-    }
-
-    if (s1->has(&c, c.fromInteger(100))) {
-        cout << "\nSomething wrong with has";
-        return TRUE;
-    }
-
-    cout << "\nStep 02 Remove";
-
-    s1 = s1->removeAt(&c, c.fromInteger(5));
-
-    if (s1->has(&c, c.fromInteger(5))) {
-        cout << "\nSomething wrong with remove";
-        return TRUE;
-    }
-
-    ProtoSet *s2 = new(&c) ProtoSet(&c);
-
-    for (i = 0; i < 10; i++)
-        s2 = s2->add(&c, c.fromInteger(i));
-
-    if (s1->isEqual(&c, s2)) {
-        cout << "\nSomething wrong with isEqual";
-        return TRUE;
-    };
-
-    s1 = s1->removeAt(&c, c.fromInteger(5));
-
-    if (s1->isEqual(&c, s2)) {
-        cout << "\nSomething wrong with isEqual";
-        return TRUE;
-    };
 
     return FALSE;
 };
@@ -281,7 +225,8 @@ BOOLEAN test_protoContext(ProtoContext *previousContext) {
     o = c->fromInteger(37);
 
     p.oid.oid = o;
-    if (p.op.pointer_tag != POINTER_TAG_SMALLINT ||
+    if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE || 
+        p.op.embedded_type != EMBEDED_TYPE_SMALLINT ||
         p.si.smallInteger != 37) {
         cout << "\nError on Integer representation";
         return TRUE;
@@ -297,7 +242,8 @@ BOOLEAN test_protoContext(ProtoContext *previousContext) {
     } u;
     u.lv = p.sd.smallDouble << TYPE_SHIFT;
 
-    if (p.op.pointer_tag != POINTER_TAG_SMALLDOUBLE ||
+    if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE ||
+        p.op.embedded_type != EMBEDED_TYPE_SMALLDOUBLE ||
         abs(u.dv - 45.78898387777) > 0.0000000001) {
         cout << "\nError on Double representation";
         return TRUE;
@@ -382,22 +328,20 @@ BOOLEAN test_protoContext(ProtoContext *previousContext) {
     }
 
     cout << "\nStep 04 - Cell types - External Pointers";
-    o = c->fromExternalPointer(&o);
+    ProtoExternalPointer *ep = c->fromExternalPointer(&o);
 
-    p.oid.oid = o;
-    if (p.op.pointer_tag != POINTER_TAG_CELL ||
-        p.cell.cell->type != CELL_TYPE_EXTERNAL_POINTER ||  
-        ((ProtoExternalPointer *) p.cell.cell)->pointer != &o) {
+    p.oid.oid = (ProtoObject *) ep;
+    if (p.op.pointer_tag != POINTER_TAG_EXTERNAL_POINTER ||
+        ((ProtoExternalPointer *) p.cell.cell)->pointer != &ep) {
         cout << "\nError on Pointer cell";
         return TRUE;
     }
 
     cout << "\nStep 04 - Cell types - Byte buffer";
-    o = c->newBuffer(10);
+    ProtoByteBuffer *bb = c->newBuffer(10);
 
-    p.oid.oid = o;
-    if (p.op.pointer_tag != POINTER_TAG_CELL ||
-        p.cell.cell->type != CELL_TYPE_BYTE_BUFFER ||  
+    p.oid.oid = (ProtoObject *) bb;
+    if (p.op.pointer_tag != POINTER_TAG_BYTE_BUFFER ||
         ((ProtoByteBuffer *) p.cell.cell)->size != 10 ||
         ((ProtoByteBuffer *) p.cell.cell)->buffer == NULL) {
         cout << "\nError on Byte buffer";
@@ -408,23 +352,21 @@ BOOLEAN test_protoContext(ProtoContext *previousContext) {
 
     cout << "\nStep 04 - Cell types - Method call";
     ProtoObject *self = c->fromByte(22);
-    o = c->fromMethod(self, &testMethod);
+    ProtoMethodCell *mc = c->fromMethod(self, &testMethod);
 
-    p.oid.oid = o;
-    if (p.op.pointer_tag != POINTER_TAG_CELL ||
-        p.cell.cell->type != CELL_TYPE_METHOD ||  
+    p.oid.oid = (ProtoObject *) mc;
+    if (p.op.pointer_tag != POINTER_TAG_METHOD_CELL ||
         ((ProtoMethodCell *) p.cell.cell)->self != self ||
-        ((ProtoMethodCell *) p.cell.cell)->method != &testMethod) {
+        ((ProtoMethodCell *) p.cell.cell)->method != testMethod) {
         cout << "\nError on Method";
         return TRUE;
     }
 
     cout << "\nStep 04 - Cell types - UTF8String";
-    o = c->fromUTF8String((char *) "Ñoño");
+    ProtoString *sp = c->fromUTF8String((char *) "Ñoño");
 
-    p.oid.oid = o;
-    if (p.op.pointer_tag != POINTER_TAG_CELL ||
-        p.cell.cell->type != CELL_TYPE_PROTO_LIST ||  
+    p.oid.oid = (ProtoObject *) sp;
+    if (p.op.pointer_tag != POINTER_TAG_STRING ||
         ((ProtoList *) p.cell.cell)->count != 4) {
         cout << "\nError on UTF8 String";
         return TRUE;
@@ -671,7 +613,7 @@ void test_protomethod(ProtoContext *previousContext, int par1=0) {
         ProtoObject * p3;
         ProtoObject * p4;
     } locals;
-    ProtoContext localContext(previousContext, &locals, sizeof(locals) / sizeof(ProtoObjectPointer));
+    ProtoContext localContext(previousContext, &locals.p1, sizeof(locals) / sizeof(ProtoObject *));
 }
 
 BOOLEAN test_protoSpace() {
@@ -682,11 +624,9 @@ BOOLEAN test_protoSpace() {
 
     cout << "\nStep 02 - Creating with context";
     s = new ProtoSpace();
-    ProtoContext c(NULL, s);
+    ProtoContext c;
 
     test_protomethod(&c);
-
-    ProtoSet *set = new(&c) ProtoSet(&c);
 
     return FALSE;
 };
@@ -705,7 +645,7 @@ BOOLEAN main(BOOLEAN argc, char **argv) {
     int error;
 
     ProtoSpace *s = new ProtoSpace();
-    ProtoContext c(NULL, s);
+    ProtoContext c(NULL, NULL, 0, NULL, s);
 
     for (phase = 1; phase <= 13; phase++) {
         switch(phase) {
@@ -725,27 +665,24 @@ BOOLEAN main(BOOLEAN argc, char **argv) {
                 error = test_cell(&c);
                 break;
             case 6:
-                error = test_identityDict(&c);
+                error = test_sparseList(&c);
                 break;
             case 7:
-                error = test_protoSet(&c);
-                break;
-            case 8:
                 error = test_protoList(&c);
                 break;
-            case 9:
+            case 8:
                 error = test_parentLink(&c);
                 break;
-            case 10:
+            case 9:
                 error = test_byteBuffer(&c);
                 break;
-            case 11:
+            case 10:
                 error = test_memoryBuffer(&c);
                 break;
-            case 12:
+            case 11:
                 error = test_methodCall(&c);
                 break;
-            case 13:
+            case 12:
                 error = test_protoObject(&c);
                 break;
         }

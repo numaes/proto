@@ -52,5 +52,7 @@
         "streambuf": "cpp",
         "thread": "cpp",
         "typeinfo": "cpp"
-    }
+    },
+    "makefile.makefilePath": "Makefile",
+    "makefile.defaultLaunchConfiguration": null
 }

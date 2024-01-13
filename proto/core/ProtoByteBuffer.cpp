@@ -27,6 +27,37 @@ ProtoByteBuffer::~ProtoByteBuffer() {
     this->buffer = NULL;
 };
 
+char ProtoByteBuffer::getAt(ProtoContext *context, int index) {
+    if (index < 0)
+        index = this->size + index;
+
+    if (index >= this->size)
+        index = this->size - 1;
+
+    if (index < 0)
+        index = 0;
+
+    if (index < size)
+        return this->buffer[index];
+    else
+        return 0;
+}
+
+void ProtoByteBuffer::setAt(ProtoContext *context, int index, char value) {
+    if (index < 0)
+        index = this->size + index;
+
+    if (index >= this->size)
+        index = this->size - 1;
+
+    if (index < 0)
+        index = 0;
+
+    if (index < size)
+        this->buffer[index] = value;
+
+}
+
 void ProtoByteBuffer::processReferences(
     ProtoContext *context,
     void *self,

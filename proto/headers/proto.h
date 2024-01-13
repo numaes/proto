@@ -115,7 +115,12 @@ class ProtoContext;
 class ProtoList;
 class ProtoSparseList;
 class ProtoTuple;
+class ProtoString;
 class TupleDictionary;
+class ProtoObject;
+class ProtoObjectCell;
+class ProtoSpace;
+
 
 class AllocatedSegment {
 public:
@@ -130,7 +135,7 @@ public:
 	DirtySegment *nextSegment;
 };
 
-typedef ProtoObject *(*ProtoMethod)(
+typedef ProtoObject *(*ProtoMethod) (
 	ProtoContext *, 		// context
 	ProtoObject *, 			// self
 	ProtoObject *, 			// prototype
@@ -215,7 +220,6 @@ public:
 	ProtoObject *clone(ProtoContext *c, BOOLEAN isMutable = FALSE);
 	ProtoObject *newChild(ProtoContext *c, BOOLEAN isMutable = FALSE);
 
-	ProtoObject *getType(ProtoContext *c);
 	ProtoObject *getAttribute(ProtoContext *c, ProtoString *name);
 	ProtoObject *hasAttribute(ProtoContext *c, ProtoString *name);
 	ProtoObject *hasOwnAttribute(ProtoContext *c, ProtoString *name);
@@ -268,7 +272,7 @@ public:
 	Cell(ProtoContext *context);
 	~Cell();
 
-	void *operator new(size_t size, ProtoContext *context);
+	void *operator new(unsigned long size, ProtoContext *context);
 
 	virtual unsigned long getHash(ProtoContext *context);
 
@@ -421,7 +425,7 @@ public:
 	virtual ProtoTuple    *asTuple(ProtoContext *context);
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
-	virtual ProtoStringIterator *getIterator(ProtoContext *context);
+	virtual ProtoListIterator *getIterator(ProtoContext *context);
 
 	virtual void finalize(ProtoContext *context);
 
@@ -554,7 +558,7 @@ public:
 	virtual ProtoList	  *asList(ProtoContext *context);
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long  getHash(ProtoContext *context);
-	virtual ProtoStringIterator *getIterator(ProtoContext *context);
+	virtual ProtoTupleIterator *getIterator(ProtoContext *context);
 
 	virtual void finalize(ProtoContext *context);
 
@@ -773,9 +777,9 @@ public:
 	ProtoObject 	*value;
 	unsigned long   hash;
 
-	unsigned long count:52 = 0;
-	unsigned long height:8 = 0;
-	unsigned long type:4 = 0;
+	unsigned long count:52;
+	unsigned long height:8;
+	unsigned long type:4;
 };
 
 class ProtoByteBuffer: public Cell {
@@ -786,6 +790,9 @@ public:
 		char 		  *buffer	
 	);
 	~ProtoByteBuffer();
+
+	virtual char getAt(ProtoContext *context, int index);
+	virtual void setAt(ProtoContext *context, int index, char value);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);

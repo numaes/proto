@@ -19,7 +19,7 @@ Cell::~Cell() {};
 
 void Cell::finalize(ProtoContext *context) {};
 
-void *Cell::operator new(size_t size, ProtoContext *context) {
+void *Cell::operator new(unsigned long size, ProtoContext *context) {
     return context->allocCell();
 };
 
