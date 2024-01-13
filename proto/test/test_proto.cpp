@@ -330,9 +330,9 @@ BOOLEAN test_protoContext(ProtoContext *previousContext) {
     cout << "\nStep 04 - Cell types - External Pointers";
     ProtoExternalPointer *ep = c->fromExternalPointer(&o);
 
-    p.oid.oid = (ProtoObject *) ep;
+    p.oid.oid = ep->asObject(c);
     if (p.op.pointer_tag != POINTER_TAG_EXTERNAL_POINTER ||
-        ((ProtoExternalPointer *) p.cell.cell)->pointer != &ep) {
+        (ep->pointer != &o)) {
         cout << "\nError on Pointer cell";
         return TRUE;
     }
@@ -340,10 +340,10 @@ BOOLEAN test_protoContext(ProtoContext *previousContext) {
     cout << "\nStep 04 - Cell types - Byte buffer";
     ProtoByteBuffer *bb = c->newBuffer(10);
 
-    p.oid.oid = (ProtoObject *) bb;
+    p.oid.oid = bb->asObject(c);
     if (p.op.pointer_tag != POINTER_TAG_BYTE_BUFFER ||
-        ((ProtoByteBuffer *) p.cell.cell)->size != 10 ||
-        ((ProtoByteBuffer *) p.cell.cell)->buffer == NULL) {
+        bb->size != 10 ||
+        bb->buffer == NULL) {
         cout << "\nError on Byte buffer";
         return TRUE;
     }
@@ -354,10 +354,10 @@ BOOLEAN test_protoContext(ProtoContext *previousContext) {
     ProtoObject *self = c->fromByte(22);
     ProtoMethodCell *mc = c->fromMethod(self, &testMethod);
 
-    p.oid.oid = (ProtoObject *) mc;
+    p.oid.oid = mc->asObject(c);
     if (p.op.pointer_tag != POINTER_TAG_METHOD_CELL ||
-        ((ProtoMethodCell *) p.cell.cell)->self != self ||
-        ((ProtoMethodCell *) p.cell.cell)->method != testMethod) {
+        mc->self != self ||
+        mc->method != testMethod) {
         cout << "\nError on Method";
         return TRUE;
     }
@@ -365,9 +365,9 @@ BOOLEAN test_protoContext(ProtoContext *previousContext) {
     cout << "\nStep 04 - Cell types - UTF8String";
     ProtoString *sp = c->fromUTF8String((char *) "Ñoño");
 
-    p.oid.oid = (ProtoObject *) sp;
+    p.oid.oid = sp->asObject(c);
     if (p.op.pointer_tag != POINTER_TAG_STRING ||
-        ((ProtoList *) p.cell.cell)->count != 4) {
+        sp->baseTuple->getSize(c) != 4) {
         cout << "\nError on UTF8 String";
         return TRUE;
     }
@@ -410,7 +410,7 @@ BOOLEAN test_protoContext(ProtoContext *previousContext) {
         return TRUE;
     };
 
-    cout << "\nStep 06 - Context go and return";
+//    cout << "\nStep 06 - Context go and return";
 
 
 //    int currentCount = countBlocks(c->thread->currentWorkingSet);

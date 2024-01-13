@@ -758,7 +758,7 @@ public:
 	ProtoByteBuffer(
 		ProtoContext *context,
 		unsigned long size,
-		char 		  *buffer	
+		char 		  *buffer = NULL	
 	);
 	~ProtoByteBuffer();
 
@@ -782,6 +782,7 @@ public:
 
 	char			*buffer;
 	unsigned long  	size;
+	int				freeOnExit;
 };
 
 class ProtoExternalPointer: public Cell {

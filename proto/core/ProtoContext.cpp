@@ -726,7 +726,7 @@ ProtoByteBuffer *ProtoContext::fromBuffer(unsigned long length, char* buffer) {
 };
 
 ProtoByteBuffer *ProtoContext::newBuffer(unsigned long length) {
-    return new(this) ProtoByteBuffer(this, length, (char *) malloc((size_t) length));
+    return new(this) ProtoByteBuffer(this, length);
 };
 
 ProtoObject *ProtoContext::fromBoolean(BOOLEAN value) {
