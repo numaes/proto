@@ -85,5 +85,6 @@ unsigned long ProtoByteBuffer::getHash(ProtoContext *context) {
     return p.asHash.hash;
 };
 
+void ProtoByteBuffer::finalize(ProtoContext *context) {};
 
 };

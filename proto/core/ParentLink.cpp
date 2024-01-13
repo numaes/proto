@@ -12,7 +12,7 @@ namespace proto {
 
 ParentLink::~ParentLink() {
 
-}
+};
 
 ParentLink::ParentLink(
 	ProtoContext *context,
@@ -38,5 +38,6 @@ void ParentLink::processReferences(
 	method(context, self, this);
 }
 
+void ParentLink::finalize(ProtoContext *context) {};
 
 };

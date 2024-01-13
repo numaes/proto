@@ -47,4 +47,6 @@ unsigned long ProtoExternalPointer::getHash(ProtoContext *context) {
     return p.asHash.hash;
 };
 
+void ProtoExternalPointer::finalize(ProtoContext *context) {};
+
 };

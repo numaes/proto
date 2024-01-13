@@ -412,4 +412,8 @@ unsigned long ProtoTuple::getHash(ProtoContext *context) {
     return p.asHash.hash;
 };
 
+ProtoTupleIterator *ProtoTuple::getIterator(ProtoContext *context) {
+    return new(context) ProtoTupleIterator(context, this, 0);
+};
+
 };

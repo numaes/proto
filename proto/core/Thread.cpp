@@ -21,8 +21,8 @@ ProtoThread::ProtoThread(
 		ProtoString *name,
 		ProtoSpace	*space,
 		ProtoMethod *code,
-		ProtoObject *args,
-		ProtoObject *kwargs
+		const ProtoObject *args,
+		const ProtoObject *kwargs
 ) : Cell(context) {
     this->name = name;
     this->space = space;
@@ -34,11 +34,12 @@ ProtoThread::ProtoThread(
     this->unmanagedCount = 0;
 
     // Create and start the OS Thread
-    this->osThread = new std::thread(
-        (void (*)(ProtoContext *, ProtoObject *, ProtoObject *)) code, 
-        args, 
-        kwargs
-    );
+    // TODO
+    // this->osThread = new std::thread(
+    //     code, 
+    //     args, 
+    //     kwargs
+    // );
 };
 
 ProtoThread::~ProtoThread(
@@ -87,7 +88,7 @@ void ProtoThread::synchToGC() {
 
                 // Wait for GC to start to stop the world
                 while (this->space->state != SPACE_STATE_WORLD_TO_STOP) {
-                    std::unique_lock lk(globalMutex);
+                    std::unique_lock lk(ProtoSpace::globalMutex);
                     this->space->restartTheWorldCV.wait(lk);
                 };
 
@@ -95,7 +96,7 @@ void ProtoThread::synchToGC() {
 
                 // Wait for GC to complete
                 while (this->space->state != SPACE_STATE_RUNNING) {
-                    std::unique_lock lk(globalMutex);
+                    std::unique_lock lk(ProtoSpace::globalMutex);
                     this->space->restartTheWorldCV.wait(lk);
                 };
 

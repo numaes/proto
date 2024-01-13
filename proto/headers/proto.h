@@ -1,7 +1,7 @@
 /* 
  * proto.h
  *
- *  Created on: November, 2017
+ *  Created on: November, 2017 - Redesign January, 2024
  *      Author: Gustavo Adrian Marino <gamarino@numaes.com>
  */
 
@@ -666,8 +666,6 @@ public:
 	virtual ProtoTuple *next(ProtoContext *context);
 	virtual ProtoSparseListIterator *advance(ProtoContext *context);
 
-	virtual unsigned long nextIndex(ProtoContext *context);
-
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual void finalize(ProtoContext *context);
 
@@ -730,16 +728,6 @@ public:
 			void *self,
 			unsigned long index,
 			ProtoObject *value
-		)
-	);
-
-	virtual void processIndexes (
-		ProtoContext *context,
-		void *self,
-		void (*method) (
-			ProtoContext *context,
-			void *self,
-			ProtoObject *key
 		)
 	);
 
@@ -974,8 +962,8 @@ public:
 		ProtoString *name,
 		ProtoSpace	*space,
 		ProtoMethod *code = NULL,
-		ProtoObject *args = NULL,
-		ProtoObject *kwargs = NULL
+		const ProtoObject *args = NULL,
+		const ProtoObject *kwargs = NULL
 	);
 	~ProtoThread();
 
@@ -1061,8 +1049,6 @@ public:
 
 };
 
-std::mutex		globalMutex;
-
 class ProtoSpace {
 public:
 	ProtoSpace();
@@ -1135,11 +1121,12 @@ public:
 	std::condition_variable restartTheWorldCV;
 	std::condition_variable gcCV;
 	int					 gcStarted;
+
+	static std::mutex	 globalMutex;
+
 };
 
 // Used just to compute the number of bytes needed for a Cell at allocation time
-
-#define max(a, b) ((a > b)? a : b)
 
 static_assert (sizeof(ProtoSparseList) <= 64);
 static_assert (sizeof(ProtoList) <= 64);

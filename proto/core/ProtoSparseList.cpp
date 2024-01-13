@@ -496,6 +496,8 @@ unsigned long ProtoSparseList::getSize(ProtoContext *context) {
 	return this->count;
 };
 
+void ProtoSparseList::finalize(ProtoContext *context) {};
+
 void ProtoSparseList::processReferences (
 	ProtoContext *context,
 	void *self,
@@ -541,11 +543,13 @@ void ProtoSparseList::processValues (
 	void (*method) (
 		ProtoContext *context,
 		void *self,
-		ProtoObject *element
+		ProtoObject *value
 	)
 ) {
 	if (this->previous)
 		this->previous->processValues(context, self, method);
+
+	method(context, self, this->value);
 
 	if (this->next)
 		this->next->processValues(context, self, method);

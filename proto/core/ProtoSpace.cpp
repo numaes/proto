@@ -15,6 +15,7 @@
 #include <condition_variable>
 
 using namespace std;
+using namespace std::literals::chrono_literals;
 
 namespace proto {
 
@@ -27,6 +28,8 @@ namespace proto {
 #define MB                              1024 * KB
 #define GB                              1024 * MB
 #define MAX_HEAP_SIZE                   256 * MB
+
+std::mutex		ProtoSpace::globalMutex;
 
 void gcCollectCells(ProtoContext *context, void *self, Cell *value) {
      ProtoObjectPointer p;
@@ -84,7 +87,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
     
     space->state = SPACE_STATE_STOPPING_WORLD;
     while (space->state == SPACE_STATE_STOPPING_WORLD) {
-        std::unique_lock lk(globalMutex);
+        std::unique_lock<std::mutex> lk(ProtoSpace::globalMutex);
         space->stopTheWorldCV.wait(lk);
 
         int allStoping = TRUE;
@@ -104,7 +107,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
     space->restartTheWorldCV.notify_all();
 
     while (space->state == SPACE_STATE_WORLD_TO_STOP) {
-        std::unique_lock lk(globalMutex);
+        std::unique_lock<std::mutex> lk(ProtoSpace::globalMutex);
         space->stopTheWorldCV.wait(lk);
 
         int allStopped = TRUE;
@@ -229,7 +232,7 @@ void gcThreadLoop(ProtoSpace *space) {
     space->gcCV.notify_one();
 
     while (space->state != SPACE_STATE_RUNNING) {
-        std::unique_lock<std::mutex> lk(globalMutex);
+        std::unique_lock<std::mutex> lk(ProtoSpace::globalMutex);
 
         space->gcCV.wait_for(lk, std::chrono::milliseconds(space->gcSleepMilliseconds));
 
@@ -240,6 +243,7 @@ void gcThreadLoop(ProtoSpace *space) {
 };
 
 ProtoSpace::ProtoSpace() {
+
     Cell *firstCell = this->getFreeCells(NULL);
     ProtoThread *firstThread = (ProtoThread *) firstCell;
     firstThread->freeCells = (BigCell *) firstCell->nextCell;
@@ -358,7 +362,7 @@ void ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *thread) {
 
 Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
     Cell *freeBlocks = NULL;
-    Cell *newBlocks, *newBlock;
+    Cell *newBlocks = NULL, *newBlock = NULL;
 
     BOOLEAN oldValue = FALSE;
     while (this->gcLock.compare_exchange_strong(

@@ -701,6 +701,10 @@ ProtoList *ProtoList::removeSlice(ProtoContext *context, int from, int to) {
     return slice;
 };
 
+ProtoTuple *ProtoList::asTuple(ProtoContext *context) {
+    return context->tupleFromList(this);
+};
+
 ProtoObject *ProtoList::asObject(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
@@ -716,6 +720,9 @@ unsigned long ProtoList::getHash(ProtoContext *context) {
     return p.asHash.hash;
 };
 
+ProtoListIterator *ProtoList::getIterator(ProtoContext *context) {
+    return new(context) ProtoListIterator(context, NULL, 0);
+}
 
 void ProtoList::finalize(ProtoContext *context) {};
 

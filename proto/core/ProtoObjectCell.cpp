@@ -38,6 +38,8 @@ ProtoObjectCell *ProtoObjectCell::addParent(
 	);
 };
 
+void ProtoObjectCell::finalize(ProtoContext *context) {};
+
 // Apply method recursivelly to all referenced objects, except itself
 void ProtoObjectCell::processReferences(
 	ProtoContext *context, 

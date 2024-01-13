@@ -30,7 +30,7 @@ PLATFORM := $(shell uname)
 # *********--+
 # | Programs |
 # +----------+
-CPP11_FLAGS := -std=c++11
+CPP11_FLAGS := -std=c++20
 CC  := gcc
 CXX := g++
 ifeq ($(PLATFORM),Darwin) # on mac

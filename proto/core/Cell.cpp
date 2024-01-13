@@ -17,6 +17,13 @@ Cell::Cell (ProtoContext *context) {
 
 Cell::~Cell() {};
 
+unsigned long Cell::getHash(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+
+    return p.asHash.hash;
+}
+
 void Cell::finalize(ProtoContext *context) {};
 
 void *Cell::operator new(unsigned long size, ProtoContext *context) {
