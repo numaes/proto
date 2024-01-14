@@ -134,6 +134,15 @@ ProtoSparseList::ProtoSparseList(
                  (previous? previous->hash : 0) ^
                  (next? next->hash : 0);
 
+    this->count = (value? 1 : 0) + 
+                  (previous? previous->count : 0) + 
+                  (next? next->count : 0);
+
+    unsigned long previous_height = previous? previous->height : 0;
+    unsigned long next_height = next? next->height : 0;
+    this->height = (value? 1 : 0) + 
+                   (previous_height > next_height? previous_height : next_height);
+
 };
 
 ProtoSparseList::~ProtoSparseList() {
@@ -157,6 +166,9 @@ int getBalance(ProtoSparseList *self) {
 // See the diagram given above.
 ProtoSparseList *rightRotate(ProtoContext *context, ProtoSparseList *n)
 {
+	if (!n->previous)
+		return n;
+
     ProtoSparseList *newRight = new(context) ProtoSparseList(
         context,
         n->index,
@@ -176,6 +188,9 @@ ProtoSparseList *rightRotate(ProtoContext *context, ProtoSparseList *n)
 // A utility function to left rotate subtree rooted with x
 // See the diagram given above.
 ProtoSparseList *leftRotate(ProtoContext *context, ProtoSparseList *n) {
+    if (!n->next)
+        return n;
+
     ProtoSparseList *newLeft = new(context) ProtoSparseList(
         context,
         n->index,
@@ -199,6 +214,9 @@ ProtoSparseList *rebalance(ProtoContext *context, ProtoSparseList *newNode) {
         // If this node becomes unbalanced, then
         // there are 4 cases
 
+        if (balance >= -1 && balance <= 1)
+            return newNode;
+            
         // Left Left Case
         if (balance < -1 && getBalance(newNode->previous) < 0) {
             newNode = rightRotate(context, newNode);
@@ -218,6 +236,8 @@ ProtoSparseList *rebalance(ProtoContext *context, ProtoSparseList *newNode) {
                         leftRotate(context, newNode->previous),
                         newNode->next
                     );
+                    if (!newNode->previous)
+                        return newNode;
                     newNode = rightRotate(context, newNode);
                 }
                 else {
@@ -230,6 +250,8 @@ ProtoSparseList *rebalance(ProtoContext *context, ProtoSparseList *newNode) {
                             newNode->previous,
                             rightRotate(context, newNode->next)
                         );
+                        if (!newNode->next)
+                            return newNode;
                         newNode = leftRotate(context, newNode);
                     }
                     else
