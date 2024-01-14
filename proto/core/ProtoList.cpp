@@ -70,19 +70,25 @@ void ProtoListIterator::processReferences(
 ProtoList::ProtoList(
     ProtoContext *context,
 
-    ProtoObject *value,
-    ProtoList *previous,
-    ProtoList *next
+    ProtoObject *newValue,
+    ProtoList *newPrevious,
+    ProtoList *newNext
 ) : Cell(context) {
-    this->value = value;
-    this->previous = previous;
-    this->next = next;
-    this->hash = (value? value->getHash(context) : 0) ^
-                 (previous? previous->hash : 0) ^
-                 (next? next->hash : 0);
-    this->count = (value? 1 : 0) + 
-                  (previous? previous->count : 0) + 
-                  (next? next->count : 0);
+    this->value = newValue;
+    this->previous = newPrevious;
+    this->next = newNext;
+    this->hash = (newValue? newValue->getHash(context) : 0) ^
+                 (newPrevious? newPrevious->hash : 0) ^
+                 (newNext? newNext->hash : 0);
+    this->count = (newValue? 1 : 0) + 
+                  (newPrevious? newPrevious->count : 0) + 
+                  (newNext? newNext->count : 0);
+
+    unsigned long previous_height = newPrevious? newPrevious->height : 0;
+    unsigned long next_height = newNext? newNext->height : 0;
+    this->height = (newValue? 1 : 0) + 
+                   (previous_height > next_height? previous_height : next_height);
+
 };
 
 ProtoList::~ProtoList() {
@@ -108,8 +114,10 @@ int getBalance(ProtoList *self) {
 
 // A utility function to right rotate subtree rooted with y
 // See the diagram given above.
-ProtoList *rightRotate(ProtoContext *context, ProtoList *n)
-{
+ProtoList *rightRotate(ProtoContext *context, ProtoList *n) {
+    if (!n->previous)
+        return n;
+
     ProtoList *newRight = new(context) ProtoList(
         context,
         n->value,
@@ -127,6 +135,9 @@ ProtoList *rightRotate(ProtoContext *context, ProtoList *n)
 // A utility function to left rotate subtree rooted with x
 // See the diagram given above.
 ProtoList *leftRotate(ProtoContext *context, ProtoList *n) {
+    if (!n->next)
+        return n;
+
     ProtoList *newLeft = new(context) ProtoList(
         context,
         n->value,
@@ -148,35 +159,42 @@ ProtoList *rebalance(ProtoContext *context, ProtoList *newNode) {
         // If this node becomes unbalanced, then
         // there are 4 cases
 
+        if (balance >= -1 && balance <= 1)
+            return newNode;
+            
         // Left Left Case
-        if (balance < -1 && getBalance(newNode->previous) < 0) {
+        if (balance < -1) {
             newNode = rightRotate(context, newNode);
         }
         else {
             // Right Right Case
-            if (balance > 1 && getBalance(newNode->next) > 0) {
+            if (balance > 1) {
                 newNode = leftRotate(context, newNode);
             }
             // Left Right Case
             else {
-                if (balance < 0 && getBalance(newNode->previous) > 0) {
+                if (balance < 0 && newNode->previous) {
                     newNode = new(context) ProtoList(
                         context,
                         newNode->value,
                         leftRotate(context, newNode->previous),
                         newNode->next
                     );
+                    if (!newNode->previous)
+                        return newNode;
                     newNode = rightRotate(context, newNode);
                 }
                 else {
                     // Right Left Case
-                    if (balance > 0 && getBalance(newNode->next) < 0) {
+                    if (balance > 0 && newNode->next) {
                         newNode = new(context) ProtoList(
                             context,
                             newNode->value,
                             newNode->previous,
                             rightRotate(context, newNode->next)
                         );
+                        if (!newNode->next)
+                            return newNode;
                         newNode = leftRotate(context, newNode);
                     }
                     else
@@ -541,7 +559,7 @@ ProtoList *ProtoList::splitLast(ProtoContext *context, int index) {
             else {
                 return this->next->splitLast(
                     context, 
-                    ((unsigned long) index - thisIndex)
+                    ((unsigned long) index - thisIndex - 1)
                 );
             }
         }
