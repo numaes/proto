@@ -327,7 +327,7 @@ TupleDictionary *TupleDictionary::set(ProtoContext *context, ProtoTuple *tuple) 
     else 
         return this;
 
-    return rebalance(context, newNode);
+    return newNode->rebalance(context);
 };
 
 TupleDictionary *TupleDictionary::removeFirst(ProtoContext *context) {
@@ -360,7 +360,7 @@ TupleDictionary *TupleDictionary::removeFirst(ProtoContext *context) {
         return this->next;
     }
 
-    return rebalance(context, newNode);
+    return newNode->rebalance(context);
 };
 
 ProtoTuple *TupleDictionary::getFirst(ProtoContext *context) {
@@ -421,7 +421,7 @@ TupleDictionary *TupleDictionary::removeAt(ProtoContext *context, ProtoTuple *ke
         }
     }
 
-    return rebalance(context, newNode);
+    return newNode->rebalance(context);
 };
 
 int TupleDictionary::compareTuple(ProtoContext *context, ProtoTuple *tuple) {
@@ -447,40 +447,41 @@ int TupleDictionary::compareTuple(ProtoContext *context, ProtoTuple *tuple) {
 
 // A utility function to right rotate subtree rooted with y
 // See the diagram given above.
-TupleDictionary *TupleDictionary::rightRotate(ProtoContext *context, TupleDictionary *n)
+TupleDictionary *TupleDictionary::rightRotate(ProtoContext *context)
 {
     TupleDictionary *newRight = new(context) TupleDictionary(
         context,
-        n->key,
-        n->previous? n->previous->next : NULL,
-        n->next
+        this->key,
+        this->previous? this->previous->next : NULL,
+        this->next
     );
     return new(context) TupleDictionary(
         context,
-        n->previous? n->previous->key : NULL,
-        n->previous? n->previous->previous : NULL,
+        this->previous? this->previous->key : NULL,
+        this->previous? this->previous->previous : NULL,
         newRight
     );
 }
 
 // A utility function to left rotate subtree rooted with x
 // See the diagram given above.
-TupleDictionary *TupleDictionary::leftRotate(ProtoContext *context, TupleDictionary *n) {
+TupleDictionary *TupleDictionary::leftRotate(ProtoContext *context) {
     TupleDictionary *newLeft = new(context) TupleDictionary(
         context,
-        n->key,
-        n->previous,
-        (n->next? n->next->previous : NULL)
+        this->key,
+        this->previous,
+        (this->next? this->next->previous : NULL)
     );
     return new(context) TupleDictionary(
         context,
-        n->next? n->next->key : NULL,
+        this->next? this->next->key : NULL,
         newLeft,
-        n->next? n->next->next : NULL
+        this->next? this->next->next : NULL
     );
 }
 
-TupleDictionary *TupleDictionary::rebalance(ProtoContext *context, TupleDictionary *newNode) {
+TupleDictionary *TupleDictionary::rebalance(ProtoContext *context) {
+    TupleDictionary *newNode = this;
     while (TRUE) {
         // If this node becomes unbalanced, then
         // there are 4 cases
@@ -490,36 +491,39 @@ TupleDictionary *TupleDictionary::rebalance(ProtoContext *context, TupleDictiona
 
         int balance = newNode->next->height - newNode->previous->height;
 
+        if (balance >= -1 && balance <= 1)
+            return newNode;
+
         // Left Left Case
-        if (balance < -1 && newNode->previous->height < 0) {
-            newNode = newNode->rightRotate(context, newNode);
+        if (balance < -1) {
+            newNode = newNode->rightRotate(context);
         }
         else {
             // Right Right Case
-            if (balance > 1 && newNode->previous->height > 0) {
-                newNode = newNode->leftRotate(context, newNode);
+            if (balance > 1) {
+                newNode = newNode->leftRotate(context);
             }
             // Left Right Case
             else {
-                if (balance < 0 && newNode->previous->height > 0) {
+                if (balance < 0) {
                     newNode = new(context) TupleDictionary(
                         context,
                         newNode->key,
-                        newNode->leftRotate(context, newNode->previous),
+                        newNode->previous->leftRotate(context),
                         newNode->next
                     );
-                    newNode = newNode->rightRotate(context, newNode);
+                    newNode = newNode->rightRotate(context);
                 }
                 else {
                     // Right Left Case
-                    if (balance > 0 && newNode->next->height < 0) {
+                    if (balance > 0) {
                         newNode = new(context) TupleDictionary(
                             context,
                             newNode->key,
                             newNode->previous,
-                            newNode->rightRotate(context, newNode->next)
+                            newNode->next->rightRotate(context)
                         );
-                        newNode = newNode->leftRotate(context, newNode);
+                        newNode = newNode->leftRotate(context);
                     }
                     else
                         return newNode;

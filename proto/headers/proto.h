@@ -472,9 +472,9 @@ private:
     int height;
 
     int compareTuple(ProtoContext *context, ProtoTuple *tuple);
-    TupleDictionary *rightRotate(ProtoContext *context, TupleDictionary *n);
-    TupleDictionary *leftRotate(ProtoContext *context, TupleDictionary *n);
-    TupleDictionary *rebalance(ProtoContext *context, TupleDictionary *newNode);
+    TupleDictionary *rightRotate(ProtoContext *context);
+    TupleDictionary *leftRotate(ProtoContext *context);
+    TupleDictionary *rebalance(ProtoContext *context);
 	TupleDictionary *removeFirst(ProtoContext *context);
 	ProtoTuple *getFirst(ProtoContext *context);
 
