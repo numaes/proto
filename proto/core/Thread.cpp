@@ -15,14 +15,16 @@
 using namespace std;
 namespace proto {
 
+int a1() {return 0;};
+
 ProtoThread::ProtoThread(
 		ProtoContext *context,
 
 		ProtoString *name,
 		ProtoSpace	*space,
-		ProtoMethod *code,
-		const ProtoObject *args,
-		const ProtoObject *kwargs
+		ProtoMethod code,
+		ProtoList *args,
+		ProtoSparseList *kwargs
 ) : Cell(context) {
     this->name = name;
     this->space = space;
@@ -32,15 +34,38 @@ ProtoThread::ProtoThread(
     this->space->allocThread(context, this);
     this->state = THREAD_STATE_MANAGED;
     this->unmanagedCount = 0;
+    this->currentContext = NULL;
 
     // Create and start the OS Thread if needed (on space init, no code is provided)
-    // TODO
     if (code) {
-        // this->osThread = new std::thread(
-        //     code, 
-        //     args, 
-        //     kwargs
-        // );
+        this->osThread = new std::thread(
+            [] (ProtoThread *self, 
+                ProtoMethod targetCode, 
+                ProtoList *threadArgs, 
+                ProtoSparseList *threadKwargs) {
+                ProtoContext baseContext(NULL, NULL, 0, self, self->space);
+                targetCode(
+                    NULL, 
+                    self->asObject(&baseContext), 
+                    self->asObject(&baseContext), 
+                    threadArgs, 
+                    threadKwargs
+                );
+            },
+            this,
+            code,
+            args,
+            kwargs
+        );
+    }
+    else {
+        ProtoContext *mainBaseContext = new ProtoContext(
+            NULL, NULL, 0, this, this->space
+        );
+        this->currentContext = mainBaseContext;
+        this->space->mainThreadId = std::this_thread::get_id();
+        this->space->mainThread = this;
+        this->osThread = NULL;
     }
 };
 

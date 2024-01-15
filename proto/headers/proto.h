@@ -962,9 +962,9 @@ public:
 		ProtoContext *context,
 		ProtoString *name,
 		ProtoSpace	*space,
-		ProtoMethod *code = NULL,
-		const ProtoObject *args = NULL,
-		const ProtoObject *kwargs = NULL
+		ProtoMethod code = NULL,
+		ProtoList *args = NULL,
+		ProtoSparseList *kwargs = NULL
 	);
 	~ProtoThread();
 
@@ -1051,7 +1051,11 @@ public:
 
 class ProtoSpace {
 public:
-	ProtoSpace();
+	ProtoSpace(
+		ProtoMethod mainFunction,
+		int argc,
+		char **argv
+	);
 	virtual ~ProtoSpace();
 
 	ProtoObject *getThreads();
@@ -1116,6 +1120,7 @@ public:
 	std::atomic<BOOLEAN> threadsLock;
 	std::atomic<BOOLEAN> gcLock;
 	std::thread::id		 mainThreadId;
+	ProtoThread			*mainThread;
 	std::thread			*gcThread;
 	std::condition_variable stopTheWorldCV;
 	std::condition_variable restartTheWorldCV;

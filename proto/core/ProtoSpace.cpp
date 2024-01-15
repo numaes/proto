@@ -242,7 +242,11 @@ void gcThreadLoop(ProtoSpace *space) {
     }
 };
 
-ProtoSpace::ProtoSpace() {
+ProtoSpace::ProtoSpace(
+    ProtoMethod mainFunction,
+    int argc,
+    char **argv    
+) {
     this->state = SPACE_STATE_RUNNING;
 
     ProtoContext *creationContext = new ProtoContext(
@@ -255,11 +259,19 @@ ProtoSpace::ProtoSpace() {
     this->threads = creationContext->newList();
     this->tupleRoot = new(creationContext) TupleDictionary(creationContext);
     
-    ProtoThread *mainThread = new(creationContext) ProtoThread(
-        creationContext, 
-        creationContext->fromUTF8String("Main thread"),
-        this,
-        NULL
+    ProtoList *mainParameters = creationContext->newList();
+    mainParameters = mainParameters->appendLast(
+        creationContext,
+        creationContext->fromInteger(argc)
+    );
+    ProtoList *argvList = creationContext->newList();
+    for (int i; i < argc; i++)
+        argvList = argvList->appendLast(
+            creationContext,
+            creationContext->fromUTF8String(argv[i])->asObject(creationContext)
+        );
+    mainParameters = mainParameters->appendLast(
+        creationContext, argvList->asObject(creationContext)
     );
 
     mainThread->currentContext = creationContext;
@@ -289,6 +301,14 @@ ProtoSpace::ProtoSpace() {
         std::unique_lock<std::mutex> lk(globalMutex);
         this->gcCV.wait_for(lk, 100ms);
     }
+
+    ProtoThread *mainThread = new(creationContext) ProtoThread(
+        creationContext,
+        creationContext->fromUTF8String("Main thread"),
+        this,
+        mainFunction,
+        mainParameters
+    );
 };
 
 void scanThreads(ProtoContext *context, void *self, ProtoObject *value) {
