@@ -309,6 +309,11 @@ ProtoSpace::ProtoSpace(
         mainFunction,
         mainParameters
     );
+
+    // Wait till main thread and gcThread end
+    
+    mainThread->join(creationContext);
+    this->gcThread->join();
 };
 
 void scanThreads(ProtoContext *context, void *self, ProtoObject *value) {
