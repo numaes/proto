@@ -1053,8 +1053,8 @@ class ProtoSpace {
 public:
 	ProtoSpace(
 		ProtoMethod mainFunction,
-		int argc,
-		char **argv
+		int argc = 0,
+		char **argv = NULL
 	);
 	virtual ~ProtoSpace();
 

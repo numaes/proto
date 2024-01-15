@@ -265,11 +265,13 @@ ProtoSpace::ProtoSpace(
         creationContext->fromInteger(argc)
     );
     ProtoList *argvList = creationContext->newList();
-    for (int i; i < argc; i++)
-        argvList = argvList->appendLast(
-            creationContext,
-            creationContext->fromUTF8String(argv[i])->asObject(creationContext)
-        );
+    if (argc && argv) {
+        for (int i; i < argc; i++)
+            argvList = argvList->appendLast(
+                creationContext,
+                creationContext->fromUTF8String(argv[i])->asObject(creationContext)
+            );
+    }
     mainParameters = mainParameters->appendLast(
         creationContext, argvList->asObject(creationContext)
     );
@@ -311,7 +313,7 @@ ProtoSpace::ProtoSpace(
     );
 
     // Wait till main thread and gcThread end
-    
+
     mainThread->join(creationContext);
     this->gcThread->join();
 };
