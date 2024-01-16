@@ -118,6 +118,7 @@ class ProtoTuple;
 class ProtoString;
 class TupleDictionary;
 class ProtoObject;
+class ParentLink;
 class ProtoObjectCell;
 class ProtoSpace;
 
@@ -138,7 +139,7 @@ public:
 typedef ProtoObject *(*ProtoMethod) (
 	ProtoContext *, 		// context
 	ProtoObject *, 			// self
-	ProtoObject *, 			// prototype
+	ParentLink *, 			// parentLink
 	ProtoList *, 			// positionalParameters
 	ProtoSparseList *		// keywordParameters
 );
@@ -233,6 +234,7 @@ public:
 	ProtoObject *isInstanceOf(ProtoContext *c, ProtoObject *prototype);
 
 	ProtoObject *call(ProtoContext *c,
+	                  ParentLink *nextParent,
 					  ProtoString *method,
 					  ProtoObject *self,
 					  ProtoList *unnamedParametersList = NULL,
@@ -812,12 +814,14 @@ public:
 };
 
 // In order to compile a method the folling structure is recommended:
-// method (p1, p2, p3, p4=init4, p5=init5)
-
+// method (self, parent, p1, p2, p3, p4=init4, p5=init5) {
+//	   super().method()
+// }
+//     
 // ProtoObject *literalForP4, *literalForP5;
 // ProtoObject *constantForInit4, *constantForInit5;
 // 
-// ProtoObject *method(ProtoContext *previousContext, ProtoList *positionalParameters, ProtoSparseList *keywordParameters)
+// ProtoObject *method(ProtoContext *previousContext, ProtoParent *parent, ProtoList *positionalParameters, ProtoSparseList *keywordParameters)
 //      // Parameters + locals
 //		struct {
 //   		ProtoObject *p1, *p2, *p3, *p4, *p5, *l1, *l2, *l3;
@@ -864,6 +868,17 @@ public:
 //			    locals.p5 = keywordParameters->getAt(&context, literalForP5);
 //          }
 //      }
+//
+//		ProtoParent *nextParent;
+//      if (parent)
+//		    nextParent = parent;
+// 
+//      if (nextParent)
+//          nextParent->object->call(this, nextParent->parent, positionalParameters, keywordParameters);
+//      else
+//          raise "There is no super!!"
+//
+//
 //
 // Not used keywordParameters are not detected
 // This provides a similar behaviour to Python, and it can be automatically generated based on compilation time info

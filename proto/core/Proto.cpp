@@ -187,6 +187,7 @@ ProtoObject *ProtoObject::getAttribute(ProtoContext *context, ProtoString *name)
 
         return this->call(
             context,
+            NULL,
             context->space->literalGetAttribute,
             this,
             parameters->appendFirst(context, name->asObject(context))
@@ -364,21 +365,52 @@ ProtoList *ProtoObject::getParents(ProtoContext *context) {
     return NULL;
 };
 
+void processTail(ProtoContext *context, 
+                 ProtoSparseList **existingParents, 
+                 ParentLink *currentParent,
+                 ParentLink **newParentLink) {
+
+    if (currentParent->parent)
+        processTail(context, existingParents, currentParent, newParentLink);
+
+    if (!(*existingParents)->has(context, currentParent->object->getHash(context))) {
+        (*existingParents) = (*existingParents)->setAt(context, currentParent->object->getHash(context));
+        *newParentLink = new(context) ParentLink(
+                            context,
+                            *newParentLink,
+                            currentParent->object
+        );
+    }
+}
+
 ProtoObject *ProtoObject::addParent(ProtoContext *context, ProtoObjectCell *newParent) {
     ProtoObjectPointer pa;
 
     pa.oid.oid = this;
 
+    ProtoSparseList *existingParents = context->newSparseList();
+
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
         ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
 
+        // Collect existing parents
+        ParentLink *currentParent = oc->parent;
+        while (currentParent) {
+            existingParents = existingParents->setAt(
+                context, 
+                currentParent->object->getHash(context),
+                NULL
+            );
+        };
+
+        ParentLink *newParentLink = oc->parent;
+
+        // Collect non referenced yet parents of the new parent in the same order!
+        processTail(context, &existingParents, currentParent, &newParentLink);    
+
         return (new(context) ProtoObjectCell(
             context,
-            new(context) ParentLink(
-                context,
-                oc->parent,
-                newParent
-            ),
+            newParentLink,
             oc->mutable_ref,
             oc->attributes
         ))->asObject(context);
@@ -408,6 +440,7 @@ ProtoObject *ProtoObject::isInstanceOf(ProtoContext *context, ProtoObject *proto
 
 ProtoObject *ProtoObject::call(
     ProtoContext *context,
+    ParentLink *nextParent,
     ProtoString *methodName,
     ProtoObject *self,
     ProtoList *unnamedParametersList,
@@ -427,13 +460,14 @@ ProtoObject *ProtoObject::call(
             return (*m->method)(
                 context, 
                 self,
-                this,
+                nextParent,
                 unnamedParametersList, 
                 keywordParametersDict);
         }
         else
             return this->call(
                 context,
+                nextParent,
                 context->space->literalCallString,
                 self,
                 unnamedParametersList->appendFirst(context, methodName->asObject(context)),
