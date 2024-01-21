@@ -21,7 +21,7 @@ class TupleDictionary: public Cell {
 private:
     TupleDictionary *next;
     TupleDictionary *previous;
-    ProtoTuple *key;
+    ProtoTupleImplementation *key;
     int count;
     int height;
 
@@ -30,12 +30,12 @@ private:
     TupleDictionary *leftRotate(ProtoContext *context);
     TupleDictionary *rebalance(ProtoContext *context);
 	TupleDictionary *removeFirst(ProtoContext *context);
-	ProtoTuple *getFirst(ProtoContext *context);
+	ProtoTupleImplementation *getFirst(ProtoContext *context);
 
 public:
     TupleDictionary(
         ProtoContext *context,
-        ProtoTuple *key = NULL,
+        ProtoTupleImplementation *key = NULL,
         TupleDictionary *next = NULL,
         TupleDictionary *previous = NULL
     );
@@ -53,16 +53,16 @@ public:
 	);
 
     int compareList(ProtoContext *context, ProtoList *list);
-    ProtoTuple *hasList(ProtoContext *context, ProtoList *list);
+    int hasList(ProtoContext *context, ProtoList *list);
     int has(ProtoContext *context, ProtoTuple *tuple);
-    ProtoTuple *getAt(ProtoContext *context, ProtoTuple *tuple);
-    TupleDictionary *set(ProtoContext *context, ProtoTuple *tuple);
-    TupleDictionary *removeAt(ProtoContext *context, ProtoTuple *tuple);
+    ProtoTupleImplementation *getAt(ProtoContext *context, ProtoTupleImplementation *tuple);
+    TupleDictionary *set(ProtoContext *context, ProtoTupleImplementation *tuple);
+    TupleDictionary *removeAt(ProtoContext *context, ProtoTupleImplementation *tuple);
 };
 
 TupleDictionary::TupleDictionary(
         ProtoContext *context,
-        ProtoTuple *key,
+        ProtoTupleImplementation *key,
         TupleDictionary *next,
         TupleDictionary *previous
     ): Cell(context) {
@@ -112,7 +112,7 @@ int TupleDictionary::compareList(ProtoContext *context, ProtoList *list) {
     return 0;
 };
 
-ProtoTuple *TupleDictionary::hasList(ProtoContext *context, ProtoList *list) {
+int TupleDictionary::hasList(ProtoContext *context, ProtoList *list) {
     TupleDictionary *node = this;
     int cmp;
 
@@ -123,13 +123,13 @@ ProtoTuple *TupleDictionary::hasList(ProtoContext *context, ProtoList *list) {
     while (node) {
         cmp = node->compareList(context, list);
         if (cmp == 0)
-            return node->key;
+            return TRUE;
         if (cmp > 0)
             node = node->next;
         else
             node = node->previous;
     }
-    return NULL;
+    return FALSE;
 };
 
 int TupleDictionary::has(ProtoContext *context, ProtoTuple *tuple) {
@@ -152,7 +152,7 @@ int TupleDictionary::has(ProtoContext *context, ProtoTuple *tuple) {
     return FALSE;
 };
 
-ProtoTuple *TupleDictionary::getAt(ProtoContext *context, ProtoTuple *tuple) {
+ProtoTupleImplementation *TupleDictionary::getAt(ProtoContext *context, ProtoTupleImplementation *tuple) {
     TupleDictionary *node = this;
     int cmp;
 
@@ -172,7 +172,7 @@ ProtoTuple *TupleDictionary::getAt(ProtoContext *context, ProtoTuple *tuple) {
     return FALSE;
 };
 
-TupleDictionary *TupleDictionary::set(ProtoContext *context, ProtoTuple *tuple) {
+TupleDictionary *TupleDictionary::set(ProtoContext *context, ProtoTupleImplementation *tuple) {
     TupleDictionary *newNode;
     int cmp;
 
@@ -265,7 +265,7 @@ TupleDictionary *TupleDictionary::removeFirst(ProtoContext *context) {
     return newNode->rebalance(context);
 };
 
-ProtoTuple *TupleDictionary::getFirst(ProtoContext *context) {
+ProtoTupleImplementation *TupleDictionary::getFirst(ProtoContext *context) {
     TupleDictionary *node = this;
 
     while (node) {
@@ -276,7 +276,7 @@ ProtoTuple *TupleDictionary::getFirst(ProtoContext *context) {
     return NULL;
 };
 
-TupleDictionary *TupleDictionary::removeAt(ProtoContext *context, ProtoTuple *key) {
+TupleDictionary *TupleDictionary::removeAt(ProtoContext *context, ProtoTupleImplementation *key) {
     TupleDictionary *newNode;
 
     if (this->key == key) {
@@ -288,7 +288,7 @@ TupleDictionary *TupleDictionary::removeAt(ProtoContext *context, ProtoTuple *ke
                     this->next
                 );
             else {
-                ProtoTuple *first = this->next->getFirst(context);
+                ProtoTupleImplementation *first = this->next->getFirst(context);
                 newNode = new(context) TupleDictionary(
                     context,
                     first,
@@ -445,7 +445,7 @@ TupleDictionary *TupleDictionary::rebalance(ProtoContext *context) {
 
 ProtoTupleIteratorImplementation::ProtoTupleIteratorImplementation(
 		ProtoContext *context,
-        ProtoTuple *base,
+        ProtoTupleImplementation *base,
 		unsigned long currentIndex
 	) : Cell(context) {
     this->base = base;
@@ -498,7 +498,7 @@ ProtoTupleImplementation::ProtoTupleImplementation(
     unsigned long elementCount,
     unsigned long height,
     ProtoObject **data,
-    ProtoTuple **indirect
+    ProtoTupleImplementation **indirect
 ) : Cell(context) {
     this->elementCount = elementCount;
     this->height = height;
@@ -514,26 +514,26 @@ ProtoTupleImplementation::ProtoTupleImplementation(
 
 ProtoTupleImplementation::~ProtoTupleImplementation() {};
 
-ProtoTuple *ProtoTupleImplementation::tupleFromList(ProtoContext *context, ProtoList *list) {
-    unsigned long size = list->getSize(this);
-    ProtoTuple *newTuple = NULL;
-    ProtoList *nextLevel, *lastLevel = NULL;
-    ProtoTuple *indirectData[TUPLE_SIZE];
+ProtoTupleImplementation *ProtoTupleImplementation::tupleFromList(ProtoContext *context, ProtoList *list) {
+    unsigned long size = list->getSize(context);
+    ProtoTupleImplementation *newTuple = NULL;
+    ProtoListImplementation *nextLevel, *lastLevel = NULL;
+    ProtoTupleImplementation *indirectData[TUPLE_SIZE];
     ProtoObject *data[TUPLE_SIZE];
 
-    ProtoList *indirectPointers = new(this) ProtoList(this);
+    ProtoListImplementation *indirectPointers = new(context) ProtoListImplementation(context);
     unsigned long i, j;
     for (i = 0, j = 0; i < size; i++) {
-        data[j++] = list->getAt(this, i);
+        data[j++] = list->getAt(context, i);
 
         if (j == TUPLE_SIZE) {
-            newTuple = new(this) ProtoTuple(
-                this,
+            newTuple = new(context) ProtoTupleImplementation(
+                context,
                 TUPLE_SIZE,
                 0,
                 data
             );
-            indirectPointers = indirectPointers->appendLast(this, (ProtoObject *) newTuple);
+            indirectPointers = indirectPointers->appendLast(context, (ProtoObject *) newTuple);
             j = 0;
         }
     }
@@ -542,29 +542,29 @@ ProtoTuple *ProtoTupleImplementation::tupleFromList(ProtoContext *context, Proto
         unsigned long lastSize = j;
         for (; j < TUPLE_SIZE; j++)
             data[j] = NULL;
-        newTuple = new(this) ProtoTuple(
-            this,
+        newTuple = new(context) ProtoTupleImplementation(
+            context,
             lastSize,
             0,
             data
         );
-        indirectPointers = indirectPointers->appendLast(this, (ProtoObject *) newTuple);
+        indirectPointers = indirectPointers->appendLast(context, (ProtoObject *) newTuple);
     }
 
     if (size >= TUPLE_SIZE) {
         int indirectSize = 0;
         int levelCount = 0;
-        while (indirectPointers->getSize(this) > 0) {
-            nextLevel = new(this) ProtoList(this);
+        while (indirectPointers->getSize(context) > 0) {
+            nextLevel = new(context) ProtoListImplementation(context);
             levelCount++;
             indirectSize = 0;
-            for (i = 0, j = 0; i < indirectPointers->getSize(this); i++) {
-                indirectData[j] = (ProtoTuple *) indirectPointers->getAt(this, i);
+            for (i = 0, j = 0; i < indirectPointers->getSize(context); i++) {
+                indirectData[j] = (ProtoTupleImplementation *) indirectPointers->getAt(context, i);
                 indirectSize += indirectData[j]->elementCount;
                 j++;
                 if (j == TUPLE_SIZE) {
-                    newTuple = new(this) ProtoTuple(
-                        this,
+                    newTuple = new(context) ProtoTupleImplementation(
+                        context,
                         indirectSize,
                         levelCount,
                         NULL,
@@ -572,39 +572,39 @@ ProtoTuple *ProtoTupleImplementation::tupleFromList(ProtoContext *context, Proto
                     );
                     indirectSize = 0;
                     j = 0;
-                    nextLevel = nextLevel->appendLast(this, (ProtoObject *) newTuple);
+                    nextLevel = nextLevel->appendLast(context, (ProtoObject *) newTuple);
                 }
             }
             if (j != 0) {
                 unsigned long lastCount = indirectSize;
                 for (; j < TUPLE_SIZE; j++)
                     indirectData[j] = NULL;
-                newTuple = new(this) ProtoTuple(
-                    this,
+                newTuple = new(context) ProtoTupleImplementation(
+                    context,
                     indirectSize,
                     levelCount,
                     NULL,
                     indirectData
                 );
-                nextLevel = nextLevel->appendLast(this, (ProtoObject *) newTuple);
+                nextLevel = nextLevel->appendLast(context, (ProtoObject *) newTuple);
             }
 
             lastLevel = indirectPointers;
             indirectPointers = nextLevel;
 
-            if (nextLevel->getSize(this) <= TUPLE_SIZE)
+            if (nextLevel->getSize(context) <= TUPLE_SIZE)
                 break;
         };
 
-        if (indirectPointers->getSize(this) > 1) {
+        if (indirectPointers->getSize(context) > 1) {
             for (j = 0; j < TUPLE_SIZE; j++)
-                if (j < indirectPointers->getSize(this))
-                    indirectData[j] = (ProtoTuple *) lastLevel->getAt(this, j);
+                if (j < indirectPointers->getSize(context))
+                    indirectData[j] = (ProtoTupleImplementation *) lastLevel->getAt(context, j);
                 else
                     indirectData[j] = NULL;
-            newTuple = new(this) ProtoTuple(
-                this,
-                list->getSize(this),
+            newTuple = new(context) ProtoTupleImplementation(
+                context,
+                list->getSize(context),
                 levelCount + 1,
                 NULL,
                 indirectData
@@ -613,16 +613,16 @@ ProtoTuple *ProtoTupleImplementation::tupleFromList(ProtoContext *context, Proto
     }
 
     TupleDictionary *currentRoot, *newRoot;
-    currentRoot = this->space->tupleRoot.load();
+    currentRoot = context->space->tupleRoot.load();
     do {
-        if (currentRoot->has(this, newTuple)) {
-            newTuple = currentRoot->getAt(this, newTuple);
+        if (currentRoot->has(context, newTuple)) {
+            newTuple = currentRoot->getAt(context, newTuple);
             break;
         }
         else
-            newRoot = currentRoot->set(this, newTuple);
+            newRoot = currentRoot->set(context, newTuple);
 
-    } while (this->space->tupleRoot.compare_exchange_strong(
+    } while (context->space->tupleRoot.compare_exchange_strong(
         currentRoot,
         newRoot
     ));
@@ -643,7 +643,7 @@ ProtoObject   *ProtoTupleImplementation::getAt(ProtoContext *context, int index)
         index = 0;
 
     int rest = index % TUPLE_SIZE;
-    ProtoTuple *node = this;
+    ProtoTupleImplementation *node = this;
     for (int i = this->height; i > 0; i--) {
         index = index / TUPLE_SIZE;
         node = node->pointers.indirect[index];
@@ -663,7 +663,7 @@ ProtoObject   *ProtoTupleImplementation::getLast(ProtoContext *context) {
     return PROTO_NONE;
 };
 
-ProtoTuple *ProtoTupleImplementation::getSlice(ProtoContext *context, int from, int to) {
+ProtoTupleImplementation *ProtoTupleImplementation::getSlice(ProtoContext *context, int from, int to) {
     int thisSize = this->elementCount;
     if (from < 0) {
         from = thisSize + from;
@@ -682,7 +682,7 @@ ProtoTuple *ProtoTupleImplementation::getSlice(ProtoContext *context, int from, 
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
 
-    return context->tupleFromList(sourceList);    
+    return (ProtoTupleImplementation *) context->tupleFromList(sourceList);    
 };
 
 unsigned long  ProtoTupleImplementation::getSize(ProtoContext *context) {
@@ -697,7 +697,7 @@ BOOLEAN ProtoTupleImplementation::has(ProtoContext *context, ProtoObject* value)
     return FALSE;
 };
 
-ProtoTuple *ProtoTupleImplementation::setAt(ProtoContext *context, int index, ProtoObject* value) {
+ProtoTupleImplementation *ProtoTupleImplementation::setAt(ProtoContext *context, int index, ProtoObject* value) {
   	if (!value) {
 		return NULL;
     }
@@ -725,11 +725,11 @@ ProtoTuple *ProtoTupleImplementation::setAt(ProtoContext *context, int index, Pr
         sourceList = sourceList->appendLast(context, this->getAt(context, i));
 
 
-    return context->tupleFromList(sourceList);    
+    return ProtoTupleImplementation::tupleFromList(context, sourceList);    
 
 };
 
-ProtoTuple *ProtoTupleImplementation::insertAt(ProtoContext *context, int index, ProtoObject* value) {
+ProtoTupleImplementation *ProtoTupleImplementation::insertAt(ProtoContext *context, int index, ProtoObject* value) {
 	if (!value) {
 		return NULL;
     }
@@ -757,11 +757,11 @@ ProtoTuple *ProtoTupleImplementation::insertAt(ProtoContext *context, int index,
         sourceList = sourceList->appendLast(context, this->getAt(context, i));
 
 
-    return context->tupleFromList(sourceList);    
+    return ProtoTupleImplementation::tupleFromList(context, sourceList);    
 
 };
 
-ProtoTuple *ProtoTupleImplementation::appendFirst(ProtoContext *context, ProtoTuple* otherTuple) {
+ProtoTupleImplementation *ProtoTupleImplementation::appendFirst(ProtoContext *context, ProtoTuple* otherTuple) {
 	if (!otherTuple) {
 		return NULL;
     }
@@ -777,11 +777,11 @@ ProtoTuple *ProtoTupleImplementation::appendFirst(ProtoContext *context, ProtoTu
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
 
-    return context->tupleFromList(sourceList);    
+    return ProtoTupleImplementation::tupleFromList(context, sourceList);    
 
 };
 
-ProtoTuple 	  *ProtoTupleImplementation::appendLast(ProtoContext *context, ProtoTuple *otherTuple) {
+ProtoTupleImplementation *ProtoTupleImplementation::appendLast(ProtoContext *context, ProtoTuple *otherTuple) {
 	if (!otherTuple) {
 		return NULL;
     }
@@ -797,11 +797,11 @@ ProtoTuple 	  *ProtoTupleImplementation::appendLast(ProtoContext *context, Proto
     for (int i = 0; i < otherSize; i++)
         sourceList = sourceList->appendLast(context, this->getAt(context, i));
 
-    return context->tupleFromList(sourceList);    
+    return ProtoTupleImplementation::tupleFromList(context, sourceList);    
 
 };
 
-ProtoTuple *ProtoTupleImplementation::splitFirst(ProtoContext *context, int count) {
+ProtoTupleImplementation *ProtoTupleImplementation::splitFirst(ProtoContext *context, int count) {
     int thisSize = this->elementCount;
 
     ProtoList *sourceList = context->newList();
@@ -809,11 +809,11 @@ ProtoTuple *ProtoTupleImplementation::splitFirst(ProtoContext *context, int coun
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
 
-    return context->tupleFromList(sourceList);    
+    return ProtoTupleImplementation::tupleFromList(context, sourceList);    
 
 };
 
-ProtoTuple *ProtoTupleImplementation::splitLast(ProtoContext *context, int count) {
+ProtoTupleImplementation *ProtoTupleImplementation::splitLast(ProtoContext *context, int count) {
     int thisSize = this->elementCount;
     int first = thisSize - count;
     if (first < 0)
@@ -824,22 +824,22 @@ ProtoTuple *ProtoTupleImplementation::splitLast(ProtoContext *context, int count
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
 
-    return context->tupleFromList(sourceList);    
+    return ProtoTupleImplementation::tupleFromList(context, sourceList);    
 
 };
 
-ProtoTuple *ProtoTupleImplementation::removeFirst(ProtoContext *context, int count) {
+ProtoTupleImplementation *ProtoTupleImplementation::removeFirst(ProtoContext *context, int count) {
     int thisSize = this->elementCount;
 
     ProtoList *sourceList = context->newList();
     for (int i = count; i < thisSize; i++)
         sourceList = sourceList->appendLast(context, this->getAt(context, i));
 
-    return context->tupleFromList(sourceList);    
+    return ProtoTupleImplementation::tupleFromList(context, sourceList);    
 
 };
 
-ProtoTuple *ProtoTupleImplementation::removeLast(ProtoContext *context, int count) {
+ProtoTupleImplementation *ProtoTupleImplementation::removeLast(ProtoContext *context, int count) {
     int thisSize = this->elementCount;
 
     ProtoList *sourceList = context->newList();
@@ -849,11 +849,11 @@ ProtoTuple *ProtoTupleImplementation::removeLast(ProtoContext *context, int coun
         else
             break;
 
-    return context->tupleFromList(sourceList);
+    return ProtoTupleImplementation::tupleFromList(context, sourceList);    
 
 };
 
-ProtoTuple *ProtoTupleImplementation::removeAt(ProtoContext *context, int index) {
+ProtoTupleImplementation *ProtoTupleImplementation::removeAt(ProtoContext *context, int index) {
     int thisSize = this->elementCount;
 
     if (index < 0) {
@@ -874,11 +874,11 @@ ProtoTuple *ProtoTupleImplementation::removeAt(ProtoContext *context, int index)
     for (int i = index + 1; i < thisSize; i++)
         sourceList = sourceList->appendLast(context, this->getAt(context, i));
 
-    return context->tupleFromList(sourceList);    
+    return ProtoTupleImplementation::tupleFromList(context, sourceList);    
 
 };
 
-ProtoTuple *ProtoTupleImplementation::removeSlice(ProtoContext *context, int from, int to) {
+ProtoTupleImplementation *ProtoTupleImplementation::removeSlice(ProtoContext *context, int from, int to) {
     int thisSize = this->elementCount;
 
     if (from < 0) {
@@ -900,7 +900,7 @@ ProtoTuple *ProtoTupleImplementation::removeSlice(ProtoContext *context, int fro
         else
             break;
 
-    return context->tupleFromList(sourceList);    
+    return ProtoTupleImplementation::tupleFromList(context, sourceList);    
 
 };
 

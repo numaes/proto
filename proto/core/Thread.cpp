@@ -47,7 +47,7 @@ ProtoThreadImplementation::ProtoThreadImplementation(
                 targetCode(
                     NULL, 
                     self->asObject(&baseContext), 
-                    self->asObject(&baseContext), 
+                    NULL, 
                     threadArgs, 
                     threadKwargs
                 );
@@ -64,7 +64,6 @@ ProtoThreadImplementation::ProtoThreadImplementation(
         );
         this->currentContext = mainBaseContext;
         this->space->mainThreadId = std::this_thread::get_id();
-        this->space->mainThread = this;
         this->osThread = NULL;
     }
 };
@@ -162,7 +161,7 @@ void ProtoThreadImplementation::processReferences(
         Cell *cell
     )
 ) {
-    this->name->processReferences(context, self, method);
+    method(context, self, (Cell *) this->name);
 };
 
 ProtoObject *ProtoThreadImplementation::asObject(ProtoContext *context) {

@@ -16,7 +16,7 @@ namespace proto {
 ProtoSparseListIteratorImplementation::ProtoSparseListIteratorImplementation(
 		ProtoContext *context,
 		int state,
-		ProtoSparseList *current,
+		ProtoSparseListImplementation *current,
 		ProtoSparseListIteratorImplementation *queue
 	) : Cell(context) {
 	this->state = state;
@@ -41,7 +41,7 @@ int ProtoSparseListIteratorImplementation::hasNext(ProtoContext *context) {
 
 ProtoTuple *ProtoSparseListIteratorImplementation::next(ProtoContext *context) {
 	if (this->state == ITERATOR_NEXT_THIS) {
-		ProtoList *tupleList = new(context) ProtoList(context);
+		ProtoListImplementation *tupleList = new(context) ProtoListImplementation(context);
 		tupleList = tupleList->appendLast(context, context->fromInteger(this->current->index));
 		tupleList = tupleList->appendLast(context, this->current->value);
 		ProtoTuple *tuple = context->tupleFromList(tupleList);
@@ -70,7 +70,7 @@ ProtoSparseListIteratorImplementation *ProtoSparseListIteratorImplementation::ad
 				this->current,
 				this->queue
 			);
-			ProtoSparseList *node = this->queue->current;
+			ProtoSparseListImplementation *node = this->queue->current;
 			while (node->previous) {
 				newState = new(context) ProtoSparseListIteratorImplementation(
 					context,
@@ -122,8 +122,8 @@ ProtoSparseListImplementation::ProtoSparseListImplementation(
 
 	unsigned long index,
 	ProtoObject *value,
-	ProtoSparseList *previous,
-	ProtoSparseList *next
+	ProtoSparseListImplementation *previous,
+	ProtoSparseListImplementation *next
 ) : Cell(context) {
 	this->index = index;
 	this->value = value;
@@ -149,7 +149,7 @@ ProtoSparseListImplementation::~ProtoSparseListImplementation() {
 
 };
 
-int getBalance(ProtoSparseList *self) {
+int getBalance(ProtoSparseListImplementation *self) {
 	if (!self)
 		return 0;
 	if (self->next && self->previous)
@@ -164,19 +164,19 @@ int getBalance(ProtoSparseList *self) {
 
 // A utility function to right rotate subtree rooted with y
 // See the diagram given above.
-ProtoSparseList *rightRotate(ProtoContext *context, ProtoSparseList *n)
+ProtoSparseListImplementation *rightRotate(ProtoContext *context, ProtoSparseListImplementation *n)
 {
 	if (!n->previous)
 		return n;
 
-    ProtoSparseList *newRight = new(context) ProtoSparseList(
+    ProtoSparseListImplementation *newRight = new(context) ProtoSparseListImplementation(
         context,
         n->index,
         n->value,
         n->previous->next,
         n->next
     );
-    return new(context) ProtoSparseList(
+    return new(context) ProtoSparseListImplementation(
         context,
         n->previous->index,
         n->previous->value,
@@ -187,18 +187,18 @@ ProtoSparseList *rightRotate(ProtoContext *context, ProtoSparseList *n)
 
 // A utility function to left rotate subtree rooted with x
 // See the diagram given above.
-ProtoSparseList *leftRotate(ProtoContext *context, ProtoSparseList *n) {
+ProtoSparseListImplementation *leftRotate(ProtoContext *context, ProtoSparseListImplementation *n) {
     if (!n->next)
         return n;
 
-    ProtoSparseList *newLeft = new(context) ProtoSparseList(
+    ProtoSparseListImplementation *newLeft = new(context) ProtoSparseListImplementation(
         context,
         n->index,
         n->value,
         n->previous,
         n->next->previous
     );
-    return new(context) ProtoSparseList(
+    return new(context) ProtoSparseListImplementation(
         context,
         n->next->index,
         n->next->value,
@@ -207,7 +207,7 @@ ProtoSparseList *leftRotate(ProtoContext *context, ProtoSparseList *n) {
     );
 };
 
-ProtoSparseList *rebalance(ProtoContext *context, ProtoSparseList *newNode) {
+ProtoSparseListImplementation *rebalance(ProtoContext *context, ProtoSparseListImplementation *newNode) {
     while (TRUE) {
         int balance = getBalance(newNode);
 
@@ -229,7 +229,7 @@ ProtoSparseList *rebalance(ProtoContext *context, ProtoSparseList *newNode) {
             // Left Right Case
             else {
                 if (balance < 0 && getBalance(newNode->previous) > 0) {
-                    newNode = new(context) ProtoSparseList(
+                    newNode = new(context) ProtoSparseListImplementation(
                         context,
 						newNode->index,
                         newNode->value,
@@ -243,7 +243,7 @@ ProtoSparseList *rebalance(ProtoContext *context, ProtoSparseList *newNode) {
                 else {
                     // Right Left Case
                     if (balance > 0 && getBalance(newNode->next) < 0) {
-                        newNode = new(context) ProtoSparseList(
+                        newNode = new(context) ProtoSparseListImplementation(
                             context,
 							newNode->index,
                             newNode->value,
@@ -266,7 +266,7 @@ BOOLEAN ProtoSparseListImplementation::has(ProtoContext *context, unsigned long 
 	if (!this->index)
 		return FALSE;
 
-    ProtoSparseList *node = this;
+    ProtoSparseListImplementation *node = this;
 	while (node) {
 		if (node->index == index)
 			return TRUE;
@@ -287,7 +287,7 @@ ProtoObject *ProtoSparseListImplementation::getAt(ProtoContext *context, unsigne
 	if (!this->index)
 		return PROTO_NONE;
 
-    ProtoSparseList *node = this;
+    ProtoSparseListImplementation *node = this;
 	while (node) {
 		if (node->index == index)
 			return node->value;
@@ -305,13 +305,13 @@ ProtoObject *ProtoSparseListImplementation::getAt(ProtoContext *context, unsigne
 
 };
 
-ProtoSparseList *ProtoSparseListImplementation::setAt(ProtoContext *context, unsigned long index, ProtoObject *value) {
-	ProtoSparseList *newNode;
+ProtoSparseListImplementation *ProtoSparseListImplementation::setAt(ProtoContext *context, unsigned long index, ProtoObject *value) {
+	ProtoSparseListImplementation *newNode;
 	int cmp;
 
 	// Empty tree case
 	if (!this->index)
-        return new(context) ProtoSparseList(
+        return new(context) ProtoSparseListImplementation(
             context,
             index,
 			value
@@ -320,7 +320,7 @@ ProtoSparseList *ProtoSparseListImplementation::setAt(ProtoContext *context, uns
     cmp = ((long) index) - ((long)this->index);
     if (cmp > 0) {
         if (this->next) {
-            newNode = new(context) ProtoSparseList(
+            newNode = new(context) ProtoSparseListImplementation(
                 context,
                 this->index,
 				this->value,
@@ -329,12 +329,12 @@ ProtoSparseList *ProtoSparseListImplementation::setAt(ProtoContext *context, uns
             );
         }
         else {
-            newNode = new(context) ProtoSparseList(
+            newNode = new(context) ProtoSparseListImplementation(
                 context,
                 this->index,
 				this->value,
                 previous = this->previous,
-                next = new(context) ProtoSparseList(
+                next = new(context) ProtoSparseListImplementation(
                     context,
                     index,
 					value
@@ -345,7 +345,7 @@ ProtoSparseList *ProtoSparseListImplementation::setAt(ProtoContext *context, uns
     else {
 		if (cmp < 0) {
 			if (this->previous) {
-				newNode = new(context) ProtoSparseList(
+				newNode = new(context) ProtoSparseListImplementation(
 					context,
 					this->index,
 					this->value,
@@ -354,11 +354,11 @@ ProtoSparseList *ProtoSparseListImplementation::setAt(ProtoContext *context, uns
 				);
 			}
 			else {
-				newNode = new(context) ProtoSparseList(
+				newNode = new(context) ProtoSparseListImplementation(
 					context,
 					this->index,
 					this->value,
-					new(context) ProtoSparseList(
+					new(context) ProtoSparseListImplementation(
 						context,
 						index,
 						value
@@ -368,7 +368,7 @@ ProtoSparseList *ProtoSparseListImplementation::setAt(ProtoContext *context, uns
 			}
 		}
 		else {
-			newNode = new(context) ProtoSparseList(
+			newNode = new(context) ProtoSparseListImplementation(
 				context,
 				this->index,
 				value,
@@ -381,29 +381,29 @@ ProtoSparseList *ProtoSparseListImplementation::setAt(ProtoContext *context, uns
 	return rebalance(context, newNode);
 };
 
-unsigned long firstindex(ProtoContext *context, ProtoSparseList *self) {
+unsigned long firstindex(ProtoContext *context, ProtoSparseListImplementation *self) {
 	while (self->previous)
 		self = self->previous;
 	
 	return self->index;
 };
 
-ProtoObject *firstValue(ProtoContext *context, ProtoSparseList *self) {
+ProtoObject *firstValue(ProtoContext *context, ProtoSparseListImplementation *self) {
 	while (self->previous)
 		self = self->previous;
 	
 	return self->value;
 };
 
-ProtoSparseList *removeFirst(ProtoContext *context, ProtoSparseList *self) {
+ProtoSparseListImplementation *removeFirst(ProtoContext *context, ProtoSparseListImplementation *self) {
 	if (!self->index)
         return self;
 
-    ProtoSparseList *newNode;
+    ProtoSparseListImplementation *newNode;
 
     if (self->previous) {
         newNode = removeFirst(context, self->previous);
-        newNode = new(context) ProtoSparseList(
+        newNode = new(context) ProtoSparseListImplementation(
             context,
 			self->index,
 			self->value,
@@ -415,7 +415,7 @@ ProtoSparseList *removeFirst(ProtoContext *context, ProtoSparseList *self) {
         if (self->next)
             return self->next;
         
-        newNode = new(context) ProtoSparseList(
+        newNode = new(context) ProtoSparseListImplementation(
             context
 		);
     }
@@ -423,9 +423,9 @@ ProtoSparseList *removeFirst(ProtoContext *context, ProtoSparseList *self) {
     return rebalance(context, newNode);
 }
 
-ProtoSparseList *ProtoSparseListImplementation::removeAt(ProtoContext *context, unsigned long index) {
+ProtoSparseListImplementation *ProtoSparseListImplementation::removeAt(ProtoContext *context, unsigned long index) {
 	if (index == this->index && !this->next && !this->previous)
-		return new(context) ProtoSparseList(context);
+		return new(context) ProtoSparseListImplementation(context);
 
 	if (index == this->index) {
 		if (!this->next && this->previous)
@@ -435,13 +435,13 @@ ProtoSparseList *ProtoSparseListImplementation::removeAt(ProtoContext *context, 
 	}
 
 	int cmp = ((long) index) - ((long) this->index);
-	ProtoSparseList *newNode;
+	ProtoSparseListImplementation *newNode;
 	if (cmp < 0) {
 		if (!this->previous)
 			return this;
 		newNode = this->previous->removeAt(context, index);
 		if (newNode->getSize(context) == 0)
-			newNode = new(context) ProtoSparseList(
+			newNode = new(context) ProtoSparseListImplementation(
 				context,
 				this->index,
 				this->value,
@@ -458,7 +458,7 @@ ProtoSparseList *ProtoSparseListImplementation::removeAt(ProtoContext *context, 
 			if (newNode->getSize(context) == 0)
 				newNode = NULL;
 
-			newNode = new(context) ProtoSparseList(
+			newNode = new(context) ProtoSparseListImplementation(
 				context,
 				this->index,
 				this->value,
@@ -471,7 +471,7 @@ ProtoSparseList *ProtoSparseListImplementation::removeAt(ProtoContext *context, 
 				newNode = removeFirst(context, this->next);
 				if (newNode->count == 0)
 					newNode = NULL; 
-				newNode = new(context) ProtoSparseList(
+				newNode = new(context) ProtoSparseListImplementation(
 					context,
 					firstindex(context, this->next),
 					firstValue(context, this->next),
@@ -488,7 +488,7 @@ ProtoSparseList *ProtoSparseListImplementation::removeAt(ProtoContext *context, 
 };
 
 struct matchState {
-	ProtoSparseList *otherDictionary;
+	ProtoSparseListImplementation *otherDictionary;
 	BOOLEAN match;
 };
 
@@ -502,11 +502,11 @@ void match(ProtoContext *context, void *self, unsigned long index, ProtoObject *
 };
 
 int	ProtoSparseListImplementation::isEqual(ProtoContext *context, ProtoSparseList *otherDict) {
-	if (this->count != otherDict->count)
+	if (this->count != otherDict->getSize(context))
 		return FALSE;
 
 	struct matchState state;
-	state.otherDictionary = otherDict;
+	state.otherDictionary = (ProtoSparseListImplementation *) otherDict;
 	state.match = TRUE;
 
 	this->processElements(context, (void *) &state, match);
@@ -598,7 +598,7 @@ ProtoSparseListIteratorImplementation *ProtoSparseListImplementation::getIterato
 				NULL
 	);
 
-	ProtoSparseList *node = this;
+	ProtoSparseListImplementation *node = this;
 	while (node->previous) {
 		newState = new(context) ProtoSparseListIteratorImplementation(
 			context,

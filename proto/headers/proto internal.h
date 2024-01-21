@@ -15,6 +15,7 @@
 namespace proto {
 
 #define NULL 0L
+#define TRUE 1
 
 // Root base of any internal structure.
 // All Cell objects should be non mutable once initialized
@@ -346,14 +347,14 @@ class ProtoTupleIteratorImplementation: public Cell, public ProtoTupleIterator {
 public:
 	ProtoTupleIteratorImplementation (
 		ProtoContext *context,
-		ProtoTuple *base,
+		ProtoTupleImplementation *base,
 		unsigned long currentIndex
 	);
 	virtual ~ProtoTupleIteratorImplementation();
 
 	virtual int hasNext(ProtoContext *context);
 	virtual ProtoObject *next(ProtoContext *context);
-	virtual ProtoTupleIterator *advance(ProtoContext *context);
+	virtual ProtoTupleIteratorImplementation *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 
@@ -448,7 +449,7 @@ public:
 
 	virtual int hasNext(ProtoContext *context);
 	virtual ProtoObject *next(ProtoContext *context);
-	virtual ProtoStringIterator *advance(ProtoContext *context);
+	virtual ProtoStringIteratorImplementation *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual void finalize(ProtoContext *context);
@@ -530,13 +531,13 @@ public:
 		ProtoContext *context,
 		int state,
 		ProtoSparseListImplementation *current,
-		ProtoSparseListIterator *queue = (ProtoSparseListIterator *) NULL
+		ProtoSparseListIteratorImplementation *queue = NULL
 	);
 	virtual ~ProtoSparseListIteratorImplementation();
 
 	virtual int hasNext(ProtoContext *context);
 	virtual ProtoTuple *next(ProtoContext *context);
-	virtual ProtoSparseListIterator *advance(ProtoContext *context);
+	virtual ProtoSparseListIteratorImplementation *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 
@@ -554,7 +555,7 @@ public:
 
 	int state = ITERATOR_NEXT_PREVIOUS;
 	ProtoSparseListImplementation *current;
-	ProtoSparseListIterator *queue = (ProtoSparseListIterator *) NULL;
+	ProtoSparseListIteratorImplementation *queue = NULL;
 
 };
 
@@ -580,7 +581,7 @@ public:
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
-	virtual ProtoSparseListIterator *getIterator(ProtoContext *context);
+	virtual ProtoSparseListIteratorImplementation *getIterator(ProtoContext *context);
 	
 	virtual void finalize(ProtoContext *context);
 
