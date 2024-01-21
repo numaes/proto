@@ -84,7 +84,7 @@ SRCS         := \
 # | HEADERS defines headers to export |
 # +-----------------------------------+
 # OTHER_HEADERS := xxx.h xxx.h
-HEADERS           := proto.h
+HEADERS           := proto.h proto_internal.h
 HEADER_COPIES     := $(addprefix include/,$(HEADERS))
 
 # +-----------------------------+
@@ -161,7 +161,7 @@ depend/%.d: $(addprefix core/,$(addsuffix .cpp,$(SRCS)))
 # +-------------------+
 includes: $(HEADER_COPIES)
 
-include/%.h: headers/%.h
+include/%.h: $(addprefix headers/,$(HEADER_COPIES))
 	@echo "updating header $@"
 	@cp $< $@
 

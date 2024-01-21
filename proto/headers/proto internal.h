@@ -14,6 +14,10 @@
 
 namespace proto {
 
+#ifdef NULL
+#undef NULL
+#endif
+
 #define NULL 0L
 #define TRUE 1
 
@@ -247,6 +251,8 @@ public:
 	ProtoObjectCellImplementation *object;
 };
 
+class ProtoListImplementation;
+
 class ProtoListIteratorImplementation: public Cell, public ProtoListIterator {
 public:
 	ProtoListIteratorImplementation(
@@ -343,6 +349,7 @@ public:
 
 #define TUPLE_SIZE 5
 
+class ProtoTupleImplementation;
 class ProtoTupleIteratorImplementation: public Cell, public ProtoTupleIterator {
 public:
 	ProtoTupleIteratorImplementation (
@@ -438,6 +445,8 @@ public:
 
 };
 
+class ProtoStringImplementation;
+
 class ProtoStringIteratorImplementation: public Cell, public ProtoStringIterator {
 public:
 	ProtoStringIteratorImplementation(
@@ -524,6 +533,8 @@ public:
 #define ITERATOR_NEXT_PREVIOUS 0
 #define ITERATOR_NEXT_THIS 1
 #define ITERATOR_NEXT_NEXT 2
+
+class ProtoSparseListImplementation;
 
 class ProtoSparseListIteratorImplementation: public Cell, public ProtoSparseListIterator {
 public:

@@ -576,7 +576,6 @@ ProtoTupleImplementation *ProtoTupleImplementation::tupleFromList(ProtoContext *
                 }
             }
             if (j != 0) {
-                unsigned long lastCount = indirectSize;
                 for (; j < TUPLE_SIZE; j++)
                     indirectData[j] = NULL;
                 newTuple = new(context) ProtoTupleImplementation(
