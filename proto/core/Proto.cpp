@@ -6,7 +6,7 @@
  */
 
 #include <random>
-#include "../headers/proto_internal.h"
+#include "../headers/proto internal.h"
 
 
 using namespace std;
@@ -73,9 +73,9 @@ ProtoObject *ProtoObject::clone(ProtoContext *context, BOOLEAN isMutable) {
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
+        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
 
-        ProtoObject *newObject = (new(context) ProtoObjectCell(
+        ProtoObject *newObject = (new(context) ProtoObjectCellImplementation(
             context,
             oc->parent,
             0,
@@ -117,11 +117,11 @@ ProtoObject *ProtoObject::newChild(ProtoContext *context, BOOLEAN isMutable) {
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
+        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
 
-        ProtoObject *newObject = (new(context) ProtoObjectCell(
+        ProtoObject *newObject = (new(context) ProtoObjectCellImplementation(
             context,
-            new(context) ParentLink(
+            new(context) ParentLinkImplementation(
                 context,
                 oc->parent,
                 oc
@@ -166,9 +166,9 @@ ProtoObject *ProtoObject::getAttribute(ProtoContext *context, ProtoString *name)
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
+        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
         if (oc->mutable_ref)
-            oc = (ProtoObjectCell *)
+            oc = (ProtoObjectCellImplementation *)
                 context->space->mutableRoot.load()->getAt(context, oc->mutable_ref);
 
         unsigned long hash = name->getHash(context);
@@ -203,9 +203,9 @@ ProtoObject *ProtoObject::hasAttribute(ProtoContext *context, ProtoString *name)
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
+        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
         if (oc->mutable_ref) {
-            oc = (ProtoObjectCell *)
+            oc = (ProtoObjectCellImplementation *)
                 context->space->mutableRoot.load()->getAt(context, oc->mutable_ref);
         }
 
@@ -228,16 +228,16 @@ ProtoObject *ProtoObject::setAttribute(ProtoContext *context, ProtoString *name,
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid, *inmutableBase = NULL;
+        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid, *inmutableBase = NULL;
         ProtoSparseList *currentRoot, *newRoot;
         if (oc->mutable_ref) {
             inmutableBase = oc;
             currentRoot = context->space->mutableRoot.load();
-            oc = (ProtoObjectCell *) currentRoot->getAt(context, oc->mutable_ref);
+            oc = (ProtoObjectCellImplementation *) currentRoot->getAt(context, oc->mutable_ref);
         }
 
         unsigned long hash = name->getHash(context);
-        ProtoObject *newObject = (new(context) ProtoObjectCell(
+        ProtoObject *newObject = (new(context) ProtoObjectCellImplementation(
                 context,
                 oc->parent,
                 0,
@@ -256,7 +256,7 @@ ProtoObject *ProtoObject::setAttribute(ProtoContext *context, ProtoString *name,
             return this;
         }
         else {
-            return (new(context) ProtoObjectCell(
+            return (new(context) ProtoObjectCellImplementation(
                 context,
                 oc->parent,
                 0,
@@ -292,11 +292,11 @@ ProtoSparseList *ProtoObject::getAttributes(ProtoContext *context) {
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
+        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
         ProtoSparseList *currentRoot = NULL;
         if (oc->mutable_ref) {
             currentRoot = context->space->mutableRoot.load();
-            oc = (ProtoObjectCell *) currentRoot->getAt(context, oc->mutable_ref);
+            oc = (ProtoObjectCellImplementation *) currentRoot->getAt(context, oc->mutable_ref);
         }
 
         ProtoSparseList *attributes = context->newSparseList();
@@ -317,7 +317,7 @@ ProtoSparseList *ProtoObject::getAttributes(ProtoContext *context) {
             if (oc->parent) {
                 oc = oc->parent->object;
                 if (oc->mutable_ref)
-                    oc = (ProtoObjectCell *) currentRoot->getAt(context, oc->mutable_ref);
+                    oc = (ProtoObjectCellImplementation *) currentRoot->getAt(context, oc->mutable_ref);
             }
 
         }
@@ -352,10 +352,10 @@ ProtoList *ProtoObject::getParents(ProtoContext *context) {
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoList *parents = new(context) ProtoList(context);
+        ProtoList *parents = new(context) ProtoListImplementation(context);
 
-        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
-        ParentLink *parent = oc->parent;
+        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
+        ParentLinkImplementation *parent = (ParentLinkImplementation *) oc->parent;
         while (parent) {
             parents = parents->appendLast(context, parent->object->asObject(context));
         }
@@ -367,15 +367,15 @@ ProtoList *ProtoObject::getParents(ProtoContext *context) {
 
 void processTail(ProtoContext *context, 
                  ProtoSparseList **existingParents, 
-                 ParentLink *currentParent,
-                 ParentLink **newParentLink) {
+                 ParentLinkImplementation *currentParent,
+                 ParentLinkImplementation **newParentLink) {
 
     if (currentParent->parent)
         processTail(context, existingParents, currentParent, newParentLink);
 
     if (!(*existingParents)->has(context, currentParent->object->getHash(context))) {
         (*existingParents) = (*existingParents)->setAt(context, currentParent->object->getHash(context));
-        *newParentLink = new(context) ParentLink(
+        *newParentLink = new(context) ParentLinkImplementation(
                             context,
                             *newParentLink,
                             currentParent->object
@@ -391,10 +391,10 @@ ProtoObject *ProtoObject::addParent(ProtoContext *context, ProtoObjectCell *newP
     ProtoSparseList *existingParents = context->newSparseList();
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
+        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
 
         // Collect existing parents
-        ParentLink *currentParent = oc->parent;
+        ParentLinkImplementation *currentParent = oc->parent;
         while (currentParent) {
             existingParents = existingParents->setAt(
                 context, 
@@ -403,12 +403,12 @@ ProtoObject *ProtoObject::addParent(ProtoContext *context, ProtoObjectCell *newP
             );
         };
 
-        ParentLink *newParentLink = oc->parent;
+        ParentLinkImplementation *newParentLink = oc->parent;
 
         // Collect non referenced yet parents of the new parent in the same order!
         processTail(context, &existingParents, currentParent, &newParentLink);    
 
-        return (new(context) ProtoObjectCell(
+        return (new(context) ProtoObjectCellImplementation(
             context,
             newParentLink,
             oc->mutable_ref,
@@ -425,9 +425,9 @@ ProtoObject *ProtoObject::isInstanceOf(ProtoContext *context, ProtoObject *proto
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
+        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
 
-        ParentLink *p = oc->parent;
+        ParentLinkImplementation *p = oc->parent;
         while (p) {
             if (p->object->asObject(context) == prototype)
                 return PROTO_TRUE;
@@ -468,7 +468,7 @@ ProtoObject *ProtoObject::call(
             return this->call(
                 context,
                 nextParent,
-                context->space->literalCallString,
+                context->space->literalCallMethod,
                 self,
                 unnamedParametersList->appendFirst(context, methodName->asObject(context)),
                 keywordParametersDict

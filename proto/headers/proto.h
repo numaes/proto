@@ -1,16 +1,12 @@
 /* 
- * proto.h
+ * proto
  *
  *  Created on: November, 2017 - Redesign January, 2024
  *      Author: Gustavo Adrian Marino <gamarino@numaes.com>
  */
 
-#include <cstddef>
 #include <atomic>
-#include <thread>
-#include <mutex>
 #include <condition_variable>
-
 
 namespace proto {
 
@@ -527,6 +523,10 @@ public:
 
 	ProtoObject *sparseListPrototype;
 	ProtoObject *sparseListIteratorPrototype;
+
+	ProtoString *literalGetAttribute;
+	ProtoString *literalSetAttribute;
+	ProtoString *literalCallMethod;
 
 	Cell 		*getFreeCells(ProtoThread *currentThread);
 	void 		analyzeUsedCells(Cell *cellsChain);

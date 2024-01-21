@@ -5,25 +5,25 @@
  *      Author: gamarino
  */
 
-#include "../headers/proto_internal.h"
+#include "../headers/proto internal.h"
 
 namespace proto {
 
 
-ParentLinkImplementation:~ParentLink() {
+ParentLinkImplementation::~ParentLinkImplementation() {
 
 };
 
-ParentLinkImplementation:ParentLink(
+ParentLinkImplementation::ParentLinkImplementation(
 	ProtoContext *context,
-	ParentLink *parent,
-	ProtoObjectCell *object
+	ParentLinkImplementation *parent,
+	ProtoObjectCellImplementation *object
 ) : Cell(context) {
 	this->parent = parent;
 	this->object = object;
 };
 
-void ParentLinkImplementation:processReferences(
+void ParentLinkImplementation::processReferences(
 	ProtoContext *context, 
 	void *self,
 	void (*method)(
@@ -38,6 +38,6 @@ void ParentLinkImplementation:processReferences(
 	method(context, self, this);
 }
 
-void ParentLinkImplementation:finalize(ProtoContext *context) {};
+void ParentLinkImplementation::finalize(ProtoContext *context) {};
 
 };

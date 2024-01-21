@@ -10,8 +10,11 @@
 #define PROTO_INTERNAL_H
 
 #include "../headers/proto.h"
+#include <thread>
 
 namespace proto {
+
+#define NULL 0L
 
 // Root base of any internal structure.
 // All Cell objects should be non mutable once initialized
@@ -211,6 +214,8 @@ private:
 	Cell *p6;
 };
 
+class ProtoObjectCellImplementation;
+
 
 // ParentPointers are chains of parent classes used to solve attribute access
 class ParentLinkImplementation: public Cell, public ParentLink {
@@ -218,8 +223,8 @@ protected:
 public:
 	ParentLinkImplementation(
 		ProtoContext *context,
-		ParentLink *parent,
-		ProtoObjectCell *object
+		ParentLinkImplementation *parent,
+		ProtoObjectCellImplementation *object
 	);
 
 	virtual ~ParentLinkImplementation();
@@ -237,9 +242,8 @@ public:
 		)
 	);
 
-private:
-	ParentLink      *parent;
-	ProtoObjectCell *object;
+	ParentLinkImplementation *parent;
+	ProtoObjectCellImplementation *object;
 };
 
 class ProtoListIteratorImplementation: public Cell, public ProtoListIterator {
@@ -280,8 +284,8 @@ public:
 	ProtoListImplementation(
 		ProtoContext *context,
 		ProtoObject *value = PROTO_NONE,
-		ProtoList *previous = NULL,
-		ProtoList *next = NULL
+		ProtoList *previous = (ProtoList *) NULL,
+		ProtoList *next = (ProtoList *) NULL
 	);
 	virtual ~ProtoListImplementation();
 
@@ -378,8 +382,8 @@ public:
 		ProtoContext *context,
 		unsigned long elementCount = 0,
 		unsigned long height=0,
-		ProtoObject **data = NULL,
-		ProtoTuple **indirect = NULL
+		ProtoObject **data = (ProtoObject **) NULL,
+		ProtoTuple **indirect = (ProtoTuple **) NULL
 	);
 	virtual ~ProtoTupleImplementation();
 
@@ -525,7 +529,7 @@ public:
 		ProtoContext *context,
 		int state,
 		ProtoSparseList *current,
-		ProtoSparseListIterator *queue = NULL
+		ProtoSparseListIterator *queue = (ProtoSparseListIterator *) NULL
 	);
 	virtual ~ProtoSparseListIteratorImplementation();
 
@@ -549,7 +553,7 @@ public:
 
 	int state = ITERATOR_NEXT_PREVIOUS;
 	ProtoSparseList *current;
-	ProtoSparseListIterator *queue = NULL;
+	ProtoSparseListIterator *queue = (ProtoSparseListIterator *) NULL;
 
 };
 
@@ -559,15 +563,15 @@ public:
 		ProtoContext *context,
 		unsigned long index = 0,
 		ProtoObject *value = PROTO_NONE,
-		ProtoSparseList *previous = NULL,
-		ProtoSparseList *next = NULL
+		ProtoSparseList *previous = (ProtoSparseList *) NULL,
+		ProtoSparseList *next = (ProtoSparseList *) NULL
 	);
 	virtual ~ProtoSparseListImplementation();
 
 	virtual BOOLEAN			has(ProtoContext *context, unsigned long index);
 	virtual ProtoObject     *getAt(ProtoContext *context, unsigned long index);
-	virtual ProtoSparseList *setAt(ProtoContext *context, unsigned long index, ProtoObject *value = PROTO_NONE);
-	virtual ProtoSparseList *removeAt(ProtoContext *context, unsigned long index);
+	virtual ProtoSparseListImplementation *setAt(ProtoContext *context, unsigned long index, ProtoObject *value = PROTO_NONE);
+	virtual ProtoSparseListImplementation *removeAt(ProtoContext *context, unsigned long index);
 	virtual int				isEqual(ProtoContext *context, ProtoSparseList *otherDict);
 	virtual ProtoObject     *getAtOffset(ProtoContext *context, int offset);
 
@@ -627,7 +631,7 @@ public:
 	ProtoByteBufferImplementation(
 		ProtoContext *context,
 		unsigned long size,
-		char 		  *buffer = NULL	
+		char 		  *buffer = (char *) NULL	
 	);
 	virtual ~ProtoByteBufferImplementation();
 
@@ -715,9 +719,9 @@ class ProtoObjectCellImplementation: public Cell, public ProtoObjectCell {
 public:
 	ProtoObjectCellImplementation(
 		ProtoContext *context,
-		ParentLink	*parent = NULL,
+		ParentLinkImplementation	*parent = NULL,
 		unsigned long mutable_ref = 0,
-		ProtoSparseList  *attributes = NULL
+		ProtoSparseListImplementation  *attributes = NULL
 	);
 	virtual ~ProtoObjectCellImplementation();
 
@@ -740,8 +744,8 @@ public:
 	);
 
 	unsigned long mutable_ref;
-	ParentLink	*parent;
-	ProtoSparseList  *attributes;
+	ParentLinkImplementation	*parent;
+	ProtoSparseListImplementation  *attributes;
 };
 
 class ProtoThreadImplementation: public Cell, public ProtoThread {
@@ -750,9 +754,9 @@ public:
 		ProtoContext *context,
 		ProtoString *name,
 		ProtoSpace	*space,
-		ProtoMethod code = NULL,
-		ProtoList *args = NULL,
-		ProtoSparseList *kwargs = NULL
+		ProtoMethod code = (ProtoMethod) NULL,
+		ProtoList *args = (ProtoList *) NULL,
+		ProtoSparseList *kwargs = (ProtoSparseList *) NULL
 	);
 	virtual ~ProtoThreadImplementation();
 
