@@ -5,7 +5,7 @@
  *      Author: gamarino
  */
 
-#include "../headers/proto.h"
+#include "../headers/proto_internal.h"
 #include <string.h>
 
 using namespace std;
@@ -16,7 +16,7 @@ namespace proto {
 #define max(a, b) (((a) > (b))? (a):(b))
 #endif
 
-ProtoStringIterator::ProtoStringIterator(
+ProtoStringIteratorImplementation::ProtoStringIteratorImplementation(
 		ProtoContext *context,
         ProtoString *base,
 		unsigned long currentIndex
@@ -25,24 +25,24 @@ ProtoStringIterator::ProtoStringIterator(
 	this->currentIndex = currentIndex;
 };
 
-ProtoStringIterator::~ProtoStringIterator() {};
+ProtoStringIteratorImplementation::~ProtoStringIteratorImplementation() {};
 
-int ProtoStringIterator::hasNext(ProtoContext *context) {
+int ProtoStringIteratorImplementation::hasNext(ProtoContext *context) {
     if (this->currentIndex >= this->base->getSize(context))
         return FALSE;
     else
         return TRUE;
 };
 
-ProtoObject *ProtoStringIterator::next(ProtoContext *context) {
+ProtoObject *ProtoStringIteratorImplementation::next(ProtoContext *context) {
     return this->base->getAt(context, this->currentIndex);
 };
 
-ProtoStringIterator *ProtoStringIterator::advance(ProtoContext *context) {
-    return new(context) ProtoStringIterator(context, this->base, this->currentIndex);
+ProtoStringIteratorImplementation *ProtoStringIteratorImplementation::advance(ProtoContext *context) {
+    return new(context) ProtoStringIteratorImplementation(context, this->base, this->currentIndex);
 };
 
-ProtoObject	  *ProtoStringIterator::asObject(ProtoContext *context) {
+ProtoObject	  *ProtoStringIteratorImplementation::asObject(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
     p.op.pointer_tag = POINTER_TAG_LIST_ITERATOR;
@@ -50,9 +50,9 @@ ProtoObject	  *ProtoStringIterator::asObject(ProtoContext *context) {
     return p.oid.oid;
 };
 
-void ProtoStringIterator::finalize(ProtoContext *context) {};
+void ProtoStringIteratorImplementation::finalize(ProtoContext *context) {};
 
-void ProtoStringIterator::processReferences(
+void ProtoStringIteratorImplementation::processReferences(
 		ProtoContext *context,
 		void *self,
 		void (*method) (
@@ -66,22 +66,22 @@ void ProtoStringIterator::processReferences(
 
 };
 
-ProtoString::ProtoString(
+ProtoStringImplementation:ProtoStringImplementation(
     ProtoContext *context,
     ProtoTuple *baseTuple
 ) : Cell(context) {
     this->baseTuple = baseTuple;
 };
 
-ProtoString::~ProtoString() {
+ProtoStringImplementation::~ProtoStringImplementation() {
 
 };
 
-ProtoObject *ProtoString::getAt(ProtoContext *context, int index) {
+ProtoObject *ProtoStringImplementation::getAt(ProtoContext *context, int index) {
     return this->baseTuple->getAt(context, index);
 };
 
-ProtoString *ProtoString::getSlice(ProtoContext *context, int from, int to) {
+ProtoString *ProtoStringImplementation::getSlice(ProtoContext *context, int from, int to) {
     int thisSize = this->baseTuple->getSize(context);
     if (from < 0) {
         from = thisSize + from;
@@ -104,11 +104,11 @@ ProtoString *ProtoString::getSlice(ProtoContext *context, int from, int to) {
 
 };
 
-unsigned long ProtoString::getSize(ProtoContext *context) {
+unsigned long ProtoStringImplementation::getSize(ProtoContext *context) {
     return this->baseTuple->getSize(context);
 };
 
-ProtoString *ProtoString::setAt(ProtoContext *context, int index, ProtoObject* value) {
+ProtoString *ProtoStringImplementation::setAt(ProtoContext *context, int index, ProtoObject* value) {
 	if (!value) {
 		return NULL;
     }
@@ -140,7 +140,7 @@ ProtoString *ProtoString::setAt(ProtoContext *context, int index, ProtoObject* v
 
 }
 
-ProtoString *ProtoString::insertAt(ProtoContext *context, int index, ProtoObject* value) {
+ProtoString *ProtoStringImplementation::insertAt(ProtoContext *context, int index, ProtoObject* value) {
 	if (!value) {
 		return NULL;
     }
@@ -172,7 +172,7 @@ ProtoString *ProtoString::insertAt(ProtoContext *context, int index, ProtoObject
 
 }
 
-ProtoString *ProtoString::setAtString(ProtoContext *context, int index, ProtoString* string) {
+ProtoString *ProtoStringImplementation::setAtString(ProtoContext *context, int index, ProtoString* string) {
 	if (!string) {
 		return this;
     }
@@ -205,7 +205,7 @@ ProtoString *ProtoString::setAtString(ProtoContext *context, int index, ProtoStr
 
 }
 
-ProtoString *ProtoString::insertAtString(ProtoContext *context, int index, ProtoString* string) {
+ProtoString *ProtoStringImplementation::insertAtString(ProtoContext *context, int index, ProtoString* string) {
 	if (!string) {
 		return this;
     }
@@ -238,7 +238,7 @@ ProtoString *ProtoString::insertAtString(ProtoContext *context, int index, Proto
 
 }
 
-ProtoString *ProtoString::appendFirst(ProtoContext *context, ProtoString* otherString) {
+ProtoString *ProtoStringImplementation::appendFirst(ProtoContext *context, ProtoString* otherString) {
 	if (!otherString) {
 		return NULL;
     }
@@ -258,7 +258,7 @@ ProtoString *ProtoString::appendFirst(ProtoContext *context, ProtoString* otherS
 
 };
 
-ProtoString *ProtoString::appendLast(ProtoContext *context, ProtoString* otherString) {
+ProtoString *ProtoStringImplementation::appendLast(ProtoContext *context, ProtoString* otherString) {
 	if (!otherString) {
 		return NULL;
     }
@@ -278,7 +278,7 @@ ProtoString *ProtoString::appendLast(ProtoContext *context, ProtoString* otherSt
 
 };
 
-ProtoString *ProtoString::splitFirst(ProtoContext *context, int count) {
+ProtoString *ProtoStringImplementation::splitFirst(ProtoContext *context, int count) {
     int thisSize = this->baseTuple->getSize(context);
 
     ProtoList *sourceList = context->newList();
@@ -289,7 +289,7 @@ ProtoString *ProtoString::splitFirst(ProtoContext *context, int count) {
     return new(context) ProtoString(context, context->tupleFromList(sourceList));    
 };
 
-ProtoString *ProtoString::splitLast(ProtoContext *context, int count) {
+ProtoString *ProtoStringImplementation::splitLast(ProtoContext *context, int count) {
     int thisSize = this->baseTuple->getSize(context);
     int first = thisSize - count;
     if (first < 0)
@@ -303,7 +303,7 @@ ProtoString *ProtoString::splitLast(ProtoContext *context, int count) {
     return new(context) ProtoString(context, context->tupleFromList(sourceList));    
 };
 
-ProtoString *ProtoString::removeFirst(ProtoContext *context, int count) {
+ProtoString *ProtoStringImplementation::removeFirst(ProtoContext *context, int count) {
     int thisSize = this->baseTuple->getSize(context);
 
     ProtoList *sourceList = context->newList();
@@ -313,7 +313,7 @@ ProtoString *ProtoString::removeFirst(ProtoContext *context, int count) {
     return new(context) ProtoString(context, context->tupleFromList(sourceList));    
 };
 
-ProtoString *ProtoString::removeLast(ProtoContext *context, int count) {
+ProtoString *ProtoStringImplementation::removeLast(ProtoContext *context, int count) {
     int thisSize = this->baseTuple->getSize(context);
 
     ProtoList *sourceList = context->newList();
@@ -326,7 +326,7 @@ ProtoString *ProtoString::removeLast(ProtoContext *context, int count) {
     return new(context) ProtoString(context, context->tupleFromList(sourceList));    
 };
 
-ProtoString *ProtoString::removeAt(ProtoContext *context, int index) {
+ProtoString *ProtoStringImplementation::removeAt(ProtoContext *context, int index) {
     int thisSize = this->baseTuple->getSize(context);
 
     if (index < 0) {
@@ -350,7 +350,7 @@ ProtoString *ProtoString::removeAt(ProtoContext *context, int index) {
     return new(context) ProtoString(context, context->tupleFromList(sourceList));    
 }
 
-ProtoString *ProtoString::removeSlice(ProtoContext *context, int from, int to) {
+ProtoString *ProtoStringImplementation::removeSlice(ProtoContext *context, int from, int to) {
     int thisSize = this->baseTuple->getSize(context);
 
     if (from < 0) {
@@ -375,7 +375,7 @@ ProtoString *ProtoString::removeSlice(ProtoContext *context, int from, int to) {
     return new(context) ProtoString(context, context->tupleFromList(sourceList));    
 };
 
-ProtoList *ProtoString::asList(ProtoContext *context) {
+ProtoList *ProtoStringImplementation::asList(ProtoContext *context) {
     ProtoList *result = context->newList();
 
     int thisSize = this->getSize(context);
@@ -385,9 +385,9 @@ ProtoList *ProtoString::asList(ProtoContext *context) {
     return result;
 };
 
-void ProtoString::finalize(ProtoContext *context) {};
+void ProtoStringImplementation::finalize(ProtoContext *context) {};
 
-void ProtoString::processReferences(
+void ProtoStringImplementation::processReferences(
     ProtoContext *context,
     void *self,
     void (*method) (
@@ -399,7 +399,7 @@ void ProtoString::processReferences(
     method(context, self, this->baseTuple);
 };
 
-ProtoObject *ProtoString::asObject(ProtoContext *context) {
+ProtoObject *ProtoStringImplementation::asObject(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
     p.op.pointer_tag = POINTER_TAG_STRING;
@@ -407,12 +407,12 @@ ProtoObject *ProtoString::asObject(ProtoContext *context) {
     return p.oid.oid;
 };
 
-unsigned long ProtoString::getHash(ProtoContext *context) {
+unsigned long ProtoStringImplementation::getHash(ProtoContext *context) {
     return (unsigned long) this->baseTuple;
 };
 
-ProtoStringIterator *ProtoString::getIterator(ProtoContext *context) {
-    return new(context) ProtoStringIterator(context, this, 0);
+ProtoStringIteratorImplementation *ProtoStringImplementation::getIterator(ProtoContext *context) {
+    return new(context) ProtoStringIteratorImplementation(context, this, 0);
 }
 
 

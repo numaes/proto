@@ -33,6 +33,11 @@ namespace proto {
 #define NULL (void *) 0LU
 #endif
 
+// Usefull constants.
+// ATENTION: They should be kept on synch with proto_internal.h!
+
+#define PROTO_TRUE ((ProtoObject *)  0x010FL)
+#define PROTO_FALSE ((ProtoObject *) 0x000FL)
 #define PROTO_NONE ((ProtoObject *) NULL)
 
 // Root base of any internal structure.
@@ -52,61 +57,6 @@ namespace proto {
 // There is no other form of allocation for proto objects or scalars
 // 
 
-#define TAG_BITS				  4
-#define EMBEDED_BITS			  4
-
-#define TAG_MASK				  ((1LU << TAG_BITS) - 1)
-#define TYPE_MASK				  ((1LU << EMBEDED_BITS) - 1)
-#define TYPE_SHIFT				  (TAG_BITS + EMBEDED_BITS)
-
-#define POINTER_GET_TAG(p)		  (((unsigned long) p) & TAG_MASK)
-#define POINTER_GET_TYPE(p)	  	  ((((unsigned long) p >> TAG_SHIFT) & TYPE_MASK))
-
-#define POINTER_TAG_OBJECT 	      		(0x00LU)
-#define POINTER_TAG_EMBEDEDVALUE  		(0x01LU)
-#define POINTER_TAG_LIST		  		(0x02LU)
-#define POINTER_TAG_SPARSE_LIST   		(0x03LU)
-#define POINTER_TAG_TUPLE         		(0x04LU)
-#define POINTER_TAG_BYTE_BUFFER   		(0x05LU)
-#define POINTER_TAG_EXTERNAL_POINTER	(0x06LU)
-#define POINTER_TAG_METHOD_CELL     	(0x07LU)
-#define POINTER_TAG_STRING		     	(0x08LU)
-#define POINTER_TAG_LIST_ITERATOR     	(0x09LU)
-#define POINTER_TAG_TUPLE_ITERATOR     	(0x0ALU)
-#define POINTER_TAG_STRING_ITERATOR    	(0x0BLU)
-#define POINTER_TAG_SPARSE_LIST_ITERATOR (0x0CLU)
-#define POINTER_TAG_UNASSIGNED_D     	(0x0DLU)
-#define POINTER_TAG_UNASSIGNED_E     	(0x0ELU)
-#define POINTER_TAG_UNASSIGNED_F     	(0x0FLU)
-
-#define EMBEDED_TYPE_BOOLEAN      (0x00LU)
-#define EMBEDED_TYPE_UNICODECHAR  (0x01LU)
-#define EMBEDED_TYPE_BYTE         (0x02LU)
-#define EMBEDED_TYPE_TIMESTAMP    (0x03LU)
-#define EMBEDED_TYPE_DATE         (0x04LU)
-#define EMBEDED_TYPE_TIMEDELTA    (0x05LU)
-#define EMBEDED_TYPE_SMALLINT	  (0x06LU)
-#define EMBEDED_TYPE_SMALLDOUBLE  (0x07LU)
-#define EMBEDED_TYPE_UNASSIGNED_8 (0x08LU)
-#define EMBEDED_TYPE_UNASSIGNED_9 (0x09LU)
-#define EMBEDED_TYPE_UNASSIGNED_A (0x0ALU)
-#define EMBEDED_TYPE_UNASSIGNED_B (0x0BLU)
-#define EMBEDED_TYPE_UNASSIGNED_C (0x0CLU)
-#define EMBEDED_TYPE_UNASSIGNED_D (0x0DLU)
-#define EMBEDED_TYPE_UNASSIGNED_E (0x0ELU)
-#define EMBEDED_TYPE_UNASSIGNED_F (0x0FLU)
-
-#define SPACE_STATE_RUNNING			(0x0)
-#define SPACE_STATE_STOPPING_WORLD  (0x1)
-#define SPACE_STATE_WORLD_TO_STOP   (0x2)
-#define SPACE_STATE_WORLD_STOPPED   (0x3)
-#define SPACE_STATE_ENDING          (0x4)
-
-#define THREAD_STATE_MANAGED        (0x0)
-#define THREAD_STATE_UNMANAGED      (0x1)
-#define THREAD_STATE_STOPPING       (0x3)
-#define THREAD_STATE_STOPPED        (0x3)
-
 // Forward declarations
 
 class Cell;
@@ -121,20 +71,7 @@ class ProtoObject;
 class ParentLink;
 class ProtoObjectCell;
 class ProtoSpace;
-
-
-class AllocatedSegment {
-public:
-    BigCell *memoryBlock;
-    int     cellsCount;
-    AllocatedSegment *nextBlock;
-};
-
-class DirtySegment {
-public:
-	BigCell	 *cellChain;
-	DirtySegment *nextSegment;
-};
+class DirtySegment;
 
 typedef ProtoObject *(*ProtoMethod) (
 	ProtoContext *, 		// context
@@ -143,78 +80,6 @@ typedef ProtoObject *(*ProtoMethod) (
 	ProtoList *, 			// positionalParameters
 	ProtoSparseList *		// keywordParameters
 );
-
-// Base tree structure used by Dictionaries, Sets and Lists
-// Internal use exclusively
-
-union ProtoObjectPointer {
-	struct {
-		ProtoObject	*oid;
-	} oid;
-
-	struct {
-		int	hash;
-	} asHash;
-
-	struct {
-		Cell *cell;
-	} cell;
-
-	struct {
-		unsigned long pointer_tag:TAG_BITS;
-		unsigned long embedded_type:EMBEDED_BITS;
-		unsigned long value:(64 - TAG_BITS - EMBEDED_BITS);
-	} op;
-
-	// Pointer tag dependent values
-	struct {
-		unsigned long pointer_tag:TAG_BITS;
-		unsigned long embedded_type:EMBEDED_BITS;
-		long smallInteger:(64 - TAG_BITS - EMBEDED_BITS);
-	} si;
-	struct {
-		unsigned long pointer_tag:TAG_BITS;
-		unsigned long embedded_type:EMBEDED_BITS;
-		unsigned long smallDouble:(64 - TAG_BITS - EMBEDED_BITS);
-	} sd;
-	// Embedded types dependent values
-	struct {
-		unsigned long pointer_tag:TAG_BITS;
-		unsigned long embedded_type:EMBEDED_BITS;
-		unsigned long unicodeValue:32;
-	} unicodeChar;
-	struct {
-		unsigned long pointer_tag:TAG_BITS;
-		unsigned long embedded_type:EMBEDED_BITS;
-		unsigned long booleanValue:1;
-	} booleanValue;
-	struct {
-		unsigned long pointer_tag:TAG_BITS;
-		unsigned long embedded_type:EMBEDED_BITS;
-		unsigned long byteData:8;
-	} byteValue;
-
-	struct {
-		unsigned long pointer_tag:TAG_BITS;
-		unsigned long embedded_type:EMBEDED_BITS;
-		unsigned long timestamp:(64 - TAG_BITS - EMBEDED_BITS);
-	} timestampValue;
-
-	struct {
-		unsigned long pointer_tag:TAG_BITS;
-		unsigned long embedded_type:EMBEDED_BITS;
-		unsigned long day:8;
-		unsigned long month:8;
-		unsigned long year:16;
-	} date;
-
-	struct {
-		unsigned long pointer_tag:TAG_BITS;
-		unsigned long embedded_type:EMBEDED_BITS;
-		long timedelta:(64 - TAG_BITS - EMBEDED_BITS);
-	} timedeltaValue;
-
-};
 
 class ProtoObject {
 public:
@@ -269,119 +134,25 @@ public:
 
 };
 
-class Cell {
-public:
-	Cell(ProtoContext *context);
-	~Cell();
-
-	void *operator new(unsigned long size, ProtoContext *context);
-
-	virtual unsigned long getHash(ProtoContext *context);
-
-	// Called before discarding the Cell by garbage collector
-	virtual void finalize(ProtoContext *context);
-
-	// Apply method recursivelly to all referenced objects, except itself
-    virtual void processReferences(
-		ProtoContext *context, 
-		void *self,
-		void (*method)(
-			ProtoContext *context, 
-			void *self,
-			Cell *cell
-		)
-	);
-
-    Cell *nextCell;
-};
-
-
-// Used only for block allocations
-// The maximun number of pointers is 8
-// per Cell.
-// Cell itsef uses 2 (virtual class pointer and nextCell), thus only 6 are available to subclasses
-// The biggest is IdentityDict
-class BigCell : public Cell {
-private:
-	Cell *p1;
-	Cell *p2;
-	Cell *p3;
-	Cell *p4;
-	Cell *p5;
-	Cell *p6;
-};
-
 
 // ParentPointers are chains of parent classes used to solve attribute access
-class ParentLink: public Cell {
-protected:
+class ParentLink {
 public:
-	ParentLink(
-		ProtoContext *context,
-		ParentLink *parent,
-		ProtoObjectCell *object
-	);
-
-	~ParentLink();
-
-	virtual void finalize(ProtoContext *context);
-
-	// Apply method recursivelly to all referenced objects, except itself
-    virtual void processReferences(
-		ProtoContext *context, 
-		void *self,
-		void (*method)(
-			ProtoContext *context, 
-			void *self,
-			Cell *cell
-		)
-	);
-
-	ParentLink      *parent;
-	ProtoObjectCell *object;
+	ProtoObject *getObject(ProtoContext *context);
+	ParentLink *getParent(ProtoContext *context);
 };
 
-class ProtoListIterator: public Cell {
+class ProtoListIterator {
 public:
-	ProtoListIterator(
-		ProtoContext *context,
-		ProtoList *base,
-		unsigned long currentIndex
-	);
-	virtual ~ProtoListIterator();
-
 	virtual int hasNext(ProtoContext *context);
 	virtual ProtoObject *next(ProtoContext *context);
 	virtual ProtoListIterator *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
-	virtual void finalize(ProtoContext *context);
-
-	virtual void processReferences(
-		ProtoContext *context,
-		void *self,
-		void (*method) (
-			ProtoContext *context,
-			void *self,
-			Cell *cell
-		)
-	);
-
-	ProtoList *base;
-	unsigned long currentIndex;
-
 };
 
-class ProtoList: public Cell {
+class ProtoList {
 public:
-	ProtoList(
-		ProtoContext *context,
-		ProtoObject *value = PROTO_NONE,
-		ProtoList *previous = NULL,
-		ProtoList *next = NULL
-	);
-	~ProtoList();
-
 	virtual ProtoObject   *getAt(ProtoContext *context, int index);
 	virtual ProtoObject   *getFirst(ProtoContext *context);
 	virtual ProtoObject   *getLast(ProtoContext *context);
@@ -410,115 +181,19 @@ public:
 	virtual unsigned long getHash(ProtoContext *context);
 	virtual ProtoListIterator *getIterator(ProtoContext *context);
 
-	virtual void finalize(ProtoContext *context);
-
-	virtual void processReferences(
-		ProtoContext *context,
-		void *self,
-		void (*method) (
-			ProtoContext *context,
-			void *self,
-			Cell *cell
-		)
-	);
-
-	ProtoList		*previous;
-	ProtoList		*next;
-
-	ProtoObject 	*value;
-	unsigned long   hash;
-
-	unsigned long count:52;
-	unsigned long height:8;
-	unsigned long type:4;
 };
 
-#define TUPLE_SIZE 5
-
-class ProtoTupleIterator: public Cell {
+class ProtoTupleIterator {
 public:
-	ProtoTupleIterator (
-		ProtoContext *context,
-		ProtoTuple *base,
-		unsigned long currentIndex
-	);
-	virtual ~ProtoTupleIterator();
-
 	virtual int hasNext(ProtoContext *context);
 	virtual ProtoObject *next(ProtoContext *context);
 	virtual ProtoTupleIterator *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
-	virtual void finalize(ProtoContext *context);
-
-	virtual void processReferences(
-		ProtoContext *context,
-		void *self,
-		void (*method) (
-			ProtoContext *context,
-			void *self,
-			Cell *cell
-		)
-	);
-
-	ProtoTuple *base;
-	unsigned long currentIndex;
 };
 
-class TupleDictionary: public Cell {
-private:
-    TupleDictionary *next;
-    TupleDictionary *previous;
-    ProtoTuple *key;
-    int count;
-    int height;
-
-    int compareTuple(ProtoContext *context, ProtoTuple *tuple);
-    TupleDictionary *rightRotate(ProtoContext *context);
-    TupleDictionary *leftRotate(ProtoContext *context);
-    TupleDictionary *rebalance(ProtoContext *context);
-	TupleDictionary *removeFirst(ProtoContext *context);
-	ProtoTuple *getFirst(ProtoContext *context);
-
+class ProtoTuple {
 public:
-    TupleDictionary(
-        ProtoContext *context,
-        ProtoTuple *key = NULL,
-        TupleDictionary *next = NULL,
-        TupleDictionary *previous = NULL
-    );
-
-	virtual void finalize(ProtoContext *context);
-
-	virtual void processReferences(
-		ProtoContext *context,
-		void *self,
-		void (*method) (
-			ProtoContext *context,
-			void *self,
-			Cell *cell
-		)
-	);
-
-    int compareList(ProtoContext *context, ProtoList *list);
-    ProtoTuple *hasList(ProtoContext *context, ProtoList *list);
-    int has(ProtoContext *context, ProtoTuple *tuple);
-    ProtoTuple *getAt(ProtoContext *context, ProtoTuple *tuple);
-    TupleDictionary *set(ProtoContext *context, ProtoTuple *tuple);
-    TupleDictionary *removeAt(ProtoContext *context, ProtoTuple *tuple);
-};
-
-class ProtoTuple: public Cell {
-public:
-	ProtoTuple(
-		ProtoContext *context,
-		unsigned long elementCount = 0,
-		unsigned long height=0,
-		ProtoObject **data = NULL,
-		ProtoTuple **indirect = NULL
-	);
-	~ProtoTuple();
-
 	virtual ProtoObject   *getAt(ProtoContext *context, int index);
 	virtual ProtoObject   *getFirst(ProtoContext *context);
 	virtual ProtoObject   *getLast(ProtoContext *context);
@@ -545,67 +220,20 @@ public:
 	virtual unsigned long  getHash(ProtoContext *context);
 	virtual ProtoTupleIterator *getIterator(ProtoContext *context);
 
-	virtual void finalize(ProtoContext *context);
-
-	virtual void processReferences(
-		ProtoContext *context,
-		void *self,
-		void (*method) (
-			ProtoContext *context,
-			void *self,
-			Cell *cell
-		)
-	);
-
-	unsigned long elementCount:56;
-	unsigned long height:8;
-	union {
-		ProtoObject   *data[TUPLE_SIZE];
-		ProtoTuple    *indirect[TUPLE_SIZE]; 
-	} pointers;
-
 };
 
-class ProtoStringIterator: public Cell {
+class ProtoStringIterator {
 public:
-	ProtoStringIterator(
-		ProtoContext *context,
-		ProtoString *base,
-		unsigned long currentIndex = 0
-	);
-	virtual ~ProtoStringIterator();
-
 	virtual int hasNext(ProtoContext *context);
 	virtual ProtoObject *next(ProtoContext *context);
 	virtual ProtoStringIterator *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
-	virtual void finalize(ProtoContext *context);
 
-	virtual void processReferences(
-		ProtoContext *context,
-		void *self,
-		void (*method) (
-			ProtoContext *context,
-			void *self,
-			Cell *cell
-		)
-	);
-
-	ProtoString *base;
-	unsigned long currentIndex;
 };
 
-class ProtoString: public Cell {
+class ProtoString {
 public:
-	ProtoString(
-		ProtoContext *context,
-		ProtoTuple *baseTuple
-	);
-
-	~ProtoString();
-
-
 	int	cmp_to_string(ProtoContext *context, ProtoString *otherString);
 
 	virtual ProtoObject    *getAt(ProtoContext *context, int index);
@@ -633,37 +261,10 @@ public:
 	virtual unsigned long getHash(ProtoContext *context);
 	virtual ProtoStringIterator *getIterator(ProtoContext *context);
 
-	virtual void finalize(ProtoContext *context);
-
-	virtual void processReferences(
-		ProtoContext *context,
-		void *self,
-		void (*method) (
-			ProtoContext *context,
-			void *self,
-			Cell *cell
-		)
-	);
-
-	ProtoTuple *baseTuple;
-
 };
 
-
-#define ITERATOR_NEXT_PREVIOUS 0
-#define ITERATOR_NEXT_THIS 1
-#define ITERATOR_NEXT_NEXT 2
-
-class ProtoSparseListIterator: public Cell {
+class ProtoSparseListIterator {
 public:
-	ProtoSparseListIterator(
-		ProtoContext *context,
-		int state,
-		ProtoSparseList *current,
-		ProtoSparseListIterator *queue = NULL
-	);
-	virtual ~ProtoSparseListIterator();
-
 	virtual int hasNext(ProtoContext *context);
 	virtual ProtoTuple *next(ProtoContext *context);
 	virtual ProtoSparseListIterator *advance(ProtoContext *context);
@@ -671,57 +272,22 @@ public:
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual void finalize(ProtoContext *context);
 
-	virtual void processReferences(
-		ProtoContext *context,
-		void *self,
-		void (*method) (
-			ProtoContext *context,
-			void *self,
-			Cell *cell
-		)
-	);
-
-	int state = ITERATOR_NEXT_PREVIOUS;
-	ProtoSparseList *current;
-	ProtoSparseListIterator *queue = NULL;
-
 };
 
-class ProtoSparseList: public Cell {
+class ProtoSparseList {
 public:
-	ProtoSparseList(
-		ProtoContext *context,
-		unsigned long index = 0,
-		ProtoObject *value = PROTO_NONE,
-		ProtoSparseList *previous = NULL,
-		ProtoSparseList *next = NULL
-	);
-	~ProtoSparseList();
-
 	virtual BOOLEAN			has(ProtoContext *context, unsigned long index);
 	virtual ProtoObject     *getAt(ProtoContext *context, unsigned long index);
 	virtual ProtoSparseList *setAt(ProtoContext *context, unsigned long index, ProtoObject *value = PROTO_NONE);
 	virtual ProtoSparseList *removeAt(ProtoContext *context, unsigned long index);
 	virtual int				isEqual(ProtoContext *context, ProtoSparseList *otherDict);
+	virtual ProtoObject     *getAtOffset(ProtoContext *context, int offset);
 
-	unsigned long 	getSize(ProtoContext *context);
-
+	virtual unsigned long 	getSize(ProtoContext *context);
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
 	virtual ProtoSparseListIterator *getIterator(ProtoContext *context);
 	
-	virtual void finalize(ProtoContext *context);
-
-	virtual void processReferences (
-		ProtoContext *context,
-		void *self,
-		void (*method) (
-			ProtoContext *context,
-			void *self,
-			Cell *cell
-		)
-	);
-
 	virtual void processElements (
 		ProtoContext *context,
 		void *self,
@@ -743,74 +309,26 @@ public:
 		)
 	);
 
-	ProtoSparseList    	*previous;
-	ProtoSparseList		*next;
-
-	unsigned long 	index;
-	ProtoObject 	*value;
-	unsigned long   hash;
-
-	unsigned long count:52;
-	unsigned long height:8;
-	unsigned long type:4;
 };
 
-class ProtoByteBuffer: public Cell {
+class ProtoByteBuffer {
 public:
-	ProtoByteBuffer(
-		ProtoContext *context,
-		unsigned long size,
-		char 		  *buffer = NULL	
-	);
-	~ProtoByteBuffer();
-
+	virtual unsigned long getSize(ProtoContext *context);
+	virtual char *getBuffer(ProtoContext *context);
 	virtual char getAt(ProtoContext *context, int index);
 	virtual void setAt(ProtoContext *context, int index, char value);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
 	
-	virtual void finalize(ProtoContext *context);
-
-	virtual void processReferences(
-		ProtoContext *context,
-		void *self,
-		void (*method) (
-			ProtoContext *context,
-			void *self,
-			Cell *cell
-		)
-	);
-
-	char			*buffer;
-	unsigned long  	size;
-	int				freeOnExit;
 };
 
-class ProtoExternalPointer: public Cell {
+class ProtoExternalPointer {
 public:
-	ProtoExternalPointer(
-		ProtoContext *context,
-		void		*pointer
-	);
-	~ProtoExternalPointer();
-
+	virtual void *getPointer(ProtoContext *context);
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
 	
-	virtual void finalize(ProtoContext *context);
-
-	virtual void processReferences(
-		ProtoContext *context,
-		void *self,
-		void (*method) (
-			ProtoContext *context,
-			void *self,
-			Cell *cell
-		)
-	);
-
-	void *pointer;
 };
 
 // In order to compile a method the folling structure is recommended:
@@ -883,106 +401,34 @@ public:
 // Not used keywordParameters are not detected
 // This provides a similar behaviour to Python, and it can be automatically generated based on compilation time info
 //
+// You can use try ... catch to handle exceptions or not, it's up to you
 
-
-class ProtoMethodCell: public Cell {
+class ProtoMethodCell {
 public:
-	ProtoMethodCell(
-		ProtoContext *context,
-		ProtoObject  *self,
-		ProtoMethod	 method
-	);
-	~ProtoMethodCell();
+	virtual ProtoObject *getSelf(ProtoContext *context);
+	virtual ProtoMethod getMethod(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
 	
-	virtual void finalize(ProtoContext *context);
-
-	virtual void processReferences(
-		ProtoContext *context,
-		void *self,
-		void (*method) (
-			ProtoContext *context,
-			void *self,
-			Cell *cell
-		)
-	);
-
-	ProtoMethod	*getMethod();
-
 	ProtoMethod	method;
 	ProtoObject *self;
 };
 
-class ProtoMutableReference: public Cell {
+class ProtoObjectCell {
 public:
-	ProtoMutableReference(
-		ProtoContext *context,
-		ProtoObject  *reference 
-	);
-	~ProtoMutableReference();
-
-	virtual void finalize(ProtoContext *context);
-
-	virtual void processReferences(
-		ProtoContext *context,
-		void *self,
-		void (*method) (
-			ProtoContext *context,
-			void *self,
-			Cell *cell
-		)
-	);
-
-	ProtoObject *reference;
-};
-
-class ProtoObjectCell: public Cell {
-public:
-	ProtoObjectCell(
-		ProtoContext *context,
-		ParentLink	*parent = NULL,
-		unsigned long mutable_ref = 0,
-		ProtoSparseList  *attributes = NULL
-	);
-	 ~ProtoObjectCell();
-
 	virtual ProtoObjectCell *addParent(ProtoContext *context, ProtoObjectCell *object);
 
 	virtual ProtoObject	*asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
 	
-	virtual void finalize(ProtoContext *context);
-
-	// Apply method recursivelly to all referenced objects, except itself
-    virtual void processReferences(
-		ProtoContext *context, 
-		void *self,
-		void (*method)(
-			ProtoContext *context, 
-			void *self,
-			Cell *cell
-		)
-	);
-
 	unsigned long mutable_ref;
 	ParentLink	*parent;
 	ProtoSparseList  *attributes;
 };
 
-class ProtoThread: public Cell {
+class ProtoThread {
 public:
-	ProtoThread(
-		ProtoContext *context,
-		ProtoString *name,
-		ProtoSpace	*space,
-		ProtoMethod code = NULL,
-		ProtoList *args = NULL,
-		ProtoSparseList *kwargs = NULL
-	);
-	~ProtoThread();
-
 	void		detach(ProtoContext *context);
 	void 		join(ProtoContext *context);
 	void		exit(ProtoContext *context); // ONLY for current thread!!!
@@ -994,28 +440,6 @@ public:
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
 	
-	virtual void finalize(ProtoContext *context);
-
-	// Apply method recursivelly to all referenced objects, except itself
-    virtual void processReferences(
-		ProtoContext *context, 
-		void *self,
-		void (*method)(
-			ProtoContext *context, 
-			void *self,
-			Cell *cell
-		)
-	);
-
-	Cell	    *allocCell();
-
-	ProtoString			*name;
-	std::thread			*osThread;
-	ProtoSpace			*space;
-	BigCell				*freeCells;
-	ProtoContext		*currentContext;
-	long				state:4;
-	long				unmanagedCount:60;
 };
 
 class ProtoContext {
@@ -1028,19 +452,19 @@ public:
 		ProtoSpace *space = NULL
 	);
 
-	~ProtoContext();
+	virtual ~ProtoContext();
 
 	ProtoContext	*previous;
 	ProtoSpace		*space;
 	ProtoThread		*thread;
-	ProtoObject		*returnValue;
 	Cell			*lastAllocatedCell;
-	ProtoObjectPointer *localsBase;
+	ProtoObject     **localsBase;
 	unsigned int	localsCount;
 	unsigned int	allocatedCellsCount;
 	
 	Cell 			*allocCell();
 	void			checkCellsCount();
+	void			setReturnValue(ProtoContext *context, ProtoObject *returnValue);
 
 	// Constructors for base types, here to get the right context on invoke
 	ProtoObject 	*fromInteger(int value);
@@ -1089,34 +513,26 @@ public:
 	ProtoObject *datePrototype;
 	ProtoObject *timestampPrototype;
 	ProtoObject *timedeltaPrototype;
-	ProtoObject *identityDictPrototype;
-	ProtoObject *listPrototype;
-	ProtoObject *tuplePrototype;
-	ProtoObject *stringPrototype;
-	ProtoObject *sparseListPrototype;
-	ProtoObject *listIteratorPrototype;
-	ProtoObject *tupleIteratorPrototype;
-	ProtoObject *sparseListIteratorPrototype;
-	ProtoObject *stringIteratorPrototype;
 	ProtoObject *threadPrototype;
-
-	ProtoString		*literalGetAttribute;
-	ProtoString     *literalCallString;
-
 	ProtoObject *rootObject;
 
-	void allocThread(ProtoContext *context, ProtoThread *thread);
-	void deallocThread(ProtoContext *context, ProtoThread *thread);
+	ProtoObject *listPrototype;
+	ProtoObject *listIteratorPrototype;
+
+	ProtoObject *tuplePrototype;
+	ProtoObject *tupleIteratorPrototype;
+
+	ProtoObject *stringPrototype;
+	ProtoObject *stringIteratorPrototype;
+
+	ProtoObject *sparseListPrototype;
+	ProtoObject *sparseListIteratorPrototype;
 
 	Cell 		*getFreeCells(ProtoThread *currentThread);
 	void 		analyzeUsedCells(Cell *cellsChain);
 	void		triggerGC();
 
-	// TODO Should it has a dictionary to access threads by name?
-	std::atomic<TupleDictionary *> tupleRoot;
-	
-
-	ProtoList			*threads;
+	ProtoSparseList	 	*threads;
 
 	Cell			 	*freeCells;
 	DirtySegment 		*dirtySegments;
@@ -1130,6 +546,7 @@ public:
 	unsigned int		 gcSleepMilliseconds;
 	int					 blockOnNoMemory;
 
+	std::atomic<TupleDictionary *> tupleRoot;
 	std::atomic<ProtoSparseList *>  mutableRoot;
 	std::atomic<BOOLEAN> mutableLock;
 	std::atomic<BOOLEAN> threadsLock;
@@ -1145,20 +562,6 @@ public:
 	static std::mutex	 globalMutex;
 
 };
-
-// Used just to compute the number of bytes needed for a Cell at allocation time
-
-static_assert (sizeof(ProtoSparseList) <= 64);
-static_assert (sizeof(ProtoList) <= 64);
-static_assert (sizeof(ProtoTuple) <= 64);
-static_assert (sizeof(ProtoString) <= 64);
-
-// Usefull constants.
-// ATENTION: They should be kept on synch with proto_internal.h!
-
-#define PROTO_TRUE ((ProtoObject *)  0x0107L)
-#define PROTO_FALSE ((ProtoObject *) 0x0007L)
-#define PROTO_NULL ((ProtoObject *)  0x00L)
 
 };
 

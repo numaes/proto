@@ -5,11 +5,11 @@
  *      Author: gamarino
  */
 
-#include "../headers/proto.h"
+#include "../headers/proto_internal.h"
 
 namespace proto {
 
-ProtoObjectCell::ProtoObjectCell(
+ProtoObjectCellImplementation::ProtoObjectCellImplementation(
 	ProtoContext *context,
 	ParentLink	*parent,
 	unsigned long mutable_ref,
@@ -20,15 +20,15 @@ ProtoObjectCell::ProtoObjectCell(
 	this->attributes = attributes;
 };
 
-ProtoObjectCell::~ProtoObjectCell() {
+ProtoObjectCellImplementation::~ProtoObjectCellImplementation() {
 
 };
 
-ProtoObjectCell *ProtoObjectCell::addParent(
+ProtoObjectCellImplementation *ProtoObjectCellImplementation::addParent(
 	ProtoContext *context, 
-	ProtoObjectCell *object
+	ProtoObjectCellImplementation *object
 ) {
-	return new(context) ProtoObjectCell(
+	return new(context) ProtoObjectCellImplementation(
 		context,
 		new(context) ParentLink(
 			context,
@@ -38,10 +38,10 @@ ProtoObjectCell *ProtoObjectCell::addParent(
 	);
 };
 
-void ProtoObjectCell::finalize(ProtoContext *context) {};
+void ProtoObjectCellImplementation::finalize(ProtoContext *context) {};
 
 // Apply method recursivelly to all referenced objects, except itself
-void ProtoObjectCell::processReferences(
+void ProtoObjectCellImplementation::processReferences(
 	ProtoContext *context, 
 	void *self,
 	void (*method)(
@@ -58,7 +58,7 @@ void ProtoObjectCell::processReferences(
 
 };
 
-ProtoObject *ProtoObjectCell::asObject(ProtoContext *context) {
+ProtoObject *ProtoObjectCellImplementation::asObject(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
     p.op.pointer_tag = POINTER_TAG_OBJECT;
@@ -66,7 +66,7 @@ ProtoObject *ProtoObjectCell::asObject(ProtoContext *context) {
     return p.oid.oid;
 };
 
-unsigned long ProtoObjectCell::getHash(ProtoContext *context) {
+unsigned long ProtoObjectCellImplementation::getHash(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
 

@@ -5,16 +5,16 @@
  *      Author: gamarino
  */
 
-#include "../headers/proto.h"
+#include "../headers/proto_internal.h"
 
 namespace proto {
 
 
-ProtoMethodCell::~ProtoMethodCell() {
+ProtoMethodCellImplementation::~ProtoMethodCellImplementation() {
 
 }
 
-ProtoMethodCell::ProtoMethodCell(
+ProtoMethodCellImplementation::ProtoMethodCellImplementation(
     ProtoContext *context,
     ProtoObject  *self,
     ProtoMethod	 method
@@ -23,7 +23,7 @@ ProtoMethodCell::ProtoMethodCell(
     this->method = method;
 };
 
-void ProtoMethodCell::processReferences(
+void ProtoMethodCellImplementation::processReferences(
 	ProtoContext *context, 
 	void *self,
 	void (*method)(
@@ -35,9 +35,9 @@ void ProtoMethodCell::processReferences(
 
 }
 
-void ProtoMethodCell::finalize(ProtoContext *context) {};
+void ProtoMethodCellImplementation::finalize(ProtoContext *context) {};
 
-ProtoObject *ProtoMethodCell::asObject(ProtoContext *context) {
+ProtoObject *ProtoMethodCellImplementation::asObject(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
     p.op.pointer_tag = POINTER_TAG_METHOD_CELL;
@@ -45,7 +45,7 @@ ProtoObject *ProtoMethodCell::asObject(ProtoContext *context) {
     return p.oid.oid;
 };
 
-unsigned long ProtoMethodCell::getHash(ProtoContext *context) {
+unsigned long ProtoMethodCellImplementation::getHash(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
 

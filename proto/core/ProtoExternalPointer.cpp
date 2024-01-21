@@ -1,26 +1,26 @@
 /*
- * ProtoExternalPointer.cpp
+ * ProtoExternalPointerImplementation.cpp
  *
  *  Created on: 2020-05-23
  *      Author: gamarino
  */
 
-#include "../headers/proto.h"
+#include "../headers/proto_internal.h"
 
 namespace proto {
 
-ProtoExternalPointer::ProtoExternalPointer (
+ProtoExternalPointerImplementation::ProtoExternalPointerImplementation (
     ProtoContext *context,
     void 		 *pointer
 ) : Cell (context) {
     this->pointer = pointer;
 };
 
-ProtoExternalPointer::~ProtoExternalPointer() {
+ProtoExternalPointerImplementation::~ProtoExternalPointerImplementation() {
 
 };
 
-void ProtoExternalPointer::processReferences(
+void ProtoExternalPointerImplementation::processReferences(
     ProtoContext *context,
     void *self,
     void (*method) (
@@ -32,7 +32,7 @@ void ProtoExternalPointer::processReferences(
 
 };
 
-ProtoObject *ProtoExternalPointer::asObject(ProtoContext *context) {
+ProtoObject *ProtoExternalPointerImplementation::asObject(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
     p.op.pointer_tag = POINTER_TAG_EXTERNAL_POINTER;
@@ -40,13 +40,13 @@ ProtoObject *ProtoExternalPointer::asObject(ProtoContext *context) {
     return p.oid.oid;
 };
 
-unsigned long ProtoExternalPointer::getHash(ProtoContext *context) {
+unsigned long ProtoExternalPointerImplementation::getHash(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
 
     return p.asHash.hash;
 };
 
-void ProtoExternalPointer::finalize(ProtoContext *context) {};
+void ProtoExternalPointerImplementation::finalize(ProtoContext *context) {};
 
 };

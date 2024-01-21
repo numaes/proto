@@ -1,18 +1,18 @@
 /*
- * ProtoByteBuffer.cpp
+ * ProtoByteBufferImplementation.cpp
  *
  *  Created on: 2020-05-23
  *      Author: gamarino
  */
 
-#include "../headers/proto.h"
+#include "../headers/proto_internal.h"
 
 #include <malloc.h>
 
 namespace proto {
 
 
-ProtoByteBuffer::ProtoByteBuffer (
+ProtoByteBufferImplementation::ProtoByteBufferImplementation (
     ProtoContext *context,
     unsigned long size,
     char *buffer
@@ -27,13 +27,13 @@ ProtoByteBuffer::ProtoByteBuffer (
     }
 };
 
-ProtoByteBuffer::~ProtoByteBuffer() {
+ProtoByteBufferImplementation::~ProtoByteBufferImplementation() {
     if (this->buffer and this->freeOnExit)
         free((void *) this->buffer);
     this->buffer = NULL;
 };
 
-char ProtoByteBuffer::getAt(ProtoContext *context, int index) {
+char ProtoByteBufferImplementation::getAt(ProtoContext *context, int index) {
     if (index < 0)
         index = this->size + index;
 
@@ -49,7 +49,7 @@ char ProtoByteBuffer::getAt(ProtoContext *context, int index) {
         return 0;
 }
 
-void ProtoByteBuffer::setAt(ProtoContext *context, int index, char value) {
+void ProtoByteBufferImplementation::setAt(ProtoContext *context, int index, char value) {
     if (index < 0)
         index = this->size + index;
 
@@ -64,7 +64,7 @@ void ProtoByteBuffer::setAt(ProtoContext *context, int index, char value) {
 
 }
 
-void ProtoByteBuffer::processReferences(
+void ProtoByteBufferImplementation::processReferences(
     ProtoContext *context,
     void *self,
     void (*method) (
@@ -76,7 +76,7 @@ void ProtoByteBuffer::processReferences(
     method(context, self, this);
 };
 
-ProtoObject *ProtoByteBuffer::asObject(ProtoContext *context) {
+ProtoObject *ProtoByteBufferImplementation::asObject(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
     p.op.pointer_tag = POINTER_TAG_BYTE_BUFFER;
@@ -84,13 +84,13 @@ ProtoObject *ProtoByteBuffer::asObject(ProtoContext *context) {
     return p.oid.oid;
 };
 
-unsigned long ProtoByteBuffer::getHash(ProtoContext *context) {
+unsigned long ProtoByteBufferImplementation::getHash(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
 
     return p.asHash.hash;
 };
 
-void ProtoByteBuffer::finalize(ProtoContext *context) {};
+void ProtoByteBufferImplementation::finalize(ProtoContext *context) {};
 
 };

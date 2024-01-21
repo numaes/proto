@@ -6,7 +6,7 @@
  */
 
 
-#include "../headers/proto.h"
+#include "../headers/proto_internal.h"
 
 #include <stdlib.h>
 
@@ -17,7 +17,7 @@ namespace proto {
 
 int a1() {return 0;};
 
-ProtoThread::ProtoThread(
+ProtoThreadImplementation::ProtoThreadImplementation(
 		ProtoContext *context,
 
 		ProtoString *name,
@@ -39,7 +39,7 @@ ProtoThread::ProtoThread(
     // Create and start the OS Thread if needed (on space init, no code is provided)
     if (code) {
         this->osThread = new std::thread(
-            [] (ProtoThread *self, 
+            [] (ProtoThreadImplementation *self, 
                 ProtoMethod targetCode, 
                 ProtoList *threadArgs, 
                 ProtoSparseList *threadKwargs) {
@@ -69,41 +69,41 @@ ProtoThread::ProtoThread(
     }
 };
 
-ProtoThread::~ProtoThread(
+ProtoThreadImplementation::~ProtoThreadImplementation(
 
 ) {
     this->osThread->~thread();
 };
 
-void ProtoThread::setUnmanaged() {
+void ProtoThreadImplementation::setUnmanaged() {
     this->unmanagedCount++;
     this->state = THREAD_STATE_UNMANAGED;
 }
 
-void ProtoThread::setManaged() {
+void ProtoThreadImplementation::setManaged() {
     if (this->unmanagedCount > 0)
         this->unmanagedCount--;
     if (this->unmanagedCount <= 0)
         this->state = THREAD_STATE_MANAGED;
 }
 
-void ProtoThread::detach(ProtoContext *context) {
+void ProtoThreadImplementation::detach(ProtoContext *context) {
     this->osThread->detach();
 };
 
-void ProtoThread::join(ProtoContext *context) {
+void ProtoThreadImplementation::join(ProtoContext *context) {
     if (this->osThread)
         this->osThread->join();
 };
 
-void ProtoThread::exit(ProtoContext *context) {
+void ProtoThreadImplementation::exit(ProtoContext *context) {
     if (this->osThread->get_id() == std::this_thread::get_id()) {
         this->space->deallocThread(context, this);
         this->osThread->~thread();
     }
 };
 
-void ProtoThread::synchToGC() {
+void ProtoThreadImplementation::synchToGC() {
     if (this->state == THREAD_STATE_MANAGED && 
         this->space->state != SPACE_STATE_RUNNING) {
 
@@ -134,7 +134,7 @@ void ProtoThread::synchToGC() {
 
 }
 
-Cell *ProtoThread::allocCell() {
+Cell *ProtoThreadImplementation::allocCell() {
     Cell *newCell;
 
     if (!this->freeCells) {
@@ -149,11 +149,11 @@ Cell *ProtoThread::allocCell() {
     return newCell;
 };
 
-void ProtoThread::finalize(ProtoContext *context) {
+void ProtoThreadImplementation::finalize(ProtoContext *context) {
 
 };
 
-void ProtoThread::processReferences(
+void ProtoThreadImplementation::processReferences(
     ProtoContext *context,
     void *self,
     void (*method) (
@@ -165,7 +165,7 @@ void ProtoThread::processReferences(
     this->name->processReferences(context, self, method);
 };
 
-ProtoObject *ProtoThread::asObject(ProtoContext *context) {
+ProtoObject *ProtoThreadImplementation::asObject(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
     p.op.pointer_tag = POINTER_TAG_TUPLE;
@@ -173,7 +173,7 @@ ProtoObject *ProtoThread::asObject(ProtoContext *context) {
     return p.oid.oid;
 };
 
-unsigned long ProtoThread::getHash(ProtoContext *context) {
+unsigned long ProtoThreadImplementation::getHash(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
 
