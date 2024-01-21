@@ -5,7 +5,7 @@
  *      Author: gamarino
  */
 
-#include "../headers/proto_internal.h"
+#include "../headers/proto internal.h"
 
 #include <malloc.h>
 #include <stdio.h>
@@ -35,7 +35,7 @@ void gcCollectCells(ProtoContext *context, void *self, Cell *value) {
      ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) value;
 
-    ProtoSparseList *cellSet = new(context) ProtoSparseList(context);
+    ProtoSparseListImplementation *cellSet = new(context) ProtoSparseListImplementation(context);
 
     // Go further in the scanning only if it is a cell and the cell belongs to current context!
     if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
@@ -51,7 +51,7 @@ void gcCollectObjects(ProtoContext *context, void *self, ProtoObject *value) {
      ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) value;
 
-    ProtoSparseList *cellSet = new(context) ProtoSparseList(context);
+    ProtoSparseListImplementation *cellSet = new(context) ProtoSparseListImplementation(context);
 
     // Go further in the scanning only if it is a cell and the cell belongs to current context!
     if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
@@ -91,8 +91,9 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
         space->stopTheWorldCV.wait(lk);
 
         int allStoping = TRUE;
-        for (unsigned n = 0; n < space->threads->count; n++) {
-            ProtoThread *t = (ProtoThread *) space->threads->getAt(&gcContext, n);
+        unsigned long threadsCount = space->threads->getSize(context);
+        for (unsigned n = 0; n < threadsCount; n++) {
+            ProtoThreadImplementation *t = (ProtoThreadImplementation *) space->threads->getAt(&gcContext, n);
 
             // Be sure no thread is still in managed state
             if (t->state == THREAD_STATE_MANAGED) {
@@ -111,8 +112,9 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
         space->stopTheWorldCV.wait(lk);
 
         int allStopped = TRUE;
-        for (unsigned n = 0; n < space->threads->count; n++) {
-            ProtoThread *t = (ProtoThread *) space->threads->getAt(&gcContext, n);
+        unsigned long threadsCount = space->threads->getSize(context);
+        for (unsigned n = 0; n < threadsCount; n++) {
+            ProtoThreadImplementation *t = (ProtoThreadImplementation *) space->threads->getAt(&gcContext, n);
 
             if (t->state != THREAD_STATE_STOPPED) {
                 allStopped = FALSE;
@@ -127,7 +129,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
 
     // cellSet: a set of all referenced Cells
 
-    ProtoSparseList *cellSet = new(context) ProtoSparseList(context);
+    ProtoSparseListImplementation *cellSet = new(context) ProtoSparseListImplementation(context);
 
     // Add all mutables to cellSet
     ((ProtoSparseList *) space->mutableRoot.load())->processValues(
@@ -138,9 +140,9 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
 
     // Collect all roots from thread stacks
 
-    int threadCount = space->threads->count;
-    while (threadCount--) {
-        ProtoThread *thread = (ProtoThread *) space->threads->getAt(&gcContext, threadCount);
+    unsigned long threadsCount = space->threads->getSize(context);
+    while (threadsCount--) {
+        ProtoThreadImplementation *thread = (ProtoThreadImplementation *) space->threads->getAt(&gcContext, threadsCount);
 
         // Collect allocated objects
         ProtoContext *currentContext = thread->currentContext;
@@ -155,12 +157,13 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
             }
 
             if (currentContext->localsBase) {
-                ProtoObjectPointer *p = currentContext->localsBase;
+                ProtoObjectPointer p;
+                p.oid.oid = *currentContext->localsBase;
                 for (int n = currentContext->localsCount;
                      n > 0;
                      n--) {
-                    if (p->op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
-                            cellSet = cellSet->setAt(context, p->asHash.hash);
+                    if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
+                            cellSet = cellSet->setAt(context, p.asHash.hash);
                     }
                 }
             }
@@ -256,8 +259,8 @@ ProtoSpace::ProtoSpace(
         NULL,
         this
     );
-    this->threads = creationContext->newList();
-    this->tupleRoot = new(creationContext) TupleDictionary(creationContext);
+    this->threads = creationContext->newSparseList();
+    this->tupleRoot = ProtoTupleImplementation::createTupleRoot(creationContext);
     
     ProtoList *mainParameters = creationContext->newList();
     mainParameters = mainParameters->appendLast(
@@ -276,13 +279,12 @@ ProtoSpace::ProtoSpace(
         creationContext, argvList->asObject(creationContext)
     );
 
-    mainThread->currentContext = creationContext;
     this->mainThreadId = std::this_thread::get_id();
 
     this->mutableLock.store(FALSE);
     this->threadsLock.store(FALSE);
     this->gcLock.store(FALSE);
-    this->mutableRoot.store(new(creationContext) ProtoSparseList(creationContext));
+    this->mutableRoot.store(new(creationContext) ProtoSparseListImplementation(creationContext));
 
     this->maxAllocatedCellsPerContext = MAX_ALLOCATED_CELLS_PER_CONTEXT;
     this->blocksPerAllocation = BLOCKS_PER_ALLOCATION;
@@ -304,7 +306,7 @@ ProtoSpace::ProtoSpace(
         this->gcCV.wait_for(lk, 100ms);
     }
 
-    ProtoThread *mainThread = new(creationContext) ProtoThread(
+    ProtoThread *mainThread = new(creationContext) ProtoThreadImplementation(
         creationContext,
         creationContext->fromUTF8String("Main thread"),
         this,
@@ -357,7 +359,7 @@ void ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread) {
     )) std::this_thread::yield();
 
     if (this->threads)
-        this->threads = this->threads->appendLast(context, thread->asObject(context));
+        this->threads = this->threads->setAt(context, thread->getName(context)->getHash(context), thread->asObject(context));
     
     this->threadsLock.store(FALSE);
 };
@@ -369,7 +371,7 @@ void ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *thread) {
         TRUE
     )) std::this_thread::yield();
 
-    int threadCount = this->threads->count;
+    int threadCount = this->threads->getSize(context);
     while (threadCount--) {
         ProtoThread * t = (ProtoThread *) this->threads->getAt(context, threadCount);
         if (t == thread) {

@@ -5,7 +5,7 @@
  *      Author: gamarino
  */
 
-#include "../headers/proto_internal.h"
+#include "../headers/proto internal.h"
 #include <string.h>
 
 using namespace std;
@@ -630,6 +630,9 @@ ProtoTuple *ProtoTupleImplementation::tupleFromList(ProtoContext *context, Proto
     return newTuple;
 }
 
+TupleDictionary *ProtoTupleImplementation::createTupleRoot(ProtoContext *context) {
+    return new(context) TupleDictionary(context);
+}
 
 
 ProtoObject   *ProtoTupleImplementation::getAt(ProtoContext *context, int index) {

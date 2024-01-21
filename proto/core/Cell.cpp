@@ -11,8 +11,7 @@
 namespace proto {
 
 Cell::Cell (ProtoContext *context) {
-    this->nextCell = context->lastAllocatedCell;
-    context->lastAllocatedCell = this;
+    context->addCell2Context(this);
 };
 
 Cell::~Cell() {};

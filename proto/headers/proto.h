@@ -425,13 +425,17 @@ public:
 
 class ProtoThread {
 public:
-	void		detach(ProtoContext *context);
-	void 		join(ProtoContext *context);
-	void		exit(ProtoContext *context); // ONLY for current thread!!!
+	static ProtoThread *getCurrentThread(ProtoContext *context);
 
-	void		setManaged();
-	void		setUnmanaged();
-	void		synchToGC();
+	virtual ProtoString *getName(ProtoContext *context);
+
+	virtual void		detach(ProtoContext *context);
+	virtual void 		join(ProtoContext *context);
+	virtual void		exit(ProtoContext *context); // ONLY for current thread!!!
+
+	virtual void		setManaged();
+	virtual void		setUnmanaged();
+	virtual void		synchToGC();
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
@@ -453,14 +457,12 @@ public:
 	ProtoContext	*previous;
 	ProtoSpace		*space;
 	ProtoThread		*thread;
-	Cell			*lastAllocatedCell;
 	ProtoObject     **localsBase;
 	unsigned int	localsCount;
-	unsigned int	allocatedCellsCount;
 	
-	Cell 			*allocCell();
 	void			checkCellsCount();
 	void			setReturnValue(ProtoContext *context, ProtoObject *returnValue);
+	void		    addCell2Context(Cell *newCell);
 
 	// Constructors for base types, here to get the right context on invoke
 	ProtoObject 	*fromInteger(int value);
@@ -481,6 +483,12 @@ public:
 	ProtoList		*newList();
 	ProtoTuple		*newTuple();
 	ProtoSparseList *newSparseList();
+
+	Cell 			*allocCell();
+
+	Cell			*lastAllocatedCell;
+	unsigned int	allocatedCellsCount;
+	ProtoObject     *lastReturnValue;
 
 };
 
@@ -531,6 +539,8 @@ public:
 	Cell 		*getFreeCells(ProtoThread *currentThread);
 	void 		analyzeUsedCells(Cell *cellsChain);
 	void		triggerGC();
+	void 		allocThread(ProtoContext *context, ProtoThread *thread);
+	void 		deallocThread(ProtoContext *context, ProtoThread *thread);
 
 	ProtoSparseList	 	*threads;
 
@@ -552,7 +562,6 @@ public:
 	std::atomic<BOOLEAN> threadsLock;
 	std::atomic<BOOLEAN> gcLock;
 	std::thread::id		 mainThreadId;
-	ProtoThread			*mainThread;
 	std::thread			*gcThread;
 	std::condition_variable stopTheWorldCV;
 	std::condition_variable restartTheWorldCV;

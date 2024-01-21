@@ -5,15 +5,15 @@
  *      Author: gamarino
  */
 
-#include "../headers/proto_internal.h"
+#include "../headers/proto internal.h"
 
 namespace proto {
 
 ProtoObjectCellImplementation::ProtoObjectCellImplementation(
 	ProtoContext *context,
-	ParentLink	*parent,
+	ParentLinkImplementation	*parent,
 	unsigned long mutable_ref,
-	ProtoSparseList *attributes
+	ProtoSparseListImplementation *attributes
 ) : Cell(context) {
 	this->parent = parent;
 	this->mutable_ref = mutable_ref;
@@ -30,7 +30,7 @@ ProtoObjectCellImplementation *ProtoObjectCellImplementation::addParent(
 ) {
 	return new(context) ProtoObjectCellImplementation(
 		context,
-		new(context) ParentLink(
+		new(context) ParentLinkImplementation(
 			context,
 			this->parent,
 			object

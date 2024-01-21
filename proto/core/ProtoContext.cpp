@@ -40,18 +40,17 @@ ProtoContext::ProtoContext(
         this->space = this->previous->space;
         this->thread = this->previous->thread;
         if (this->thread)
-            this->thread->currentContext = this;
+            ((ProtoThreadImplementation *) this->thread)->currentContext = this;
     }
     else {
         this->space = space;
         this->thread = thread;
         if (thread)
-            this->thread->currentContext = this;
+            ((ProtoThreadImplementation *) this->thread)->currentContext = this;
     }
 
-    this->returnValue = NULL;
     this->lastAllocatedCell = NULL;
-    this->localsBase = (ProtoObjectPointer *) localsBase;
+    this->localsBase = localsBase;
     this->localsCount = localsCount;
     if (localsBase)
         for (int i = localsCount; i >= 0; i--)
@@ -72,6 +71,13 @@ ProtoContext::~ProtoContext() {
     }
 };
 
+void ProtoContext::setReturnValue(ProtoContext *context, ProtoObject *returnValue) {
+    if (this->previous) {
+        // Ensure a reference to the last return value during context destruction
+        this->previous->lastReturnValue = returnValue;
+    }
+};
+
 void ProtoContext::checkCellsCount() {
     if (this->allocatedCellsCount >= this->space->maxAllocatedCellsPerContext) {
         this->space->analyzeUsedCells(this->lastAllocatedCell);
@@ -84,7 +90,7 @@ void ProtoContext::checkCellsCount() {
 Cell *ProtoContext::allocCell(){
     Cell *newCell;
     if (this->thread) {
-        newCell = this->thread->allocCell();
+        newCell = ((ProtoThreadImplementation *) this->thread)->allocCell();
         this->allocatedCellsCount += 1;
         this->checkCellsCount();
     }
@@ -159,23 +165,23 @@ ProtoObject *ProtoContext::fromUTF8Char(const char *utf8OneCharString) {
 };
 
 ProtoList *ProtoContext::newList() {
-    ProtoList *list = ProtoListImplementation::newInstance(this);
+    ProtoList *list = new(this) ProtoListImplementation(this);
     return list;
 }
 
 ProtoTuple *ProtoContext::newTuple() {
-    ProtoTuple *tuple = ProtoTupleImplementation::newInstance(this);
+    ProtoTuple *tuple = new(this) ProtoTupleImplementation(this);
     return tuple;
 }
 
 ProtoSparseList *ProtoContext::newSparseList() {
-    ProtoSparseList *sparseList = ProtoSparseListImplementation::newInstance(this);
+    ProtoSparseList *sparseList = new(this) ProtoSparseListImplementation(this);
     return sparseList;
 }
 
 ProtoString *ProtoContext::fromUTF8String(const char *zeroTerminatedUtf8String) {
     const char *currentChar = zeroTerminatedUtf8String;
-    ProtoList *string = new(this) ProtoList(this);
+    ProtoList *string = this->newList();
 
     while (*currentChar) {
         ProtoObject *oneChar = this->fromUTF8Char(currentChar);
@@ -194,9 +200,9 @@ ProtoString *ProtoContext::fromUTF8String(const char *zeroTerminatedUtf8String) 
         string = string->appendLast(this, oneChar);    
     }
 
-    return new(this) ProtoString(
+    return new(this) ProtoStringImplementation(
         this,
-        this->tupleFromList(string)
+        ProtoTupleImplementation::tupleFromList(this, string)
     );
 };
 
@@ -233,19 +239,19 @@ ProtoObject *ProtoContext::fromTimeDelta(long timedelta) {
 };
 
 ProtoMethodCell *ProtoContext::fromMethod(ProtoObject *self, ProtoMethod method) {
-    return new(this) ProtoMethodCell(this, self, method);
+    return new(this) ProtoMethodCellImplementation(this, self, method);
 };
 
 ProtoExternalPointer *ProtoContext::fromExternalPointer(void *pointer) {
-    return new(this) ProtoExternalPointer(this, pointer);
+    return new(this) ProtoExternalPointerImplementation(this, pointer);
 };
 
 ProtoByteBuffer *ProtoContext::fromBuffer(unsigned long length, char* buffer) {
-    return new(this) ProtoByteBuffer(this, length, buffer);
+    return new(this) ProtoByteBufferImplementation(this, length, buffer);
 };
 
 ProtoByteBuffer *ProtoContext::newBuffer(unsigned long length) {
-    return new(this) ProtoByteBuffer(this, length);
+    return new(this) ProtoByteBufferImplementation(this, length);
 };
 
 ProtoObject *ProtoContext::fromBoolean(BOOLEAN value) {
@@ -267,5 +273,10 @@ ProtoObject *ProtoContext::fromByte(char c) {
 
     return p.oid.oid;
 };
+
+void ProtoContext::addCell2Context(Cell *newCell) {
+    newCell->nextCell = this->lastAllocatedCell;
+    this->lastAllocatedCell = newCell;
+}
 
 };

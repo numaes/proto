@@ -5,7 +5,7 @@
  *      Author: gamarino
  */
 
-#include "../headers/proto_internal.h"
+#include "../headers/proto internal.h"
 #include <string.h>
 
 using namespace std;
@@ -18,7 +18,7 @@ namespace proto {
 
 ProtoListIteratorImplementation::ProtoListIteratorImplementation(
 		ProtoContext *context,
-        ProtoList *base,
+        ProtoListImplementation *base,
 		unsigned long currentIndex
 	) : Cell(context) {
     this->base = base;
@@ -71,8 +71,8 @@ ProtoListImplementation::ProtoListImplementation(
     ProtoContext *context,
 
     ProtoObject *newValue,
-    ProtoList *newPrevious,
-    ProtoList *newNext
+    ProtoListImplementation *newPrevious,
+    ProtoListImplementation *newNext
 ) : Cell(context) {
     this->value = newValue;
     this->previous = newPrevious;
@@ -95,7 +95,7 @@ ProtoListImplementation::~ProtoListImplementation() {
 
 };
 
-int getBalance(ProtoList *self) {
+int getBalance(ProtoListImplementation *self) {
     if (!self) {
         return 0;
     }
@@ -114,17 +114,17 @@ int getBalance(ProtoList *self) {
 
 // A utility function to right rotate subtree rooted with y
 // See the diagram given above.
-ProtoList *rightRotate(ProtoContext *context, ProtoList *n) {
+ProtoListImplementation *rightRotate(ProtoContext *context, ProtoListImplementation *n) {
     if (!n->previous)
         return n;
 
-    ProtoList *newRight = new(context) ProtoList(
+    ProtoListImplementation *newRight = new(context) ProtoListImplementation(
         context,
         n->value,
         n->previous->next,
         n->next
     );
-    return new(context) ProtoList(
+    return new(context) ProtoListImplementation(
         context,
         n->previous->value,
         n->previous->previous,
@@ -134,17 +134,17 @@ ProtoList *rightRotate(ProtoContext *context, ProtoList *n) {
 
 // A utility function to left rotate subtree rooted with x
 // See the diagram given above.
-ProtoList *leftRotate(ProtoContext *context, ProtoList *n) {
+ProtoListImplementation *leftRotate(ProtoContext *context, ProtoListImplementation *n) {
     if (!n->next)
         return n;
 
-    ProtoList *newLeft = new(context) ProtoList(
+    ProtoListImplementation *newLeft = new(context) ProtoListImplementation(
         context,
         n->value,
         n->previous,
         n->next->previous
     );
-    return new(context) ProtoList(
+    return new(context) ProtoListImplementation(
         context,
         n->next->value,
         newLeft,
@@ -152,7 +152,7 @@ ProtoList *leftRotate(ProtoContext *context, ProtoList *n) {
     );
 }
 
-ProtoList *rebalance(ProtoContext *context, ProtoList *newNode) {
+ProtoListImplementation *rebalance(ProtoContext *context, ProtoListImplementation *newNode) {
     while (TRUE) {
         int balance = getBalance(newNode);
 
@@ -174,7 +174,7 @@ ProtoList *rebalance(ProtoContext *context, ProtoList *newNode) {
             // Left Right Case
             else {
                 if (balance < 0 && newNode->previous) {
-                    newNode = new(context) ProtoList(
+                    newNode = new(context) ProtoListImplementation(
                         context,
                         newNode->value,
                         leftRotate(context, newNode->previous),
@@ -187,7 +187,7 @@ ProtoList *rebalance(ProtoContext *context, ProtoList *newNode) {
                 else {
                     // Right Left Case
                     if (balance > 0 && newNode->next) {
-                        newNode = new(context) ProtoList(
+                        newNode = new(context) ProtoListImplementation(
                             context,
                             newNode->value,
                             newNode->previous,
@@ -220,7 +220,7 @@ ProtoObject *ProtoListImplementation::getAt(ProtoContext *context, int index) {
         return PROTO_NONE;
     }
 
-    ProtoList *node = this;
+    ProtoListImplementation *node = this;
 	while (node) {
         unsigned long thisIndex = node->previous? node->previous->count : 0;
 		if (((unsigned long) index) == thisIndex)
@@ -247,7 +247,7 @@ ProtoObject *ProtoListImplementation::getLast(ProtoContext *context) {
     return this->getAt(context, -1);
 };
 
-ProtoList *ProtoListImplementation::getSlice(ProtoContext *context, int from, int to) {
+ProtoListImplementation *ProtoListImplementation::getSlice(ProtoContext *context, int from, int to) {
     if (from < 0) {
         from = this->count + from;
         if (from < 0)
@@ -261,11 +261,11 @@ ProtoList *ProtoListImplementation::getSlice(ProtoContext *context, int from, in
     }
 
     if (to >= from) {
-        ProtoList *upperPart = this->splitLast(context, from);
+        ProtoListImplementation *upperPart = this->splitLast(context, from);
         return upperPart->splitFirst(context, to - from);
     }
     else
-        return new(context) ProtoList(context);
+        return new(context) ProtoListImplementation(context);
 };
 
 unsigned long ProtoListImplementation::getSize(ProtoContext *context) {
@@ -280,7 +280,7 @@ BOOLEAN	ProtoListImplementation::has(ProtoContext *context, ProtoObject* value) 
     return FALSE;
 };
 
-ProtoList *ProtoListImplementation::setAt(ProtoContext *context, int index, ProtoObject* value) {
+ProtoListImplementation *ProtoListImplementation::setAt(ProtoContext *context, int index, ProtoObject* value) {
 	if (!this->value) {
 		return NULL;
     }
@@ -297,7 +297,7 @@ ProtoList *ProtoListImplementation::setAt(ProtoContext *context, int index, Prot
 
     int thisIndex = this->previous? this->previous->count : 0;
     if (thisIndex == index) {
-        return new(context) ProtoList(
+        return new(context) ProtoListImplementation(
             context,
             value,
             this->previous,
@@ -306,14 +306,14 @@ ProtoList *ProtoListImplementation::setAt(ProtoContext *context, int index, Prot
     }
 
     if (index < thisIndex)
-        return new(context) ProtoList(
+        return new(context) ProtoListImplementation(
             context,
             value,
             this->previous->setAt(context, index, value),
             this->next
         );
     else
-        return new(context) ProtoList(
+        return new(context) ProtoListImplementation(
             context,
             value,
             this->previous,
@@ -321,9 +321,9 @@ ProtoList *ProtoListImplementation::setAt(ProtoContext *context, int index, Prot
         );
 };
 
-ProtoList *ProtoListImplementation::insertAt(ProtoContext *context, int index, ProtoObject* value) {
+ProtoListImplementation *ProtoListImplementation::insertAt(ProtoContext *context, int index, ProtoObject* value) {
 	if (!this->value)
-		return new(context) ProtoList(
+		return new(context) ProtoListImplementation(
             context,
             value
         );
@@ -338,10 +338,10 @@ ProtoList *ProtoListImplementation::insertAt(ProtoContext *context, int index, P
         index = this->count - 1;
 
     unsigned long thisIndex = this->previous? this->previous->count : 0;
-    ProtoList *newNode;
+    ProtoListImplementation *newNode;
 
     if (thisIndex == ((unsigned long) index))
-        newNode = new(context) ProtoList(
+        newNode = new(context) ProtoListImplementation(
             context,
             value,
             this->previous,
@@ -349,14 +349,14 @@ ProtoList *ProtoListImplementation::insertAt(ProtoContext *context, int index, P
         );
     else {
         if (((unsigned long) index) < thisIndex)
-            newNode = new(context) ProtoList(
+            newNode = new(context) ProtoListImplementation(
                 context,
                 value,
                 this->previous->insertAt(context, index, value),
                 this->next
             );
         else
-            newNode = new(context) ProtoList(
+            newNode = new(context) ProtoListImplementation(
                 context,
                 value,
                 this->previous,
@@ -367,27 +367,27 @@ ProtoList *ProtoListImplementation::insertAt(ProtoContext *context, int index, P
     return rebalance(context, newNode);
 };
 
-ProtoList *ProtoListImplementation::appendFirst(ProtoContext *context, ProtoObject* value) {
+ProtoListImplementation *ProtoListImplementation::appendFirst(ProtoContext *context, ProtoObject* value) {
 	if (!this->value)
-		return new(context) ProtoList(
+		return new(context) ProtoListImplementation(
             context,
             value
         );
 
-    ProtoList *newNode;
+    ProtoListImplementation *newNode;
 
     if (this->previous)
-        newNode = new(context) ProtoList(
+        newNode = new(context) ProtoListImplementation(
             context,
             this->value,
             this->previous->appendFirst(context, value),
             this->next
         );
     else {
-        newNode = new(context) ProtoList(
+        newNode = new(context) ProtoListImplementation(
             context,
             this->value,
-            new(context) ProtoList(
+            new(context) ProtoListImplementation(
                 context,
                 value
             ),
@@ -399,17 +399,17 @@ ProtoList *ProtoListImplementation::appendFirst(ProtoContext *context, ProtoObje
 
 };
 
-ProtoList *ProtoListImplementation::appendLast(ProtoContext *context, ProtoObject* value) {
+ProtoListImplementation *ProtoListImplementation::appendLast(ProtoContext *context, ProtoObject* value) {
 	if (!this->value)
-		return new(context) ProtoList(
+		return new(context) ProtoListImplementation(
             context,
             value
         );
 
-    ProtoList *newNode;
+    ProtoListImplementation *newNode;
 
     if (this->next) {
-        newNode = new(context) ProtoList(
+        newNode = new(context) ProtoListImplementation(
             context,
             this->value,
             this->previous,
@@ -417,11 +417,11 @@ ProtoList *ProtoListImplementation::appendLast(ProtoContext *context, ProtoObjec
         );
     }
     else {
-        newNode = new(context) ProtoList(
+        newNode = new(context) ProtoListImplementation(
             context,
             this->value,
             this->previous,
-            new(context) ProtoList(
+            new(context) ProtoListImplementation(
                 context,
                 value
             )
@@ -431,34 +431,36 @@ ProtoList *ProtoListImplementation::appendLast(ProtoContext *context, ProtoObjec
     return rebalance(context, newNode);
 };
 
-ProtoList *ProtoListImplementation::extend(ProtoContext *context, ProtoList *other) {
+ProtoListImplementation *ProtoListImplementation::extend(ProtoContext *context, ProtoList *other) {
     if (this->count == 0)
-        return other;
+        return (ProtoListImplementation *) other;
 
-    if (other->count == 0)
+    unsigned long otherCount = other->getSize(context);
+
+    if (otherCount == 0)
         return this;
 
-    if (this->count < other->count)
+    if (this->count < otherCount)
         return rebalance(
             context, 
-            new(context) ProtoList(
+            new(context) ProtoListImplementation(
                 context,
                 this->getLast(context),
                 this->removeLast(context),
-                other
+                (ProtoListImplementation *) other
             ));
     else
         return rebalance(
             context, 
-            new(context) ProtoList(
+            new(context) ProtoListImplementation(
                 context,
                 other->getFirst(context),
                 this,
-                other->removeFirst(context)
+                (ProtoListImplementation *) other->removeFirst(context)
             ));
 };
 
-ProtoList *ProtoListImplementation::splitFirst(ProtoContext *context, int index) {
+ProtoListImplementation *ProtoListImplementation::splitFirst(ProtoContext *context, int index) {
 	if (!this->value)
         return this;
 
@@ -475,9 +477,9 @@ ProtoList *ProtoListImplementation::splitFirst(ProtoContext *context, int index)
         return this;
 
     if (index == 0)
-        return new(context) ProtoList(context);
+        return new(context) ProtoListImplementation(context);
 
-    ProtoList *newNode = NULL;
+    ProtoListImplementation *newNode = NULL;
 
     int thisIndex = (this->previous? this->previous->count : 0);
 
@@ -485,10 +487,10 @@ ProtoList *ProtoListImplementation::splitFirst(ProtoContext *context, int index)
         return this->previous;
     else {
         if (index > thisIndex) {
-            ProtoList *newNext = this->next->splitFirst(context, (unsigned long) index - thisIndex - 1);
+            ProtoListImplementation *newNext = this->next->splitFirst(context, (unsigned long) index - thisIndex - 1);
             if (newNext->count == 0)
                 newNext = NULL;
-            newNode = new(context) ProtoList(
+            newNode = new(context) ProtoListImplementation(
                 context,
                 this->value,
                 this->previous,
@@ -499,7 +501,7 @@ ProtoList *ProtoListImplementation::splitFirst(ProtoContext *context, int index)
             if (this->previous)
                 return this->previous->splitFirst(context, index);
             else
-                newNode = new(context) ProtoList(
+                newNode = new(context) ProtoListImplementation(
                     context,
                     value,
                     NULL,
@@ -511,7 +513,7 @@ ProtoList *ProtoListImplementation::splitFirst(ProtoContext *context, int index)
     return rebalance(context, newNode);
 };
 
-ProtoList *ProtoListImplementation::splitLast(ProtoContext *context, int index) {
+ProtoListImplementation *ProtoListImplementation::splitLast(ProtoContext *context, int index) {
 	if (!this->value)
         return this;
 
@@ -527,7 +529,7 @@ ProtoList *ProtoListImplementation::splitLast(ProtoContext *context, int index) 
     if (index == 0)
         return this;
 
-    ProtoList *newNode = NULL;
+    ProtoListImplementation *newNode = NULL;
 
     int thisIndex = (this->previous? this->previous->count : 0);
 
@@ -535,7 +537,7 @@ ProtoList *ProtoListImplementation::splitLast(ProtoContext *context, int index) 
         if (!this->previous)
             return this;
         else {
-            newNode = new(context) ProtoList(
+            newNode = new(context) ProtoListImplementation(
                 context,
                 value,
                 NULL,
@@ -545,7 +547,7 @@ ProtoList *ProtoListImplementation::splitLast(ProtoContext *context, int index) 
     }
     else {
         if (index < thisIndex) {
-            newNode = new(context) ProtoList(
+            newNode = new(context) ProtoListImplementation(
                 context,
                 this->value,
                 this->previous->splitLast(context, index),
@@ -555,7 +557,7 @@ ProtoList *ProtoListImplementation::splitLast(ProtoContext *context, int index) 
         else {
             if (!this->next)
                 // It should not happen!
-                return new(context) ProtoList(context);
+                return new(context) ProtoListImplementation(context);
             else {
                 return this->next->splitLast(
                     context, 
@@ -568,17 +570,17 @@ ProtoList *ProtoListImplementation::splitLast(ProtoContext *context, int index) 
     return rebalance(context, newNode);
 };
 
-ProtoList *ProtoListImplementation::removeFirst(ProtoContext *context) {
+ProtoListImplementation *ProtoListImplementation::removeFirst(ProtoContext *context) {
 	if (!this->value)
         return this;
 
-    ProtoList *newNode;
+    ProtoListImplementation *newNode;
 
     if (this->previous) {
         newNode = this->previous->removeFirst(context);
         if (newNode->value == NULL)
             newNode = NULL; 
-        newNode = new(context) ProtoList(
+        newNode = new(context) ProtoListImplementation(
             context,
             value,
             newNode,
@@ -589,7 +591,7 @@ ProtoList *ProtoListImplementation::removeFirst(ProtoContext *context) {
         if (this->next)
             return this->next;
         
-        newNode = new(context) ProtoList(
+        newNode = new(context) ProtoListImplementation(
             context,
             NULL,
             NULL,
@@ -600,17 +602,17 @@ ProtoList *ProtoListImplementation::removeFirst(ProtoContext *context) {
     return rebalance(context, newNode);
 };
 
-ProtoList *ProtoListImplementation::removeLast(ProtoContext *context) {
+ProtoListImplementation *ProtoListImplementation::removeLast(ProtoContext *context) {
 	if (!this->value)
         return this;
 
-    ProtoList *newNode;
+    ProtoListImplementation *newNode;
 
     if (this->next) {
         newNode = this->next->removeLast(context);
         if (newNode->value == NULL)
             newNode = NULL; 
-        newNode = new(context) ProtoList(
+        newNode = new(context) ProtoListImplementation(
             context,
             value,
             this->previous,
@@ -621,7 +623,7 @@ ProtoList *ProtoListImplementation::removeLast(ProtoContext *context) {
         if (this->previous)
             return this->previous;
         
-        newNode = new(context) ProtoList(
+        newNode = new(context) ProtoListImplementation(
             context,
             NULL,
             NULL,
@@ -633,9 +635,9 @@ ProtoList *ProtoListImplementation::removeLast(ProtoContext *context) {
 
 };
 
-ProtoList *ProtoListImplementation::removeAt(ProtoContext *context, int index) {
+ProtoListImplementation *ProtoListImplementation::removeAt(ProtoContext *context, int index) {
 	if (!this->value) {
-		return new(context) ProtoList(
+		return new(context) ProtoListImplementation(
             context
         );
     }
@@ -650,14 +652,14 @@ ProtoList *ProtoListImplementation::removeAt(ProtoContext *context, int index) {
         return this;
 
     unsigned long thisIndex = this->previous? this->previous->count : 0;
-    ProtoList *newNode;
+    ProtoListImplementation *newNode;
 
     if (thisIndex == ((unsigned long) index)) {
         if (this->next) {
             newNode = this->next->removeFirst(context);
             if (newNode->count == 0)
                 newNode = NULL;
-            newNode = new(context) ProtoList(
+            newNode = new(context) ProtoListImplementation(
                 context,
                 this->next->getFirst(context),
                 this->previous,
@@ -672,7 +674,7 @@ ProtoList *ProtoListImplementation::removeAt(ProtoContext *context, int index) {
             newNode = this->previous->removeAt(context, index);
             if (newNode->count == 0)
                 newNode = NULL;
-            newNode = new(context) ProtoList(
+            newNode = new(context) ProtoListImplementation(
                 context,
                 value,
                 newNode,
@@ -683,7 +685,7 @@ ProtoList *ProtoListImplementation::removeAt(ProtoContext *context, int index) {
             newNode = this->next->removeAt(context, index - thisIndex - 1);
             if (newNode->count == 0)
                 newNode = NULL;
-            newNode = new(context) ProtoList(
+            newNode = new(context) ProtoListImplementation(
                 context,
                 value,
                 this->previous,
@@ -696,7 +698,7 @@ ProtoList *ProtoListImplementation::removeAt(ProtoContext *context, int index) {
 
 };
 
-ProtoList *ProtoListImplementation::removeSlice(ProtoContext *context, int from, int to) {
+ProtoListImplementation *ProtoListImplementation::removeSlice(ProtoContext *context, int from, int to) {
     if (from < 0) {
         from = this->count + from;
         if (from < 0)
@@ -709,7 +711,7 @@ ProtoList *ProtoListImplementation::removeSlice(ProtoContext *context, int from,
             to = 0;
     }
 
-    ProtoList *slice = new(context) ProtoList(context);
+    ProtoListImplementation *slice = new(context) ProtoListImplementation(context);
     if (to >= from) {
         return this->splitFirst(context, from)->extend(
             context,
@@ -723,7 +725,7 @@ ProtoList *ProtoListImplementation::removeSlice(ProtoContext *context, int from,
 };
 
 ProtoTuple *ProtoListImplementation::asTuple(ProtoContext *context) {
-    return context->tupleFromList(this);
+    return ProtoTupleImplementation::tupleFromList(context, this);
 };
 
 ProtoObject *ProtoListImplementation::asObject(ProtoContext *context) {
