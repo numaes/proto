@@ -122,11 +122,17 @@ public:
 	int				 asInteger();
 	double			 asDouble();
 	char			 asByte();
+	void			 asDate(unsigned int &year, unsigned &month, unsigned &day);
+	unsigned long    asTimestamp();
+	long			 asTimeDelta();
 
 	BOOLEAN			 isBoolean();
 	BOOLEAN			 isInteger();
 	BOOLEAN			 isDouble();
 	BOOLEAN			 isByte();
+	BOOLEAN			 isDate();
+	BOOLEAN			 isTimestamp();
+	BOOLEAN			 isTimeDelta();
 
 };
 
