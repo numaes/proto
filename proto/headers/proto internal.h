@@ -251,13 +251,13 @@ public:
 	ProtoObjectCellImplementation *object;
 };
 
-class ProtoListImplementation;
+template<class T> class ProtoListImplementation;
 
-class ProtoListIteratorImplementation: public Cell, public ProtoListIterator {
+template<class T> class ProtoListIteratorImplementation: public Cell {
 public:
 	ProtoListIteratorImplementation(
 		ProtoContext *context,
-		ProtoListImplementation *base,
+		ProtoListImplementation<T> *base,
 		unsigned long currentIndex
 	);
 	virtual ~ProtoListIteratorImplementation();
@@ -281,12 +281,12 @@ public:
 	);
 
 private:
-	ProtoListImplementation *base;
+	ProtoListImplementation<T> *base;
 	unsigned long currentIndex;
 
 };
 
-class ProtoListImplementation: public Cell, public ProtoList {
+template<class T> class ProtoListImplementation: public Cell, public ProtoList<T> {
 public:
 	ProtoListImplementation(
 		ProtoContext *context,
@@ -296,18 +296,18 @@ public:
 	);
 	virtual ~ProtoListImplementation();
 
-	virtual ProtoObject *getAt(ProtoContext *context, int index);
-	virtual ProtoObject *getFirst(ProtoContext *context);
-	virtual ProtoObject *getLast(ProtoContext *context);
+	virtual T *getAt(ProtoContext *context, int index);
+	virtual T *getFirst(ProtoContext *context);
+	virtual T *getLast(ProtoContext *context);
 	virtual ProtoListImplementation	*getSlice(ProtoContext *context, int from, int to);
 	virtual unsigned long getSize(ProtoContext *context);
 
-	virtual BOOLEAN has(ProtoContext *context, ProtoObject* value);
-	virtual ProtoListImplementation *setAt(ProtoContext *context, int index, ProtoObject* value = PROTO_NONE);
-	virtual ProtoListImplementation *insertAt(ProtoContext *context, int index, ProtoObject* value);
+	virtual BOOLEAN has(ProtoContext *context, T *value);
+	virtual ProtoListImplementation *setAt(ProtoContext *context, int index, T *value = PROTO_NONE);
+	virtual ProtoListImplementation *insertAt(ProtoContext *context, int index, T *value);
 
-	virtual ProtoListImplementation *appendFirst(ProtoContext *context, ProtoObject* value);
-	virtual ProtoListImplementation *appendLast(ProtoContext *context, ProtoObject* value);
+	virtual ProtoListImplementation *appendFirst(ProtoContext *context, T *value);
+	virtual ProtoListImplementation *appendLast(ProtoContext *context, T *value);
 
 	virtual ProtoListImplementation *extend(ProtoContext *context, ProtoList* other);
 

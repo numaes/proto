@@ -153,22 +153,22 @@ public:
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 };
 
-class ProtoList {
+template<class T> class ProtoList {
 public:
-	virtual ProtoObject   *getAt(ProtoContext *context, int index);
-	virtual ProtoObject   *getFirst(ProtoContext *context);
-	virtual ProtoObject   *getLast(ProtoContext *context);
-	virtual ProtoList	  *getSlice(ProtoContext *context, int from, int to);
+	virtual T *getAt(ProtoContext *context, int index);
+	virtual T *getFirst(ProtoContext *context);
+	virtual T *getLast(ProtoContext *context);
+	virtual ProtoList<T> *getSlice(ProtoContext *context, int from, int to);
 	virtual unsigned long  getSize(ProtoContext *context);
 
-	virtual BOOLEAN		   has(ProtoContext *context, ProtoObject* value);
-	virtual ProtoList     *setAt(ProtoContext *context, int index, ProtoObject* value = PROTO_NONE);
-	virtual ProtoList     *insertAt(ProtoContext *context, int index, ProtoObject* value);
+	virtual BOOLEAN		   has(ProtoContext *context, T *value);
+	virtual ProtoList     *setAt(ProtoContext *context, int index, T *value = PROTO_NONE);
+	virtual ProtoList     *insertAt(ProtoContext *context, int index, T *value);
 
-	virtual ProtoList  	  *appendFirst(ProtoContext *context, ProtoObject* value);
-	virtual ProtoList  	  *appendLast(ProtoContext *context, ProtoObject* value);
+	virtual ProtoList  	  *appendFirst(ProtoContext *context, T *value);
+	virtual ProtoList  	  *appendLast(ProtoContext *context, T *value);
 
-	virtual ProtoList  	  *extend(ProtoContext *context, ProtoList* other);
+	virtual ProtoList  	  *extend(ProtoContext *context, ProtoList *other);
 
 	virtual ProtoList	  *splitFirst(ProtoContext *context, int index);
 	virtual ProtoList     *splitLast(ProtoContext *context, int index);
