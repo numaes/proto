@@ -263,8 +263,8 @@ public:
 	virtual ~ProtoListIteratorImplementation();
 
 	virtual int hasNext(ProtoContext *context);
-	virtual ProtoObject *next(ProtoContext *context);
-	virtual ProtoListIteratorImplementation *advance(ProtoContext *context);
+	virtual T *next(ProtoContext *context);
+	virtual ProtoListIteratorImplementation<T> *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	
@@ -296,33 +296,33 @@ public:
 	);
 	virtual ~ProtoListImplementation();
 
-	virtual T *getAt(ProtoContext *context, int index);
-	virtual T *getFirst(ProtoContext *context);
-	virtual T *getLast(ProtoContext *context);
-	virtual ProtoListImplementation	*getSlice(ProtoContext *context, int from, int to);
+	virtual T* getAt(ProtoContext *context, int index);
+	virtual T* getFirst(ProtoContext *context);
+	virtual T* getLast(ProtoContext *context);
+	virtual ProtoListImplementation<T> *getSlice(ProtoContext *context, int from, int to);
 	virtual unsigned long getSize(ProtoContext *context);
 
 	virtual BOOLEAN has(ProtoContext *context, T *value);
-	virtual ProtoListImplementation *setAt(ProtoContext *context, int index, T *value = PROTO_NONE);
-	virtual ProtoListImplementation *insertAt(ProtoContext *context, int index, T *value);
+	virtual ProtoListImplementation<T> *setAt(ProtoContext *context, int index, T *value = PROTO_NONE);
+	virtual ProtoListImplementation<T> *insertAt(ProtoContext *context, int index, T *value);
 
-	virtual ProtoListImplementation *appendFirst(ProtoContext *context, T *value);
-	virtual ProtoListImplementation *appendLast(ProtoContext *context, T *value);
+	virtual ProtoListImplementation<T> *appendFirst(ProtoContext *context, T *value);
+	virtual ProtoListImplementation<T> *appendLast(ProtoContext *context, T *value);
 
-	virtual ProtoListImplementation *extend(ProtoContext *context, ProtoList* other);
+	virtual ProtoListImplementation<T> *extend(ProtoContext *context, ProtoList<T>* other);
 
-	virtual ProtoListImplementation	*splitFirst(ProtoContext *context, int index);
-	virtual ProtoListImplementation *splitLast(ProtoContext *context, int index);
+	virtual ProtoListImplementation<T> *splitFirst(ProtoContext *context, int index);
+	virtual ProtoListImplementation<T> *splitLast(ProtoContext *context, int index);
 
-	virtual ProtoListImplementation	*removeFirst(ProtoContext *context);
-	virtual ProtoListImplementation	*removeLast(ProtoContext *context);
-	virtual ProtoListImplementation	*removeAt(ProtoContext *context, int index);
-	virtual ProtoListImplementation *removeSlice(ProtoContext *context, int from, int to);
+	virtual ProtoListImplementation<T> *removeFirst(ProtoContext *context);
+	virtual ProtoListImplementation<T> *removeLast(ProtoContext *context);
+	virtual ProtoListImplementation<T> *removeAt(ProtoContext *context, int index);
+	virtual ProtoListImplementation<T> *removeSlice(ProtoContext *context, int from, int to);
 
-	virtual ProtoTuple *asTuple(ProtoContext *context);
+	virtual ProtoTuple<T> *asTuple(ProtoContext *context);
 	virtual ProtoObject	*asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
-	virtual ProtoListIteratorImplementation *getIterator(ProtoContext *context);
+	virtual ProtoListIteratorImplementation<T> *getIterator(ProtoContext *context);
 
 	virtual void finalize(ProtoContext *context);
 
@@ -350,6 +350,7 @@ public:
 #define TUPLE_SIZE 5
 
 class ProtoTupleImplementation;
+
 class ProtoTupleIteratorImplementation: public Cell, public ProtoTupleIterator {
 public:
 	ProtoTupleIteratorImplementation (
@@ -395,32 +396,32 @@ public:
 	);
 	virtual ~ProtoTupleImplementation();
 
-	static ProtoTupleImplementation *tupleFromList(ProtoContext *context, ProtoList *list);
+	static ProtoTupleImplementation *tupleFromList(ProtoContext *context, ProtoList<ProtoObject> *list);
 	static TupleDictionary *createTupleRoot(ProtoContext *context);
 
 	virtual ProtoObject   *getAt(ProtoContext *context, int index);
 	virtual ProtoObject   *getFirst(ProtoContext *context);
 	virtual ProtoObject   *getLast(ProtoContext *context);
-	virtual ProtoTupleImplementation	  *getSlice(ProtoContext *context, int from, int to);
+	virtual ProtoTupleImplementation *getSlice(ProtoContext *context, int from, int to);
 	virtual unsigned long  getSize(ProtoContext *context);
 
 	virtual BOOLEAN		   has(ProtoContext *context, ProtoObject* value);
-	virtual ProtoTupleImplementation    *setAt(ProtoContext *context, int index, ProtoObject* value);
-	virtual ProtoTupleImplementation    *insertAt(ProtoContext *context, int index, ProtoObject* value);
+	virtual ProtoTupleImplementation *setAt(ProtoContext *context, int index, ProtoObject* value);
+	virtual ProtoTupleImplementation *insertAt(ProtoContext *context, int index, ProtoObject* value);
 
-	virtual ProtoTupleImplementation    *appendFirst(ProtoContext *context, ProtoTuple* otherTuple);
-	virtual ProtoTupleImplementation 	*appendLast(ProtoContext *context, ProtoTuple* otherTuple);
+	virtual ProtoTupleImplementation *appendFirst(ProtoContext *context, ProtoTuple* otherTuple);
+	virtual ProtoTupleImplementation *appendLast(ProtoContext *context, ProtoTuple* otherTuple);
 
-	virtual ProtoTupleImplementation	*splitFirst(ProtoContext *context, int count = 1);
-	virtual ProtoTupleImplementation    *splitLast(ProtoContext *context, int count = 1);
+	virtual ProtoTupleImplementation*splitFirst(ProtoContext *context, int count = 1);
+	virtual ProtoTupleImplementation *splitLast(ProtoContext *context, int count = 1);
 
-	virtual ProtoTupleImplementation    *removeFirst(ProtoContext *context, int count = 1);
-	virtual ProtoTupleImplementation    *removeLast(ProtoContext *context, int count = 1);
-	virtual ProtoTupleImplementation    *removeAt(ProtoContext *context, int index);
-	virtual ProtoTupleImplementation    *removeSlice(ProtoContext *context, int from, int to);
+	virtual ProtoTupleImplementation *removeFirst(ProtoContext *context, int count = 1);
+	virtual ProtoTupleImplementation *removeLast(ProtoContext *context, int count = 1);
+	virtual ProtoTupleImplementation *removeAt(ProtoContext *context, int index);
+	virtual ProtoTupleImplementation *removeSlice(ProtoContext *context, int from, int to);
 
-	virtual ProtoList	  *asList(ProtoContext *context);
-	virtual ProtoObject	  *asObject(ProtoContext *context);
+	virtual ProtoList<ProtoObject> *asList(ProtoContext *context);
+	virtual ProtoObject	*asObject(ProtoContext *context);
 	virtual unsigned long  getHash(ProtoContext *context);
 	virtual ProtoTupleIteratorImplementation *getIterator(ProtoContext *context);
 
@@ -492,7 +493,7 @@ public:
 	virtual ProtoStringImplementation    *setAt(ProtoContext *context, int index, ProtoObject* character);
 	virtual ProtoStringImplementation    *insertAt(ProtoContext *context, int index, ProtoObject* character);
 	unsigned long    	    getSize(ProtoContext *context);
-	virtual ProtoStringImplementation	   *getSlice(ProtoContext *context, int from, int to);
+	virtual ProtoStringImplementation	 *getSlice(ProtoContext *context, int from, int to);
 
 	virtual ProtoStringImplementation    *setAtString(ProtoContext *context, int index, ProtoString* otherString);
 	virtual ProtoStringImplementation    *insertAtString(ProtoContext *context, int index, ProtoString* otherString);
@@ -500,16 +501,16 @@ public:
 	virtual ProtoStringImplementation    *appendFirst(ProtoContext *context, ProtoString* otherString);
 	virtual ProtoStringImplementation    *appendLast(ProtoContext *context, ProtoString* otherString);
 
-	virtual ProtoStringImplementation	   *splitFirst(ProtoContext *context, int count = 1);
+	virtual ProtoStringImplementation	 *splitFirst(ProtoContext *context, int count = 1);
 	virtual ProtoStringImplementation    *splitLast(ProtoContext *context, int count = 1);
 
-	virtual ProtoStringImplementation	   *removeFirst(ProtoContext *context, int count = 1);
-	virtual ProtoStringImplementation	   *removeLast(ProtoContext *context, int count = 1);
-	virtual ProtoStringImplementation	   *removeAt(ProtoContext *context, int index);
+	virtual ProtoStringImplementation	 *removeFirst(ProtoContext *context, int count = 1);
+	virtual ProtoStringImplementation	 *removeLast(ProtoContext *context, int count = 1);
+	virtual ProtoStringImplementation	 *removeAt(ProtoContext *context, int index);
 	virtual ProtoStringImplementation    *removeSlice(ProtoContext *context, int from, int to);
 
-	virtual ProtoObject	   *asObject(ProtoContext *context);
-	virtual ProtoList	   *asList(ProtoContext *context);
+	virtual ProtoObject	*asObject(ProtoContext *context);
+	virtual ProtoList<ProtoObject> *asList(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
 	virtual ProtoStringIteratorImplementation *getIterator(ProtoContext *context);
 
@@ -534,21 +535,24 @@ public:
 #define ITERATOR_NEXT_THIS 1
 #define ITERATOR_NEXT_NEXT 2
 
-class ProtoSparseListImplementation;
 
-class ProtoSparseListIteratorImplementation: public Cell, public ProtoSparseListIterator {
+template<class T> class ProtoSparseListImplementation;
+template<class T> 
+class ProtoSparseListIteratorImplementation: public Cell, public ProtoSparseListIterator<T> {
 public:
 	ProtoSparseListIteratorImplementation(
 		ProtoContext *context,
 		int state,
-		ProtoSparseListImplementation *current,
-		ProtoSparseListIteratorImplementation *queue = NULL
+		ProtoSparseListImplementation<T> *current,
+		ProtoSparseListIteratorImplementation<T> *queue = NULL
 	);
 	virtual ~ProtoSparseListIteratorImplementation();
 
 	virtual int hasNext(ProtoContext *context);
-	virtual ProtoTuple *next(ProtoContext *context);
-	virtual ProtoSparseListIteratorImplementation *advance(ProtoContext *context);
+	virtual unsigned long nextKey(ProtoContext *context);
+	virtual T* nextValue(ProtoContext *context);
+
+	virtual ProtoSparseListIteratorImplementation<T> *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 
@@ -565,11 +569,12 @@ public:
 	);
 
 	int state = ITERATOR_NEXT_PREVIOUS;
-	ProtoSparseListImplementation *current;
-	ProtoSparseListIteratorImplementation *queue = NULL;
+	ProtoSparseListImplementation<T> *current;
+	ProtoSparseListIteratorImplementation<T> *queue = NULL;
 
 };
 
+template<class T>
 class ProtoSparseListImplementation: public Cell, public ProtoSparseList {
 public:
 	ProtoSparseListImplementation(
@@ -581,18 +586,18 @@ public:
 	);
 	virtual ~ProtoSparseListImplementation();
 
-	virtual BOOLEAN			has(ProtoContext *context, unsigned long index);
-	virtual ProtoObject     *getAt(ProtoContext *context, unsigned long index);
-	virtual ProtoSparseListImplementation *setAt(ProtoContext *context, unsigned long index, ProtoObject *value = PROTO_NONE);
-	virtual ProtoSparseListImplementation *removeAt(ProtoContext *context, unsigned long index);
-	virtual int				isEqual(ProtoContext *context, ProtoSparseList *otherDict);
-	virtual ProtoObject     *getAtOffset(ProtoContext *context, int offset);
+	virtual BOOLEAN	has(ProtoContext *context, unsigned long index);
+	virtual T* getAt(ProtoContext *context, unsigned long index);
+	virtual ProtoSparseListImplementation<T> *setAt(ProtoContext *context, unsigned long index, T* value);
+	virtual ProtoSparseListImplementation<T> *removeAt(ProtoContext *context, unsigned long index);
+	virtual int isEqual(ProtoContext *context, ProtoSparseList<T> *otherDict);
+	virtual T* getAtOffset(ProtoContext *context, int offset);
 
-	unsigned long 	getSize(ProtoContext *context);
+	unsigned long getSize(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
-	virtual ProtoSparseListIteratorImplementation *getIterator(ProtoContext *context);
+	virtual ProtoSparseListIteratorImplementation<T> *getIterator(ProtoContext *context);
 	
 	virtual void finalize(ProtoContext *context);
 
@@ -734,7 +739,7 @@ public:
 		ProtoContext *context,
 		ParentLinkImplementation	*parent = NULL,
 		unsigned long mutable_ref = 0,
-		ProtoSparseListImplementation  *attributes = NULL
+		ProtoSparseListImplementation<ProtoObject> *attributes = NULL
 	);
 	virtual ~ProtoObjectCellImplementation();
 
@@ -758,7 +763,7 @@ public:
 
 	unsigned long mutable_ref;
 	ParentLinkImplementation	*parent;
-	ProtoSparseListImplementation  *attributes;
+	ProtoSparseListImplementation<ProtoObject> *attributes;
 };
 
 class ProtoThreadImplementation: public Cell, public ProtoThread {
@@ -767,9 +772,9 @@ public:
 		ProtoContext *context,
 		ProtoString *name,
 		ProtoSpace	*space,
-		ProtoMethod code = (ProtoMethod) NULL,
-		ProtoList *args = (ProtoList *) NULL,
-		ProtoSparseList *kwargs = (ProtoSparseList *) NULL
+		ProtoMethod code = NULL,
+		ProtoList<ProtoObject> *args = NULL,
+		ProtoSparseList<ProtoObject> *kwargs = NULL
 	);
 	virtual ~ProtoThreadImplementation();
 

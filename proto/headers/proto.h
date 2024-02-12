@@ -58,23 +58,23 @@ namespace proto {
 class Cell;
 class BigCell;
 class ProtoContext;
-class ProtoList;
-class ProtoSparseList;
-class ProtoTuple;
-class ProtoString;
-class TupleDictionary;
-class ProtoObject;
-class ParentLink;
-class ProtoObjectCell;
 class ProtoSpace;
 class DirtySegment;
+class ProtoObject;
+class TupleDictionary;
+class ProtoTuple;
+class ProtoString;
+class ParentLink;
+
+template <class T> class ProtoList;
+template <class T> class ProtoSparseList;
 
 typedef ProtoObject *(*ProtoMethod) (
 	ProtoContext *, 		// context
 	ProtoObject *, 			// self
 	ParentLink *, 			// parentLink
-	ProtoList *, 			// positionalParameters
-	ProtoSparseList *		// keywordParameters
+	ProtoList<ProtoObject> *, 			// positionalParameters
+	ProtoSparseList<ProtoObject> *		// keywordParameters
 );
 
 class ProtoObject {
@@ -87,9 +87,9 @@ public:
 	ProtoObject *hasOwnAttribute(ProtoContext *c, ProtoString *name);
 	ProtoObject *setAttribute(ProtoContext *c, ProtoString *name, ProtoObject *value);
 
-	ProtoSparseList   *getAttributes(ProtoContext *c);
-	ProtoSparseList   *getOwnAttributes(ProtoContext *c);
-	ProtoList   	  *getParents(ProtoContext *c);
+	ProtoSparseList<ProtoObject>   *getAttributes(ProtoContext *c);
+	ProtoSparseList<ProtoObject>   *getOwnAttributes(ProtoContext *c);
+	ProtoList<ProtoObject>         *getParents(ProtoContext *c);
 
 	ProtoObject *addParent(ProtoContext *c, ProtoObjectCell *newParent);
 	ProtoObject *isInstanceOf(ProtoContext *c, ProtoObject *prototype);
@@ -98,8 +98,8 @@ public:
 	                  ParentLink *nextParent,
 					  ProtoString *method,
 					  ProtoObject *self,
-					  ProtoList *unnamedParametersList = NULL,
-			          ProtoSparseList *keywordParametersDict = NULL);
+					  ProtoList<ProtoObject> *unnamedParametersList = NULL,
+			          ProtoSparseList<ProtoObject> *keywordParametersDict = NULL);
 
 	unsigned long getHash(ProtoContext *context);
 	int isCell(ProtoContext *context);
@@ -144,11 +144,11 @@ public:
 	ParentLink *getParent(ProtoContext *context);
 };
 
-class ProtoListIterator {
+template<class T> class ProtoListIterator {
 public:
 	virtual int hasNext(ProtoContext *context);
-	virtual ProtoObject *next(ProtoContext *context);
-	virtual ProtoListIterator *advance(ProtoContext *context);
+	virtual T *next(ProtoContext *context);
+	virtual ProtoListIterator<T> *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 };
@@ -161,25 +161,25 @@ public:
 	virtual ProtoList<T> *getSlice(ProtoContext *context, int from, int to);
 	virtual unsigned long  getSize(ProtoContext *context);
 
-	virtual BOOLEAN		   has(ProtoContext *context, T *value);
-	virtual ProtoList     *setAt(ProtoContext *context, int index, T *value = PROTO_NONE);
-	virtual ProtoList     *insertAt(ProtoContext *context, int index, T *value);
+	virtual BOOLEAN	has(ProtoContext *context, T *value);
+	virtual ProtoList<T> *setAt(ProtoContext *context, int index, T *value = PROTO_NONE);
+	virtual ProtoList<T> *insertAt(ProtoContext *context, int index, T *value);
 
-	virtual ProtoList  	  *appendFirst(ProtoContext *context, T *value);
-	virtual ProtoList  	  *appendLast(ProtoContext *context, T *value);
+	virtual ProtoList<T> *appendFirst(ProtoContext *context, T *value);
+	virtual ProtoList<T> *appendLast(ProtoContext *context, T *value);
 
-	virtual ProtoList  	  *extend(ProtoContext *context, ProtoList *other);
+	virtual ProtoList<T> *extend(ProtoContext *context, ProtoList *other);
 
-	virtual ProtoList	  *splitFirst(ProtoContext *context, int index);
-	virtual ProtoList     *splitLast(ProtoContext *context, int index);
+	virtual ProtoList<T> *splitFirst(ProtoContext *context, int index);
+	virtual ProtoList<T> *splitLast(ProtoContext *context, int index);
 
-	virtual ProtoList	  *removeFirst(ProtoContext *context);
-	virtual ProtoList	  *removeLast(ProtoContext *context);
-	virtual ProtoList	  *removeAt(ProtoContext *context, int index);
-	virtual ProtoList  	  *removeSlice(ProtoContext *context, int from, int to);
+	virtual ProtoList<T> *removeFirst(ProtoContext *context);
+	virtual ProtoList<T> *removeLast(ProtoContext *context);
+	virtual ProtoList<T> *removeAt(ProtoContext *context, int index);
+	virtual ProtoList<T> *removeSlice(ProtoContext *context, int from, int to);
 
-	virtual ProtoTuple    *asTuple(ProtoContext *context);
-	virtual ProtoObject	  *asObject(ProtoContext *context);
+	virtual ProtoTuple *asTuple(ProtoContext *context);
+	virtual ProtoObject *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
 	virtual ProtoListIterator *getIterator(ProtoContext *context);
 
@@ -202,22 +202,22 @@ public:
 	virtual ProtoTuple	  *getSlice(ProtoContext *context, int from, int to);
 	virtual unsigned long  getSize(ProtoContext *context);
 
-	virtual BOOLEAN		   has(ProtoContext *context, ProtoObject* value);
-	virtual ProtoTuple    *setAt(ProtoContext *context, int index, ProtoObject* value);
-	virtual ProtoTuple    *insertAt(ProtoContext *context, int index, ProtoObject* value);
+	virtual BOOLEAN	has(ProtoContext *context, ProtoObject* value);
+	virtual ProtoTuple *setAt(ProtoContext *context, int index, ProtoObject* value);
+	virtual ProtoTuple *insertAt(ProtoContext *context, int index, ProtoObject* value);
 
-	virtual ProtoTuple 	  *appendFirst(ProtoContext *context, ProtoTuple* otherTuple);
-	virtual ProtoTuple 	  *appendLast(ProtoContext *context, ProtoTuple* otherTuple);
+	virtual ProtoTuple *appendFirst(ProtoContext *context, ProtoTuple *otherTuple);
+	virtual ProtoTuple *appendLast(ProtoContext *context, ProtoTuple *otherTuple);
 
-	virtual ProtoTuple	  *splitFirst(ProtoContext *context, int count = 1);
-	virtual ProtoTuple    *splitLast(ProtoContext *context, int count = 1);
+	virtual ProtoTuple *splitFirst(ProtoContext *context, int count = 1);
+	virtual ProtoTuple *splitLast(ProtoContext *context, int count = 1);
 
-	virtual ProtoTuple	  *removeFirst(ProtoContext *context, int count = 1);
-	virtual ProtoTuple	  *removeLast(ProtoContext *context, int count = 1);
-	virtual ProtoTuple	  *removeAt(ProtoContext *context, int index);
-	virtual ProtoTuple 	  *removeSlice(ProtoContext *context, int from, int to);
+	virtual ProtoTuple *removeFirst(ProtoContext *context, int count = 1);
+	virtual ProtoTuple *removeLast(ProtoContext *context, int count = 1);
+	virtual ProtoTuple *removeAt(ProtoContext *context, int index);
+	virtual ProtoTuple *removeSlice(ProtoContext *context, int from, int to);
 
-	virtual ProtoList	  *asList(ProtoContext *context);
+	virtual ProtoList<ProtoObject> *asList(ProtoContext *context);
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long  getHash(ProtoContext *context);
 	virtual ProtoTupleIterator *getIterator(ProtoContext *context);
@@ -230,7 +230,7 @@ public:
 	virtual ProtoObject *next(ProtoContext *context);
 	virtual ProtoStringIterator *advance(ProtoContext *context);
 
-	virtual ProtoObject	  *asObject(ProtoContext *context);
+	virtual ProtoObject	*asObject(ProtoContext *context);
 
 };
 
@@ -259,36 +259,36 @@ public:
 	virtual ProtoString    *removeSlice(ProtoContext *context, int from, int to);
 
 	virtual ProtoObject	   *asObject(ProtoContext *context);
-	virtual ProtoList	   *asList(ProtoContext *context);
+	virtual ProtoList<ProtoObject> *asList(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
 	virtual ProtoStringIterator *getIterator(ProtoContext *context);
 
 };
 
-class ProtoSparseListIterator {
+template<class T> class ProtoSparseListIterator {
 public:
 	virtual int hasNext(ProtoContext *context);
-	virtual ProtoTuple *next(ProtoContext *context);
-	virtual ProtoSparseListIterator *advance(ProtoContext *context);
+	virtual unsigned long nextKey(ProtoContext *context);
+	virtual T* nextValue(ProtoContext *context);
+	virtual ProtoSparseListIterator<T> *advance(ProtoContext *context);
 
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual void finalize(ProtoContext *context);
-
 };
 
-class ProtoSparseList {
+template<class T> class ProtoSparseList {
 public:
-	virtual BOOLEAN			has(ProtoContext *context, unsigned long index);
-	virtual ProtoObject     *getAt(ProtoContext *context, unsigned long index);
-	virtual ProtoSparseList *setAt(ProtoContext *context, unsigned long index, ProtoObject *value = PROTO_NONE);
-	virtual ProtoSparseList *removeAt(ProtoContext *context, unsigned long index);
-	virtual int				isEqual(ProtoContext *context, ProtoSparseList *otherDict);
-	virtual ProtoObject     *getAtOffset(ProtoContext *context, int offset);
+	virtual BOOLEAN has(ProtoContext *context, unsigned long index);
+	virtual T* getAt(ProtoContext *context, unsigned long index);
+	virtual ProtoSparseList<T> *setAt(ProtoContext *context, unsigned long index, T* value = PROTO_NONE);
+	virtual ProtoSparseList<T> *removeAt(ProtoContext *context, unsigned long index);
+	virtual int isEqual(ProtoContext *context, ProtoSparseList *otherDict);
+	virtual T* getAtOffset(ProtoContext *context, int offset);
 
 	virtual unsigned long 	getSize(ProtoContext *context);
 	virtual ProtoObject	  *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
-	virtual ProtoSparseListIterator *getIterator(ProtoContext *context);
+	virtual ProtoSparseListIterator<T> *getIterator(ProtoContext *context);
 	
 	virtual void processElements (
 		ProtoContext *context,
@@ -328,7 +328,7 @@ public:
 class ProtoExternalPointer {
 public:
 	virtual void *getPointer(ProtoContext *context);
-	virtual ProtoObject	  *asObject(ProtoContext *context);
+	virtual ProtoObject *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
 	
 };
@@ -410,7 +410,7 @@ public:
 	virtual ProtoObject *getSelf(ProtoContext *context);
 	virtual ProtoMethod getMethod(ProtoContext *context);
 
-	virtual ProtoObject	  *asObject(ProtoContext *context);
+	virtual ProtoObject	*asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
 	
 	ProtoMethod	method;
@@ -426,7 +426,7 @@ public:
 	
 	unsigned long mutable_ref;
 	ParentLink	*parent;
-	ProtoSparseList  *attributes;
+	ProtoSparseList<ProtoObject>  *attributes;
 };
 
 class ProtoThread {
@@ -473,7 +473,7 @@ public:
 	// Constructors for base types, here to get the right context on invoke
 	ProtoObject 	*fromInteger(int value);
 	ProtoObject 	*fromDouble(double value);
-	ProtoTuple      *tupleFromList(ProtoList *list);
+	ProtoTuple      *tupleFromList(ProtoList<ProtoObject> *list);
 	ProtoObject 	*fromUTF8Char(const char *utf8OneCharString);
 	ProtoString 	*fromUTF8String(const char *zeroTerminatedUtf8String);
 	ProtoMethodCell		 	*fromMethod(ProtoObject *self, ProtoMethod method);
@@ -486,9 +486,9 @@ public:
 	ProtoObject     *fromTimestamp(unsigned long timestamp);
 	ProtoObject     *fromTimeDelta(long timedelta);
 
-	ProtoList		*newList();
-	ProtoTuple		*newTuple();
-	ProtoSparseList *newSparseList();
+	ProtoList<ProtoObject> *newList();
+	ProtoTuple *newTuple();
+	ProtoSparseList<ProtoObject> *newSparseList();
 
 	Cell 			*allocCell();
 
@@ -548,7 +548,7 @@ public:
 	void 		allocThread(ProtoContext *context, ProtoThread *thread);
 	void 		deallocThread(ProtoContext *context, ProtoThread *thread);
 
-	ProtoSparseList	 	*threads;
+	ProtoSparseList<ProtoObject> *threads;
 
 	Cell			 	*freeCells;
 	DirtySegment 		*dirtySegments;
@@ -563,7 +563,7 @@ public:
 	int					 blockOnNoMemory;
 
 	std::atomic<TupleDictionary *> tupleRoot;
-	std::atomic<ProtoSparseList *>  mutableRoot;
+	std::atomic<ProtoSparseList<ProtoObject> *>  mutableRoot;
 	std::atomic<BOOLEAN> mutableLock;
 	std::atomic<BOOLEAN> threadsLock;
 	std::atomic<BOOLEAN> gcLock;

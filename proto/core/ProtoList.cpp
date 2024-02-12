@@ -16,33 +16,33 @@ namespace proto {
 #define max(a, b) (((a) > (b))? (a):(b))
 #endif
 
-ProtoListIteratorImplementation::ProtoListIteratorImplementation(
+template<class T> ProtoListIteratorImplementation<T>::ProtoListIteratorImplementation(
 		ProtoContext *context,
-        ProtoListImplementation *base,
+        ProtoListImplementation<T> *base,
 		unsigned long currentIndex
 	) : Cell(context) {
     this->base = base;
 	this->currentIndex = currentIndex;
 };
 
-ProtoListIteratorImplementation::~ProtoListIteratorImplementation() {};
+template<class T> ProtoListIteratorImplementation<T>::~ProtoListIteratorImplementation() {};
 
-int ProtoListIteratorImplementation::hasNext(ProtoContext *context) {
+template<class T> int ProtoListIteratorImplementation<T>::hasNext(ProtoContext *context) {
     if (this->currentIndex >= this->base->getSize(context))
         return FALSE;
     else
         return TRUE;
 };
 
-ProtoObject *ProtoListIteratorImplementation::next(ProtoContext *context) {
+template<class T> T *ProtoListIteratorImplementation<T>::next(ProtoContext *context) {
     return this->base->getAt(context, this->currentIndex);
 };
 
-ProtoListIteratorImplementation *ProtoListIteratorImplementation::advance(ProtoContext *context) {
+template<class T> ProtoListIteratorImplementation<T> *ProtoListIteratorImplementation<T>::advance(ProtoContext *context) {
     return new(context) ProtoListIteratorImplementation(context, this->base, this->currentIndex);
 };
 
-ProtoObject	  *ProtoListIteratorImplementation::asObject(ProtoContext *context) {
+template<class T> ProtoObject *ProtoListIteratorImplementation<T>::asObject(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
     p.op.pointer_tag = POINTER_TAG_LIST_ITERATOR;
@@ -50,9 +50,9 @@ ProtoObject	  *ProtoListIteratorImplementation::asObject(ProtoContext *context) 
     return p.oid.oid;
 };
 
-void ProtoListIteratorImplementation::finalize(ProtoContext *context) {};
+template<class T> void ProtoListIteratorImplementation<T>::finalize(ProtoContext *context) {};
 
-void ProtoListIteratorImplementation::processReferences(
+template<class T> void ProtoListIteratorImplementation<T>::processReferences(
 		ProtoContext *context,
 		void *self,
 		void (*method) (
@@ -67,12 +67,12 @@ void ProtoListIteratorImplementation::processReferences(
 };
 
 
-ProtoListImplementation::ProtoListImplementation(
+template<class T> ProtoListImplementation<T>::ProtoListImplementation(
     ProtoContext *context,
 
     ProtoObject *newValue,
-    ProtoListImplementation *newPrevious,
-    ProtoListImplementation *newNext
+    ProtoListImplementation<T> *newPrevious,
+    ProtoListImplementation<T> *newNext
 ) : Cell(context) {
     this->value = newValue;
     this->previous = newPrevious;
@@ -91,11 +91,10 @@ ProtoListImplementation::ProtoListImplementation(
 
 };
 
-ProtoListImplementation::~ProtoListImplementation() {
+template<class T> ProtoListImplementation<T>::~ProtoListImplementation() {};
 
-};
-
-int getBalance(ProtoListImplementation *self) {
+template<class T> 
+int getBalance(ProtoListImplementation<T> *self) {
     if (!self) {
         return 0;
     }
@@ -114,17 +113,19 @@ int getBalance(ProtoListImplementation *self) {
 
 // A utility function to right rotate subtree rooted with y
 // See the diagram given above.
-ProtoListImplementation *rightRotate(ProtoContext *context, ProtoListImplementation *n) {
+
+template<class T> 
+ProtoListImplementation<T> *rightRotate(ProtoContext *context, ProtoListImplementation<T> *n) {
     if (!n->previous)
         return n;
 
-    ProtoListImplementation *newRight = new(context) ProtoListImplementation(
+    ProtoListImplementation *newRight = new(context) ProtoListImplementation<T>(
         context,
         n->value,
         n->previous->next,
         n->next
     );
-    return new(context) ProtoListImplementation(
+    return new(context) ProtoListImplementation<T>(
         context,
         n->previous->value,
         n->previous->previous,
@@ -134,7 +135,8 @@ ProtoListImplementation *rightRotate(ProtoContext *context, ProtoListImplementat
 
 // A utility function to left rotate subtree rooted with x
 // See the diagram given above.
-ProtoListImplementation *leftRotate(ProtoContext *context, ProtoListImplementation *n) {
+template<class T> 
+ProtoListImplementation<T> *leftRotate(ProtoContext *context, ProtoListImplementation<T> *n) {
     if (!n->next)
         return n;
 
@@ -152,7 +154,8 @@ ProtoListImplementation *leftRotate(ProtoContext *context, ProtoListImplementati
     );
 }
 
-ProtoListImplementation *rebalance(ProtoContext *context, ProtoListImplementation *newNode) {
+template<class T> 
+ProtoListImplementation<T> *rebalance(ProtoContext *context, ProtoListImplementation<T> *newNode) {
     while (TRUE) {
         int balance = getBalance(newNode);
 
@@ -205,7 +208,8 @@ ProtoListImplementation *rebalance(ProtoContext *context, ProtoListImplementatio
     }
 }
 
-ProtoObject *ProtoListImplementation::getAt(ProtoContext *context, int index) {
+template<class T> 
+T *ProtoListImplementation<T>::getAt(ProtoContext *context, int index) {
 	if (!this->value) {
 		return PROTO_NONE;
     }
@@ -220,7 +224,7 @@ ProtoObject *ProtoListImplementation::getAt(ProtoContext *context, int index) {
         return PROTO_NONE;
     }
 
-    ProtoListImplementation *node = this;
+    ProtoListImplementation<T> *node = this;
 	while (node) {
         unsigned long thisIndex = node->previous? node->previous->count : 0;
 		if (((unsigned long) index) == thisIndex)
@@ -239,15 +243,18 @@ ProtoObject *ProtoListImplementation::getAt(ProtoContext *context, int index) {
         return PROTO_NONE;
 };
 
-ProtoObject *ProtoListImplementation::getFirst(ProtoContext *context) {
+template<class T> 
+T *ProtoListImplementation<T>::getFirst(ProtoContext *context) {
     return this->getAt(context, 0);
 };
 
-ProtoObject *ProtoListImplementation::getLast(ProtoContext *context) {
+template<class T> 
+T *ProtoListImplementation<T>::getLast(ProtoContext *context) {
     return this->getAt(context, -1);
 };
 
-ProtoListImplementation *ProtoListImplementation::getSlice(ProtoContext *context, int from, int to) {
+template<class T> 
+ProtoListImplementation<T> *ProtoListImplementation<T>::getSlice(ProtoContext *context, int from, int to) {
     if (from < 0) {
         from = this->count + from;
         if (from < 0)
@@ -268,11 +275,13 @@ ProtoListImplementation *ProtoListImplementation::getSlice(ProtoContext *context
         return new(context) ProtoListImplementation(context);
 };
 
-unsigned long ProtoListImplementation::getSize(ProtoContext *context) {
+template<class T> 
+unsigned long ProtoListImplementation<T>::getSize(ProtoContext *context) {
     return this->count;
 };
 
-BOOLEAN	ProtoListImplementation::has(ProtoContext *context, ProtoObject* value) {
+template<class T> 
+BOOLEAN	ProtoListImplementation<T>::has(ProtoContext *context, T *value) {
     for (unsigned long i=0; i <= this->count; i++)
         if (this->getAt(context, i) == value)
             return TRUE;
@@ -280,7 +289,8 @@ BOOLEAN	ProtoListImplementation::has(ProtoContext *context, ProtoObject* value) 
     return FALSE;
 };
 
-ProtoListImplementation *ProtoListImplementation::setAt(ProtoContext *context, int index, ProtoObject* value) {
+template<class T> 
+ProtoListImplementation<T> *ProtoListImplementation<T>::setAt(ProtoContext *context, int index, T *value) {
 	if (!this->value) {
 		return NULL;
     }
@@ -321,9 +331,10 @@ ProtoListImplementation *ProtoListImplementation::setAt(ProtoContext *context, i
         );
 };
 
-ProtoListImplementation *ProtoListImplementation::insertAt(ProtoContext *context, int index, ProtoObject* value) {
+template<class T> 
+ProtoListImplementation<T> *ProtoListImplementation<T>::insertAt(ProtoContext *context, int index, T* value) {
 	if (!this->value)
-		return new(context) ProtoListImplementation(
+		return new(context) ProtoListImplementation<T>(
             context,
             value
         );
@@ -341,7 +352,7 @@ ProtoListImplementation *ProtoListImplementation::insertAt(ProtoContext *context
     ProtoListImplementation *newNode;
 
     if (thisIndex == ((unsigned long) index))
-        newNode = new(context) ProtoListImplementation(
+        newNode = new(context) ProtoListImplementation<T>(
             context,
             value,
             this->previous,
@@ -349,14 +360,14 @@ ProtoListImplementation *ProtoListImplementation::insertAt(ProtoContext *context
         );
     else {
         if (((unsigned long) index) < thisIndex)
-            newNode = new(context) ProtoListImplementation(
+            newNode = new(context) ProtoListImplementation<T>(
                 context,
                 value,
                 this->previous->insertAt(context, index, value),
                 this->next
             );
         else
-            newNode = new(context) ProtoListImplementation(
+            newNode = new(context) ProtoListImplementation<T>(
                 context,
                 value,
                 this->previous,
@@ -367,7 +378,8 @@ ProtoListImplementation *ProtoListImplementation::insertAt(ProtoContext *context
     return rebalance(context, newNode);
 };
 
-ProtoListImplementation *ProtoListImplementation::appendFirst(ProtoContext *context, ProtoObject* value) {
+template<class T> 
+ProtoListImplementation<T> *ProtoListImplementation<T>::appendFirst(ProtoContext *context, T *value) {
 	if (!this->value)
 		return new(context) ProtoListImplementation(
             context,
@@ -399,9 +411,10 @@ ProtoListImplementation *ProtoListImplementation::appendFirst(ProtoContext *cont
 
 };
 
-ProtoListImplementation *ProtoListImplementation::appendLast(ProtoContext *context, ProtoObject* value) {
+template<class T> 
+ProtoListImplementation<T> *ProtoListImplementation<T>::appendLast(ProtoContext *context, T *value) {
 	if (!this->value)
-		return new(context) ProtoListImplementation(
+		return new(context) ProtoListImplementation<T>(
             context,
             value
         );
@@ -409,7 +422,7 @@ ProtoListImplementation *ProtoListImplementation::appendLast(ProtoContext *conte
     ProtoListImplementation *newNode;
 
     if (this->next) {
-        newNode = new(context) ProtoListImplementation(
+        newNode = new(context) ProtoListImplementation<T>(
             context,
             this->value,
             this->previous,
@@ -417,7 +430,7 @@ ProtoListImplementation *ProtoListImplementation::appendLast(ProtoContext *conte
         );
     }
     else {
-        newNode = new(context) ProtoListImplementation(
+        newNode = new(context) ProtoListImplementation<T>(
             context,
             this->value,
             this->previous,
@@ -431,7 +444,8 @@ ProtoListImplementation *ProtoListImplementation::appendLast(ProtoContext *conte
     return rebalance(context, newNode);
 };
 
-ProtoListImplementation *ProtoListImplementation::extend(ProtoContext *context, ProtoList *other) {
+template<class T> 
+ProtoListImplementation<T> *ProtoListImplementation<T>::extend(ProtoContext *context, ProtoList<T> *other) {
     if (this->count == 0)
         return (ProtoListImplementation *) other;
 
@@ -460,7 +474,8 @@ ProtoListImplementation *ProtoListImplementation::extend(ProtoContext *context, 
             ));
 };
 
-ProtoListImplementation *ProtoListImplementation::splitFirst(ProtoContext *context, int index) {
+template<class T> 
+ProtoListImplementation<T> *ProtoListImplementation<T>::splitFirst(ProtoContext *context, int index) {
 	if (!this->value)
         return this;
 
@@ -513,7 +528,8 @@ ProtoListImplementation *ProtoListImplementation::splitFirst(ProtoContext *conte
     return rebalance(context, newNode);
 };
 
-ProtoListImplementation *ProtoListImplementation::splitLast(ProtoContext *context, int index) {
+template<class T> 
+ProtoListImplementation<T> *ProtoListImplementation<T>::splitLast(ProtoContext *context, int index) {
 	if (!this->value)
         return this;
 
@@ -570,7 +586,8 @@ ProtoListImplementation *ProtoListImplementation::splitLast(ProtoContext *contex
     return rebalance(context, newNode);
 };
 
-ProtoListImplementation *ProtoListImplementation::removeFirst(ProtoContext *context) {
+template<class T> 
+ProtoListImplementation<T> *ProtoListImplementation<T>::removeFirst(ProtoContext *context) {
 	if (!this->value)
         return this;
 
@@ -602,7 +619,8 @@ ProtoListImplementation *ProtoListImplementation::removeFirst(ProtoContext *cont
     return rebalance(context, newNode);
 };
 
-ProtoListImplementation *ProtoListImplementation::removeLast(ProtoContext *context) {
+template<class T> 
+ProtoListImplementation<T> *ProtoListImplementation<T>::removeLast(ProtoContext *context) {
 	if (!this->value)
         return this;
 
@@ -635,7 +653,8 @@ ProtoListImplementation *ProtoListImplementation::removeLast(ProtoContext *conte
 
 };
 
-ProtoListImplementation *ProtoListImplementation::removeAt(ProtoContext *context, int index) {
+template<class T> 
+ProtoListImplementation<T> *ProtoListImplementation<T>::removeAt(ProtoContext *context, int index) {
 	if (!this->value) {
 		return new(context) ProtoListImplementation(
             context
@@ -698,7 +717,8 @@ ProtoListImplementation *ProtoListImplementation::removeAt(ProtoContext *context
 
 };
 
-ProtoListImplementation *ProtoListImplementation::removeSlice(ProtoContext *context, int from, int to) {
+template<class T> 
+ProtoListImplementation<T> *ProtoListImplementation<T>::removeSlice(ProtoContext *context, int from, int to) {
     if (from < 0) {
         from = this->count + from;
         if (from < 0)
@@ -724,11 +744,13 @@ ProtoListImplementation *ProtoListImplementation::removeSlice(ProtoContext *cont
     return slice;
 };
 
-ProtoTuple *ProtoListImplementation::asTuple(ProtoContext *context) {
+template<class T> 
+ProtoTuple<T> *ProtoListImplementation<T>::asTuple(ProtoContext *context) {
     return ProtoTupleImplementation::tupleFromList(context, this);
 };
 
-ProtoObject *ProtoListImplementation::asObject(ProtoContext *context) {
+template<class T> 
+ProtoObject *ProtoListImplementation<T>::asObject(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
     p.op.pointer_tag = POINTER_TAG_LIST;
@@ -736,20 +758,24 @@ ProtoObject *ProtoListImplementation::asObject(ProtoContext *context) {
     return p.oid.oid;
 };
 
-unsigned long ProtoListImplementation::getHash(ProtoContext *context) {
+template<class T> 
+unsigned long ProtoListImplementation<T>::getHash(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
 
     return p.asHash.hash;
 };
 
-ProtoListIteratorImplementation *ProtoListImplementation::getIterator(ProtoContext *context) {
+template<class T> 
+ProtoListIteratorImplementation<T> *ProtoListImplementation<T>::getIterator(ProtoContext *context) {
     return new(context) ProtoListIteratorImplementation(context, NULL, 0);
 }
 
-void ProtoListImplementation::finalize(ProtoContext *context) {};
+template<class T> 
+void ProtoListImplementation<T>::finalize(ProtoContext *context) {};
 
-void ProtoListImplementation::processReferences(
+template<class T> 
+void ProtoListImplementation<T>::processReferences(
     ProtoContext *context,
     void *self,
     void (*method) (

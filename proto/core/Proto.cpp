@@ -83,7 +83,7 @@ ProtoObject *ProtoObject::clone(ProtoContext *context, BOOLEAN isMutable) {
         ))->asObject(context);
 
         if (isMutable) {
-            ProtoSparseList *currentRoot;
+            ProtoSparseList<ProtoObject> *currentRoot;
             int randomId = 0;
             do {
                 currentRoot = context->space->mutableRoot.load();
@@ -131,7 +131,7 @@ ProtoObject *ProtoObject::newChild(ProtoContext *context, BOOLEAN isMutable) {
         ))->asObject(context);
 
         if (isMutable) {
-            ProtoSparseList *currentRoot;
+            ProtoSparseList<ProtoObject> *currentRoot;
             int randomId = 0;
             do {
                 currentRoot = context->space->mutableRoot.load();
@@ -183,7 +183,7 @@ ProtoObject *ProtoObject::getAttribute(ProtoContext *context, ProtoString *name)
     }
 
     if (this->hasAttribute(context, context->space->literalGetAttribute)) {
-        ProtoList *parameters = context->newList();
+        ProtoList<ProtoObject> *parameters = context->newList();
 
         return this->call(
             context,
@@ -229,7 +229,7 @@ ProtoObject *ProtoObject::setAttribute(ProtoContext *context, ProtoString *name,
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
         ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid, *inmutableBase = NULL;
-        ProtoSparseList *currentRoot, *newRoot;
+        ProtoSparseList<ProtoObject> *currentRoot, *newRoot;
         if (oc->mutable_ref) {
             inmutableBase = oc;
             currentRoot = context->space->mutableRoot.load();
@@ -274,7 +274,7 @@ ProtoObject *ProtoObject::hasOwnAttribute(ProtoContext *context, ProtoString *na
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
         ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
-        ProtoSparseList *currentRoot;
+        ProtoSparseList<ProtoObject> *currentRoot;
         if (oc->mutable_ref) {
             currentRoot = context->space->mutableRoot.load();
             oc = (ProtoObjectCell *) currentRoot->getAt(context, oc->mutable_ref);
@@ -286,31 +286,32 @@ ProtoObject *ProtoObject::hasOwnAttribute(ProtoContext *context, ProtoString *na
     return PROTO_FALSE;
 };
 
-ProtoSparseList *ProtoObject::getAttributes(ProtoContext *context) {
+ProtoSparseList<ProtoObject> *ProtoObject::getAttributes(ProtoContext *context) {
     ProtoObjectPointer pa;
 
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
         ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
-        ProtoSparseList *currentRoot = NULL;
+        ProtoSparseList<ProtoObject> *currentRoot = NULL;
         if (oc->mutable_ref) {
             currentRoot = context->space->mutableRoot.load();
             oc = (ProtoObjectCellImplementation *) currentRoot->getAt(context, oc->mutable_ref);
         }
 
-        ProtoSparseList *attributes = context->newSparseList();
+        ProtoSparseList<ProtoObject> *attributes = context->newSparseList();
 
         while (oc) {
-            ProtoSparseListIterator *ai;
+            ProtoSparseListIterator<ProtoObject> *ai;
 
             ai = oc->attributes->getIterator(context);
             while (ai->hasNext(context)) {
-                ProtoTuple *tuple = ai->next(context);
+                unsigned long key = ai->nextKey(context);
+                ProtoObject* value = ai->nextValue(context);
                 attributes = attributes->setAt(
                     context, 
-                    tuple->getAt(context, 0)->asInteger(),
-                    tuple->getAt(context, 1)
+                    key,
+                    value
                 );
                 ai = ai->advance(context);
             }
@@ -327,7 +328,7 @@ ProtoSparseList *ProtoObject::getAttributes(ProtoContext *context) {
     return NULL;
 };
 
-ProtoSparseList *ProtoObject::getOwnAttributes(ProtoContext *context) {
+ProtoSparseList<ProtoObject> *ProtoObject::getOwnAttributes(ProtoContext *context) {
     ProtoObjectPointer pa;
 
     pa.oid.oid = this;
@@ -346,13 +347,13 @@ ProtoSparseList *ProtoObject::getOwnAttributes(ProtoContext *context) {
     return NULL;
 };
 
-ProtoList *ProtoObject::getParents(ProtoContext *context) {
+ProtoList<ProtoObject> *ProtoObject::getParents(ProtoContext *context) {
     ProtoObjectPointer pa;
 
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoList *parents = new(context) ProtoListImplementation(context);
+        ProtoList<ProtoObject> *parents = new(context) ProtoListImplementation<ProtoObject>(context);
 
         ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
         ParentLinkImplementation *parent = (ParentLinkImplementation *) oc->parent;
@@ -366,7 +367,7 @@ ProtoList *ProtoObject::getParents(ProtoContext *context) {
 };
 
 void processTail(ProtoContext *context, 
-                 ProtoSparseList **existingParents, 
+                 ProtoSparseList<ProtoObject> **existingParents, 
                  ParentLinkImplementation *currentParent,
                  ParentLinkImplementation **newParentLink) {
 
@@ -388,7 +389,7 @@ ProtoObject *ProtoObject::addParent(ProtoContext *context, ProtoObjectCell *newP
 
     pa.oid.oid = this;
 
-    ProtoSparseList *existingParents = context->newSparseList();
+    ProtoSparseList<ProtoObject> *existingParents = context->newSparseList();
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
         ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
@@ -443,8 +444,8 @@ ProtoObject *ProtoObject::call(
     ParentLink *nextParent,
     ProtoString *methodName,
     ProtoObject *self,
-    ProtoList *unnamedParametersList,
-    ProtoSparseList *keywordParametersDict
+    ProtoList<ProtoObject> *unnamedParametersList,
+    ProtoSparseList<ProtoObject> *keywordParametersDict
 ) {
     ProtoObjectPointer pa;
 
