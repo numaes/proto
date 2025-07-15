@@ -5,7 +5,7 @@
  *      Author: gamarino
  */
 
-#include "../headers/proto internal.h"
+#include "../headers/proto_internal.h"
 #include <string.h>
 
 using namespace std;
@@ -119,7 +119,7 @@ ProtoListImplementation<T> *rightRotate(ProtoContext *context, ProtoListImplemen
     if (!n->previous)
         return n;
 
-    ProtoListImplementation *newRight = new(context) ProtoListImplementation<T>(
+    ProtoListImplementation<T> *newRight = new(context) ProtoListImplementation<T>(
         context,
         n->value,
         n->previous->next,
@@ -140,7 +140,7 @@ ProtoListImplementation<T> *leftRotate(ProtoContext *context, ProtoListImplement
     if (!n->next)
         return n;
 
-    ProtoListImplementation *newLeft = new(context) ProtoListImplementation(
+    ProtoListImplementation<T> *newLeft = new(context) ProtoListImplementation<T>(
         context,
         n->value,
         n->previous,
@@ -745,7 +745,7 @@ ProtoListImplementation<T> *ProtoListImplementation<T>::removeSlice(ProtoContext
 };
 
 template<class T> 
-ProtoTuple<T> *ProtoListImplementation<T>::asTuple(ProtoContext *context) {
+ProtoTuple *ProtoListImplementation<T>::asTuple(ProtoContext *context) {
     return ProtoTupleImplementation::tupleFromList(context, this);
 };
 
@@ -767,7 +767,7 @@ unsigned long ProtoListImplementation<T>::getHash(ProtoContext *context) {
 };
 
 template<class T> 
-ProtoListIteratorImplementation<T> *ProtoListImplementation<T>::getIterator(ProtoContext *context) {
+ProtoListIterator<T> *ProtoListImplementation<T>::getIterator(ProtoContext *context) {
     return new(context) ProtoListIteratorImplementation(context, NULL, 0);
 }
 

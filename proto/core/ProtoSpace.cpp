@@ -5,7 +5,7 @@
  *      Author: gamarino
  */
 
-#include "../headers/proto internal.h"
+#include "../headers/proto_internal.h"
 
 #include <malloc.h>
 #include <stdio.h>
@@ -35,7 +35,7 @@ void gcCollectCells(ProtoContext *context, void *self, Cell *value) {
      ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) value;
 
-    ProtoSparseListImplementation *cellSet = new(context) ProtoSparseListImplementation(context);
+    ProtoSparseListImplementation<ProtoObject> *cellSet = new(context) ProtoSparseListImplementation<ProtoObject>(context);
 
     // Go further in the scanning only if it is a cell and the cell belongs to current context!
     if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
@@ -51,7 +51,7 @@ void gcCollectObjects(ProtoContext *context, void *self, ProtoObject *value) {
      ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) value;
 
-    ProtoSparseListImplementation *cellSet = new(context) ProtoSparseListImplementation(context);
+    ProtoSparseListImplementation<ProtoObject> *cellSet = new(context) ProtoSparseListImplementation<ProtoObject>(context);
 
     // Go further in the scanning only if it is a cell and the cell belongs to current context!
     if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
@@ -129,10 +129,10 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
 
     // cellSet: a set of all referenced Cells
 
-    ProtoSparseListImplementation *cellSet = new(context) ProtoSparseListImplementation(context);
+    ProtoSparseListImplementation<ProtoObject> *cellSet = new(context) ProtoSparseListImplementation<ProtoObject>(context);
 
     // Add all mutables to cellSet
-    ((ProtoSparseList *) space->mutableRoot.load())->processValues(
+    ((ProtoSparseList<ProtoObject> *) space->mutableRoot.load())->processValues(
         &gcContext,
         &cellSet,
         gcCollectObjects
@@ -150,7 +150,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
             Cell * currentCell = currentContext->lastAllocatedCell;
             while (currentCell) {
                 if (! cellSet->has(context, currentCell->getHash(context))) {
-                    cellSet = cellSet->setAt(context, currentCell->getHash(context));
+                    cellSet = cellSet->setAt(context, currentCell->getHash(context), PROTO_NONE);
                 }
 
                 currentCell = currentCell->nextCell;
@@ -163,7 +163,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
                      n > 0;
                      n--) {
                     if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
-                            cellSet = cellSet->setAt(context, p.asHash.hash);
+                            cellSet = cellSet->setAt(context, p.asHash.hash, PROTO_NONE);
                     }
                 }
             }
@@ -262,12 +262,12 @@ ProtoSpace::ProtoSpace(
     this->threads = creationContext->newSparseList();
     this->tupleRoot = ProtoTupleImplementation::createTupleRoot(creationContext);
     
-    ProtoList *mainParameters = creationContext->newList();
+    ProtoList<ProtoObject> *mainParameters = creationContext->newList();
     mainParameters = mainParameters->appendLast(
         creationContext,
         creationContext->fromInteger(argc)
     );
-    ProtoList *argvList = creationContext->newList();
+    ProtoList<ProtoObject> *argvList = creationContext->newList();
     if (argc && argv) {
         for (int i; i < argc; i++)
             argvList = argvList->appendLast(
@@ -284,7 +284,7 @@ ProtoSpace::ProtoSpace(
     this->mutableLock.store(FALSE);
     this->threadsLock.store(FALSE);
     this->gcLock.store(FALSE);
-    this->mutableRoot.store(new(creationContext) ProtoSparseListImplementation(creationContext));
+    this->mutableRoot.store(new(creationContext) ProtoSparseListImplementation<ProtoObject>(creationContext));
 
     this->maxAllocatedCellsPerContext = MAX_ALLOCATED_CELLS_PER_CONTEXT;
     this->blocksPerAllocation = BLOCKS_PER_ALLOCATION;
@@ -321,7 +321,7 @@ ProtoSpace::ProtoSpace(
 };
 
 void scanThreads(ProtoContext *context, void *self, ProtoObject *value) {
-    ProtoList **threadList = (ProtoList **) self;
+    ProtoList<ProtoObject> **threadList = (ProtoList<ProtoObject> **) self;
 
     *threadList = (*threadList)->appendLast(context, value);
 }

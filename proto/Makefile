@@ -10,10 +10,10 @@
 SUBDIRECTORIES := core header
 
 # make sure the subdirectories are mirrored in
-# the obj/ debug/ and depend/ directories
-# (HACK: use this dummy variable to get access to shell commands)
-SHELL_HACK := $(shell mkdir -p bin lib include)
-SHELL_HACK := $(shell mkdir -p obj debug depend)
+# the obj/ and debug/ directories
+DIRS := bin lib include obj debug
+# use this dummy variable to get access to shell commands
+SHELL_HACK := $(shell mkdir -p $(DIRS))
 
 # +----------+
 # | Platform |
@@ -30,11 +30,11 @@ PLATFORM := $(shell uname)
 # *********--+
 # | Programs |
 # +----------+
-CPP11_FLAGS := -std=c++20
+CXX_STANDARD_FLAGS := -std=c++20
 CC  := gcc
 CXX := g++
 ifeq ($(PLATFORM),Darwin) # on mac
-    CPP11_FLAGS := $(CPP11_FLAGS) -stdlib=libc++ -Wno-c++11-extensions
+    CXX_STANDARD_FLAGS := $(CXX_STANDARD_FLAGS) -stdlib=libc++ -Wno-c++11-extensions
 endif
 RM  := rm
 CP  := cp
@@ -57,9 +57,9 @@ INC       := -I headers/
 # PROFILING := -pg
 PROFILING :=
 CCFLAGS   := -Wall $(INC) $(CONFIG) -O2 -DNDEBUG $(PROFILING)
-CXXFLAGS  := $(CCFLAGS) $(CPP11_FLAGS)
+CXXFLAGS  := $(CCFLAGS) $(CXX_STANDARD_FLAGS) -MMD -MP
 CCDFLAGS  := $(INC) $(CONFIG) -ggdb 
-CXXDFLAGS := $(CCDFLAGS) $(CPP11_FLAGS)
+CXXDFLAGS := $(CCDFLAGS) $(CXX_STANDARD_FLAGS) -MMD -MP
 
 LINK         := -Wall $(INC) $(CONFIG) -O2 -DNDEBUG $(PROFILING)
 LINKD        := -Wall $(INC) $(CONFIG) -ggdb 
@@ -92,13 +92,7 @@ HEADER_COPIES     := $(addprefix include/,$(HEADERS))
 # +-----------------------------+
 MAIN_SRC := test_proto
 
-# +---------------------------------------+
-# | all sources for dependency generation |
-# +---------------------------------------+
-ALL_SRCS := \
-    $(SRCS) $(MAIN_SRC)
 
-DEPENDS := $(addprefix depend/,$(addsuffix .d,$(SRCS)))
 
 # +--------------------------------+
 # | Object Aggregation for Targets |
@@ -131,9 +125,13 @@ debug/test_proto.o: test/test_proto.cpp
 	@echo "Compiling for debug $@"
 	@$(CXX) $(CXXDFLAGS) -o $@ -c $<
 
-bin/test_proto: $(MAIN_DEBUG) headers/proto.h debug/test_proto.o $(DEBUG)
+bin/test_proto: $(MAIN_DEBUG) headers/proto.h debug/test_proto.o lib/lib$(LIB_TARGET_NAME)-debug.a
 	@echo "Linking test_proto command line tool"
-	@$(CXX) -o bin/test_proto -lpthread -pthread $(LINKD) debug/test_proto.o $(DEBUG)
+	@$(CXX) -o bin/test_proto -lpthread -pthread $(LINKD) debug/test_proto.o lib/lib$(LIB_TARGET_NAME)-debug.a
+
+test: bin/test_proto
+	@echo "Running test suite"
+	@./bin/test_proto
 
 # +------------------------------+
 # | Specialized File Build Rules |
@@ -151,28 +149,24 @@ debug/%.o: core/%.cpp
 	@echo "Compiling for debug $@"
 	@$(CXX) $(CXXDFLAGS) -o $@ -c $<
 
-# dependency file build rules
-depend/%.d: $(addprefix core/,$(addsuffix .cpp,$(SRCS)))
-	@$(CXX) $(CXXFLAGS) -MM $< | \
-        sed -e 's@^\(.*\)\.o:@depend/$*.d debug/$*.o obj/$*.o:@' > $@
+
 
 # +-------------------+
 # | include copy rule |
 # +-------------------+
 includes: $(HEADER_COPIES)
 
-include/%.h: $(addprefix headers/,$(HEADER_COPIES))
+include/%.h: headers/%.h
 	@echo "updating header $@"
 	@cp $< $@
+
+-include $(OBJ:.o=.d) $(DEBUG:.o=.d) debug/test_proto.d
 
 # +---------------+
 # | cleaning rule |
 # +---------------+
 clean:
-	-@$(RM) -r obj depend debug include bin lib
-	-@$(RM) bin/test_proto
-	-@$(RM) lib/lib$(LIB_TARGET_NAME).a
-	-@$(RM) lib/lib$(LIB_TARGET_NAME)-debug.a
+	-@$(RM) -r obj debug include bin lib
 
--include $(DEPENDS)
+
 

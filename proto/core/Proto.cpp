@@ -6,7 +6,7 @@
  */
 
 #include <random>
-#include "../headers/proto internal.h"
+#include "../headers/proto_internal.h"
 
 
 using namespace std;

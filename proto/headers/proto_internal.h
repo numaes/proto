@@ -253,7 +253,7 @@ public:
 
 template<class T> class ProtoListImplementation;
 
-template<class T> class ProtoListIteratorImplementation: public Cell {
+template<class T> class ProtoListIteratorImplementation: public Cell, public ProtoListIterator<T> {
 public:
 	ProtoListIteratorImplementation(
 		ProtoContext *context,
@@ -319,10 +319,10 @@ public:
 	virtual ProtoListImplementation<T> *removeAt(ProtoContext *context, int index);
 	virtual ProtoListImplementation<T> *removeSlice(ProtoContext *context, int from, int to);
 
-	virtual ProtoTuple<T> *asTuple(ProtoContext *context);
+	virtual ProtoTuple *asTuple(ProtoContext *context);
 	virtual ProtoObject	*asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
-	virtual ProtoListIteratorImplementation<T> *getIterator(ProtoContext *context);
+	virtual ProtoListIterator<T> *getIterator(ProtoContext *context);
 
 	virtual void finalize(ProtoContext *context);
 
@@ -575,7 +575,7 @@ public:
 };
 
 template<class T>
-class ProtoSparseListImplementation: public Cell, public ProtoSparseList {
+class ProtoSparseListImplementation: public Cell, public ProtoSparseList<ProtoObject> {
 public:
 	ProtoSparseListImplementation(
 		ProtoContext *context,

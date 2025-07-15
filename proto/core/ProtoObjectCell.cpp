@@ -5,7 +5,7 @@
  *      Author: gamarino
  */
 
-#include "../headers/proto internal.h"
+#include "../headers/proto_internal.h"
 
 namespace proto {
 
@@ -13,7 +13,7 @@ ProtoObjectCellImplementation::ProtoObjectCellImplementation(
 	ProtoContext *context,
 	ParentLinkImplementation	*parent,
 	unsigned long mutable_ref,
-	ProtoSparseListImplementation *attributes
+	ProtoSparseListImplementation<ProtoObject> *attributes
 ) : Cell(context) {
 	this->parent = parent;
 	this->mutable_ref = mutable_ref;

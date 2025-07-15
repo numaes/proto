@@ -6,7 +6,7 @@
  */
 
 
-#include "../headers/proto internal.h"
+#include "../headers/proto_internal.h"
 
 #include <malloc.h>
 #include <thread>
@@ -164,8 +164,8 @@ ProtoObject *ProtoContext::fromUTF8Char(const char *utf8OneCharString) {
     return p.oid.oid; 
 };
 
-ProtoList *ProtoContext::newList() {
-    ProtoList *list = new(this) ProtoListImplementation(this);
+ProtoList<ProtoObject> *ProtoContext::newList() {
+    ProtoList<ProtoObject> *list = new(this) ProtoListImplementation<ProtoObject>(this);
     return list;
 }
 
@@ -174,14 +174,14 @@ ProtoTuple *ProtoContext::newTuple() {
     return tuple;
 }
 
-ProtoSparseList *ProtoContext::newSparseList() {
-    ProtoSparseList *sparseList = new(this) ProtoSparseListImplementation(this);
+ProtoSparseList<ProtoObject> *ProtoContext::newSparseList() {
+    ProtoSparseList<ProtoObject> *sparseList = new(this) ProtoSparseListImplementation<ProtoObject>(this);
     return sparseList;
 }
 
 ProtoString *ProtoContext::fromUTF8String(const char *zeroTerminatedUtf8String) {
     const char *currentChar = zeroTerminatedUtf8String;
-    ProtoList *string = this->newList();
+    ProtoList<ProtoObject> *string = this->newList();
 
     while (*currentChar) {
         ProtoObject *oneChar = this->fromUTF8Char(currentChar);

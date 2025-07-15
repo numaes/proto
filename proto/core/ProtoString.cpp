@@ -5,7 +5,7 @@
  *      Author: gamarino
  */
 
-#include "../headers/proto internal.h"
+#include "../headers/proto_internal.h"
 #include <string.h>
 
 using namespace std;
@@ -95,7 +95,7 @@ ProtoStringImplementation *ProtoStringImplementation::getSlice(ProtoContext *con
             to = 0;
     }
 
-    ProtoList *sourceList = context->newList();
+    ProtoList<ProtoObject> *sourceList = context->newList();
     for (int i = from; i <= to; i++)
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
@@ -125,7 +125,7 @@ ProtoStringImplementation *ProtoStringImplementation::setAt(ProtoContext *contex
         return NULL;
     }
 
-    ProtoList *sourceList = context->newList();
+    ProtoList<ProtoObject> *sourceList = context->newList();
     for (int i = 0; i < index; i++)
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
@@ -157,7 +157,7 @@ ProtoStringImplementation *ProtoStringImplementation::insertAt(ProtoContext *con
         return NULL;
     }
 
-    ProtoList *sourceList = context->newList();
+    ProtoList<ProtoObject> *sourceList = context->newList();
     for (int i = 0; i < index; i++)
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
@@ -189,7 +189,7 @@ ProtoStringImplementation *ProtoStringImplementation::setAtString(ProtoContext *
         return NULL;
     }
 
-    ProtoList *sourceList = context->newList();
+    ProtoList<ProtoObject> *sourceList = context->newList();
     for (int i = 0; i < index; i++)
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
@@ -222,7 +222,7 @@ ProtoStringImplementation *ProtoStringImplementation::insertAtString(ProtoContex
         return NULL;
     }
 
-    ProtoList *sourceList = context->newList();
+    ProtoList<ProtoObject> *sourceList = context->newList();
     for (int i = 0; i < index; i++)
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
@@ -245,7 +245,7 @@ ProtoStringImplementation *ProtoStringImplementation::appendFirst(ProtoContext *
 
     int thisSize = this->baseTuple->getSize(context);
 
-    ProtoList *sourceList = context->newList();
+    ProtoList<ProtoObject> *sourceList = context->newList();
     int otherSize = otherString->getSize(context);
     for (int i = 0; i < otherSize; i++)
         sourceList = sourceList->appendLast(context, this->getAt(context, i));
@@ -265,7 +265,7 @@ ProtoStringImplementation *ProtoStringImplementation::appendLast(ProtoContext *c
 
     int thisSize = this->baseTuple->getSize(context);
 
-    ProtoList *sourceList = context->newList();
+    ProtoList<ProtoObject> *sourceList = context->newList();
     for (int i = 0; i < thisSize; i++)
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
@@ -281,7 +281,7 @@ ProtoStringImplementation *ProtoStringImplementation::appendLast(ProtoContext *c
 ProtoStringImplementation *ProtoStringImplementation::splitFirst(ProtoContext *context, int count) {
     int thisSize = this->baseTuple->getSize(context);
 
-    ProtoList *sourceList = context->newList();
+    ProtoList<ProtoObject> *sourceList = context->newList();
     for (int i = 0; i < count; i++)
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
@@ -295,7 +295,7 @@ ProtoStringImplementation *ProtoStringImplementation::splitLast(ProtoContext *co
     if (first < 0)
         first = 0;
 
-    ProtoList *sourceList = context->newList();
+    ProtoList<ProtoObject> *sourceList = context->newList();
     for (int i = first; i < thisSize; i++)
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
@@ -306,7 +306,7 @@ ProtoStringImplementation *ProtoStringImplementation::splitLast(ProtoContext *co
 ProtoStringImplementation *ProtoStringImplementation::removeFirst(ProtoContext *context, int count) {
     int thisSize = this->baseTuple->getSize(context);
 
-    ProtoList *sourceList = context->newList();
+    ProtoList<ProtoObject> *sourceList = context->newList();
     for (int i = count; i < thisSize; i++)
         sourceList = sourceList->appendLast(context, this->getAt(context, i));
 
@@ -316,7 +316,7 @@ ProtoStringImplementation *ProtoStringImplementation::removeFirst(ProtoContext *
 ProtoStringImplementation *ProtoStringImplementation::removeLast(ProtoContext *context, int count) {
     int thisSize = this->baseTuple->getSize(context);
 
-    ProtoList *sourceList = context->newList();
+    ProtoList<ProtoObject> *sourceList = context->newList();
     for (int i = 0; i < thisSize - count; i++)
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
@@ -339,7 +339,7 @@ ProtoStringImplementation *ProtoStringImplementation::removeAt(ProtoContext *con
         return NULL;
     }
 
-    ProtoList *sourceList = context->newList();
+    ProtoList<ProtoObject> *sourceList = context->newList();
     for (int i = 0; i < index; i++)
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
@@ -365,7 +365,7 @@ ProtoStringImplementation *ProtoStringImplementation::removeSlice(ProtoContext *
             to = 0;
     }
 
-    ProtoList *sourceList = context->newList();
+    ProtoList<ProtoObject> *sourceList = context->newList();
     for (int i = from; i < to; i++)
         if (i < thisSize)
             sourceList = sourceList->appendLast(context, this->getAt(context, i));
@@ -375,8 +375,8 @@ ProtoStringImplementation *ProtoStringImplementation::removeSlice(ProtoContext *
     return new(context) ProtoStringImplementation(context, (ProtoTupleImplementation *) context->tupleFromList(sourceList));    
 };
 
-ProtoList *ProtoStringImplementation::asList(ProtoContext *context) {
-    ProtoList *result = context->newList();
+ProtoList<ProtoObject> *ProtoStringImplementation::asList(ProtoContext *context) {
+    ProtoList<ProtoObject> *result = context->newList();
 
     int thisSize = this->getSize(context);
     for (int i = 0; i < thisSize; i++)

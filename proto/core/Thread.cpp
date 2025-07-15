@@ -6,7 +6,7 @@
  */
 
 
-#include "../headers/proto internal.h"
+#include "../headers/proto_internal.h"
 
 #include <stdlib.h>
 
@@ -23,8 +23,8 @@ ProtoThreadImplementation::ProtoThreadImplementation(
 		ProtoString *name,
 		ProtoSpace	*space,
 		ProtoMethod code,
-		ProtoList *args,
-		ProtoSparseList *kwargs
+		ProtoList<ProtoObject> *args,
+		ProtoSparseList<ProtoObject> *kwargs
 ) : Cell(context) {
     this->name = name;
     this->space = space;
@@ -39,10 +39,10 @@ ProtoThreadImplementation::ProtoThreadImplementation(
     // Create and start the OS Thread if needed (on space init, no code is provided)
     if (code) {
         this->osThread = new std::thread(
-            [] (ProtoThreadImplementation *self, 
+            [args, kwargs] (ProtoThreadImplementation *self, 
                 ProtoMethod targetCode, 
-                ProtoList *threadArgs, 
-                ProtoSparseList *threadKwargs) {
+                ProtoList<ProtoObject> *threadArgs, 
+                ProtoSparseList<ProtoObject> *threadKwargs) {
                 ProtoContext baseContext(NULL, NULL, 0, self, self->space);
                 targetCode(
                     NULL, 

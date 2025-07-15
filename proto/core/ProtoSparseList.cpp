@@ -5,7 +5,7 @@
  *      Author: gamarino
  */
 
-#include "../headers/proto internal.h"
+#include "../headers/proto_internal.h"
 
 namespace proto {
 
@@ -79,7 +79,7 @@ ProtoSparseListIteratorImplementation<T> *ProtoSparseListIteratorImplementation<
 				this->current,
 				this->queue
 			);
-			ProtoSparseListImplementation *node = this->queue->current;
+			ProtoSparseListImplementation<T> *node = this->queue->current;
 			while (node->previous) {
 				newState = new(context) ProtoSparseListIteratorImplementation(
 					context,
@@ -185,7 +185,7 @@ ProtoSparseListImplementation<T> *rightRotate(ProtoContext *context, ProtoSparse
 	if (!n->previous)
 		return n;
 
-    ProtoSparseListImplementation *newRight = new(context) ProtoSparseListImplementation(
+    ProtoSparseListImplementation<T> *newRight = new(context) ProtoSparseListImplementation<T>(
         context,
         n->index,
         n->value,
@@ -208,7 +208,7 @@ ProtoSparseListImplementation<T> *leftRotate(ProtoContext *context, ProtoSparseL
     if (!n->next)
         return n;
 
-    ProtoSparseListImplementation *newLeft = new(context) ProtoSparseListImplementation(
+    ProtoSparseListImplementation<T> *newLeft = new(context) ProtoSparseListImplementation<T>(
         context,
         n->index,
         n->value,
@@ -520,7 +520,7 @@ struct matchState {
 
 template<class T>
 void match(ProtoContext *context, void *self, unsigned long index, T *value) {
-	struct matchState *state = (struct matchState *) self;
+	struct matchState<T> *state = (struct matchState<T> *) self;
 
 	if (!state->otherDictionary->has(context, index) || 
 	    state->otherDictionary->getAt(context, index) != value)
@@ -533,8 +533,8 @@ int	ProtoSparseListImplementation<T>::isEqual(ProtoContext *context, ProtoSparse
 	if (this->count != otherDict->getSize(context))
 		return FALSE;
 
-	struct matchState state;
-	state.otherDictionary = (ProtoSparseListImplementation *) otherDict;
+	struct matchState<T> state;
+	state.otherDictionary = (ProtoSparseListImplementation<T> *) otherDict;
 	state.match = TRUE;
 
 	this->processElements(context, (void *) &state, match);

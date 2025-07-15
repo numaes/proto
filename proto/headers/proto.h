@@ -77,6 +77,9 @@ typedef ProtoObject *(*ProtoMethod) (
 	ProtoSparseList<ProtoObject> *		// keywordParameters
 );
 
+class ProtoObjectCell;
+template <class T> class ProtoListIterator;
+
 class ProtoObject {
 public:
 	ProtoObject *clone(ProtoContext *c, BOOLEAN isMutable = FALSE);
@@ -178,10 +181,10 @@ public:
 	virtual ProtoList<T> *removeAt(ProtoContext *context, int index);
 	virtual ProtoList<T> *removeSlice(ProtoContext *context, int from, int to);
 
-	virtual ProtoTuple *asTuple(ProtoContext *context);
+		virtual ProtoTuple *asTuple(ProtoContext *context);
 	virtual ProtoObject *asObject(ProtoContext *context);
 	virtual unsigned long getHash(ProtoContext *context);
-	virtual ProtoListIterator *getIterator(ProtoContext *context);
+	virtual ProtoListIterator<T> *getIterator(ProtoContext *context);
 
 };
 

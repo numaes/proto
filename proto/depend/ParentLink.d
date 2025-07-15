@@ -1,2 +1,2 @@
-depend/ParentLink.d debug/ParentLink.o obj/ParentLink.o: core/Cell.cpp core/../headers/proto\ internal.h \
+depend/ParentLink.d debug/ParentLink.o obj/ParentLink.o: core/ParentLink.cpp core/../headers/proto_internal.h \
  core/../headers/../headers/proto.h
