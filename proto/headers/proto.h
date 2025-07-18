@@ -7,27 +7,17 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <thread>
 
 namespace proto {
 
 #ifndef PROTO_H_
 #define PROTO_H_
 
-#ifndef BOOLEAN
-#define BOOLEAN int
-#endif
+typedef int BOOLEAN;
 
-#ifndef TRUE
-#define TRUE 1
-#endif
 
-#ifndef FALSE
-#define FALSE 0
-#endif
 
-#ifndef NULL
-#define NULL (void *) 0LU
-#endif
 
 // Usefull constants.
 // ATENTION: They should be kept on synch with proto_internal.h!
@@ -82,8 +72,8 @@ template <class T> class ProtoListIterator;
 
 class ProtoObject {
 public:
-	ProtoObject *clone(ProtoContext *c, BOOLEAN isMutable = FALSE);
-	ProtoObject *newChild(ProtoContext *c, BOOLEAN isMutable = FALSE);
+	        ProtoObject *clone(ProtoContext *c, bool isMutable = false);
+	        ProtoObject *newChild(ProtoContext *c, bool isMutable = false);
 
 	ProtoObject *getAttribute(ProtoContext *c, ProtoString *name);
 	ProtoObject *hasAttribute(ProtoContext *c, ProtoString *name);
@@ -101,8 +91,8 @@ public:
 	                  ParentLink *nextParent,
 					  ProtoString *method,
 					  ProtoObject *self,
-					  ProtoList<ProtoObject> *unnamedParametersList = NULL,
-			          ProtoSparseList<ProtoObject> *keywordParametersDict = NULL);
+					  ProtoList<ProtoObject> *unnamedParametersList = nullptr,
+			          ProtoSparseList<ProtoObject> *keywordParametersDict = nullptr);
 
 	unsigned long getHash(ProtoContext *context);
 	int isCell(ProtoContext *context);
@@ -121,7 +111,7 @@ public:
 	);
 
 
-	BOOLEAN			 asBoolean();
+	        bool asBoolean();
 	int				 asInteger();
 	double			 asDouble();
 	char			 asByte();
@@ -129,13 +119,13 @@ public:
 	unsigned long    asTimestamp();
 	long			 asTimeDelta();
 
-	BOOLEAN			 isBoolean();
-	BOOLEAN			 isInteger();
-	BOOLEAN			 isDouble();
-	BOOLEAN			 isByte();
-	BOOLEAN			 isDate();
-	BOOLEAN			 isTimestamp();
-	BOOLEAN			 isTimeDelta();
+	        bool isBoolean();
+	        bool isInteger();
+	        bool isDouble();
+	        bool isByte();
+	        bool isDate();
+	        bool isTimestamp();
+	        bool isTimeDelta();
 
 };
 
@@ -164,7 +154,7 @@ public:
 	virtual ProtoList<T> *getSlice(ProtoContext *context, int from, int to);
 	virtual unsigned long  getSize(ProtoContext *context);
 
-	virtual BOOLEAN	has(ProtoContext *context, T *value);
+	        virtual bool has(ProtoContext *context, T *value);
 	virtual ProtoList<T> *setAt(ProtoContext *context, int index, T *value = PROTO_NONE);
 	virtual ProtoList<T> *insertAt(ProtoContext *context, int index, T *value);
 
@@ -281,7 +271,7 @@ public:
 
 template<class T> class ProtoSparseList {
 public:
-	virtual BOOLEAN has(ProtoContext *context, unsigned long index);
+	virtual bool has(ProtoContext *context, unsigned long index);
 	virtual T* getAt(ProtoContext *context, unsigned long index);
 	virtual ProtoSparseList<T> *setAt(ProtoContext *context, unsigned long index, T* value = PROTO_NONE);
 	virtual ProtoSparseList<T> *removeAt(ProtoContext *context, unsigned long index);
@@ -483,7 +473,7 @@ public:
 	ProtoExternalPointer 	*fromExternalPointer(void *pointer);
 	ProtoByteBuffer 		*fromBuffer(unsigned long length, char* buffer);
 	ProtoByteBuffer		 	*newBuffer(unsigned long length);
-	ProtoObject 	*fromBoolean(BOOLEAN value);
+	ProtoObject *fromBoolean(bool value);
 	ProtoObject 	*fromByte(char c);
 	ProtoObject     *fromDate(unsigned year, unsigned month, unsigned day);
 	ProtoObject     *fromTimestamp(unsigned long timestamp);
@@ -567,9 +557,9 @@ public:
 
 	std::atomic<TupleDictionary *> tupleRoot;
 	std::atomic<ProtoSparseList<ProtoObject> *>  mutableRoot;
-	std::atomic<BOOLEAN> mutableLock;
-	std::atomic<BOOLEAN> threadsLock;
-	std::atomic<BOOLEAN> gcLock;
+	std::atomic<bool> mutableLock;
+	std::atomic<bool> threadsLock;
+	std::atomic<bool> gcLock;
 	std::thread::id		 mainThreadId;
 	std::thread			*gcThread;
 	std::condition_variable stopTheWorldCV;
@@ -581,6 +571,6 @@ public:
 
 };
 
-};
+}
 
 #endif /* PROTO_H_ */

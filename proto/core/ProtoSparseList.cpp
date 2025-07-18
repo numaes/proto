@@ -31,15 +31,15 @@ ProtoSparseListIteratorImplementation<T>::~ProtoSparseListIteratorImplementation
 template<class T>
 int ProtoSparseListIteratorImplementation<T>::hasNext(ProtoContext *context) {
 	if (this->state == ITERATOR_NEXT_PREVIOUS && this->current->previous)
-		return TRUE;
+		return true;
 	if (this->state == ITERATOR_NEXT_THIS)
-		return TRUE;
+		return true;
 	if (this->state == ITERATOR_NEXT_NEXT && this->current->next)
-		return TRUE;
+		return true;
 	if (this->queue)
 		return this->queue->hasNext(context);
 
-	return FALSE;
+	return false;
 };
 
 template<class T>
@@ -47,7 +47,7 @@ unsigned long ProtoSparseListIteratorImplementation<T>::nextKey(ProtoContext *co
 	if (this->state == ITERATOR_NEXT_THIS) {
 		return this->current->index;
 	}
-	return NULL;
+	return 0;
 };
 
 template<class T>
@@ -192,7 +192,7 @@ ProtoSparseListImplementation<T> *rightRotate(ProtoContext *context, ProtoSparse
         n->previous->next,
         n->next
     );
-    return new(context) ProtoSparseListImplementation(
+    return new(context) ProtoSparseListImplementation<T>(
         context,
         n->previous->index,
         n->previous->value,
@@ -215,7 +215,7 @@ ProtoSparseListImplementation<T> *leftRotate(ProtoContext *context, ProtoSparseL
         n->previous,
         n->next->previous
     );
-    return new(context) ProtoSparseListImplementation(
+    return new(context) ProtoSparseListImplementation<T>(
         context,
         n->next->index,
         n->next->value,
@@ -226,7 +226,7 @@ ProtoSparseListImplementation<T> *leftRotate(ProtoContext *context, ProtoSparseL
 
 template<class T>
 ProtoSparseListImplementation<T> *rebalance(ProtoContext *context, ProtoSparseListImplementation<T> *newNode) {
-    while (TRUE) {
+    while (true) {
         int balance = getBalance(newNode);
 
         // If this node becomes unbalanced, then
@@ -247,7 +247,7 @@ ProtoSparseListImplementation<T> *rebalance(ProtoContext *context, ProtoSparseLi
             // Left Right Case
             else {
                 if (balance < 0 && getBalance(newNode->previous) > 0) {
-                    newNode = new(context) ProtoSparseListImplementation(
+                    newNode = new(context) ProtoSparseListImplementation<T>(
                         context,
 						newNode->index,
                         newNode->value,
@@ -261,7 +261,7 @@ ProtoSparseListImplementation<T> *rebalance(ProtoContext *context, ProtoSparseLi
                 else {
                     // Right Left Case
                     if (balance > 0 && getBalance(newNode->next) < 0) {
-                        newNode = new(context) ProtoSparseListImplementation(
+                        newNode = new(context) ProtoSparseListImplementation<T>(
                             context,
 							newNode->index,
                             newNode->value,
@@ -281,14 +281,14 @@ ProtoSparseListImplementation<T> *rebalance(ProtoContext *context, ProtoSparseLi
 }
 
 template<class T>
-BOOLEAN ProtoSparseListImplementation<T>::has(ProtoContext *context, unsigned long index) {
+bool ProtoSparseListImplementation<T>::has(ProtoContext *context, unsigned long index) {
 	if (!this->index)
-		return FALSE;
+		return false;
 
-    ProtoSparseListImplementation *node = this;
+    ProtoSparseListImplementation<T> *node = this;
 	while (node) {
 		if (node->index == index)
-			return TRUE;
+			return true;
         int cmp = ((long) index) - ((long) this->index);
         if (cmp < 0)
             node = node->previous;
@@ -297,17 +297,17 @@ BOOLEAN ProtoSparseListImplementation<T>::has(ProtoContext *context, unsigned lo
 	}
 
     if (node)
-        return TRUE;
+        return true;
     else
-        return FALSE;
-};
+        return false;
+}
 
 template<class T>
 T *ProtoSparseListImplementation<T>::getAt(ProtoContext *context, unsigned long index) {
 	if (!this->index)
 		return PROTO_NONE;
 
-    ProtoSparseListImplementation *node = this;
+    ProtoSparseListImplementation<T> *node = this;
 	while (node) {
 		if (node->index == index)
 			return node->value;
@@ -323,16 +323,16 @@ T *ProtoSparseListImplementation<T>::getAt(ProtoContext *context, unsigned long 
     else
         return PROTO_NONE;
 
-};
+}
 
 template<class T>
 ProtoSparseListImplementation<T> *ProtoSparseListImplementation<T>::setAt(ProtoContext *context, unsigned long index, T *value) {
-	ProtoSparseListImplementation *newNode;
+	ProtoSparseListImplementation<T> *newNode;
 	int cmp;
 
 	// Empty tree case
 	if (!this->index)
-        return new(context) ProtoSparseListImplementation(
+        return new(context) ProtoSparseListImplementation<T>(
             context,
             index,
 			value
@@ -341,7 +341,7 @@ ProtoSparseListImplementation<T> *ProtoSparseListImplementation<T>::setAt(ProtoC
     cmp = ((long) index) - ((long)this->index);
     if (cmp > 0) {
         if (this->next) {
-            newNode = new(context) ProtoSparseListImplementation(
+            newNode = new(context) ProtoSparseListImplementation<T>(
                 context,
                 this->index,
 				this->value,
@@ -350,12 +350,12 @@ ProtoSparseListImplementation<T> *ProtoSparseListImplementation<T>::setAt(ProtoC
             );
         }
         else {
-            newNode = new(context) ProtoSparseListImplementation(
+            newNode = new(context) ProtoSparseListImplementation<T>(
                 context,
                 this->index,
 				this->value,
-                previous = this->previous,
-                next = new(context) ProtoSparseListImplementation(
+                this->previous,
+                new(context) ProtoSparseListImplementation<T>(
                     context,
                     index,
 					value
@@ -366,20 +366,20 @@ ProtoSparseListImplementation<T> *ProtoSparseListImplementation<T>::setAt(ProtoC
     else {
 		if (cmp < 0) {
 			if (this->previous) {
-				newNode = new(context) ProtoSparseListImplementation(
+				newNode = new(context) ProtoSparseListImplementation<T>(
 					context,
 					this->index,
 					this->value,
-					previous = this->previous->setAt(context, index, value),
+					this->previous->setAt(context, index, value),
 					this->next
 				);
 			}
 			else {
-				newNode = new(context) ProtoSparseListImplementation(
+				newNode = new(context) ProtoSparseListImplementation<T>(
 					context,
 					this->index,
 					this->value,
-					new(context) ProtoSparseListImplementation(
+					new(context) ProtoSparseListImplementation<T>(
 						context,
 						index,
 						value
@@ -389,7 +389,7 @@ ProtoSparseListImplementation<T> *ProtoSparseListImplementation<T>::setAt(ProtoC
 			}
 		}
 		else {
-			newNode = new(context) ProtoSparseListImplementation(
+			newNode = new(context) ProtoSparseListImplementation<T>(
 				context,
 				this->index,
 				value,
@@ -400,7 +400,7 @@ ProtoSparseListImplementation<T> *ProtoSparseListImplementation<T>::setAt(ProtoC
 	}
 
 	return rebalance(context, newNode);
-};
+}
 
 template<class T>
 unsigned long firstindex(ProtoContext *context, ProtoSparseListImplementation<T> *self) {
@@ -408,7 +408,7 @@ unsigned long firstindex(ProtoContext *context, ProtoSparseListImplementation<T>
 		self = self->previous;
 	
 	return self->index;
-};
+}
 
 template<class T>
 T* firstValue(ProtoContext *context, ProtoSparseListImplementation<T> *self) {
@@ -416,7 +416,7 @@ T* firstValue(ProtoContext *context, ProtoSparseListImplementation<T> *self) {
 		self = self->previous;
 	
 	return self->value;
-};
+}
 
 template<class T>
 ProtoSparseListImplementation<T> *removeFirst(ProtoContext *context, ProtoSparseListImplementation<T> *self) {
@@ -450,7 +450,7 @@ ProtoSparseListImplementation<T> *removeFirst(ProtoContext *context, ProtoSparse
 template<class T>
 ProtoSparseListImplementation<T> *ProtoSparseListImplementation<T>::removeAt(ProtoContext *context, unsigned long index) {
 	if (index == this->index && !this->next && !this->previous)
-		return new(context) ProtoSparseListImplementation(context);
+		return new(context) ProtoSparseListImplementation<T>(context);
 
 	if (index == this->index) {
 		if (!this->next && this->previous)
@@ -460,13 +460,13 @@ ProtoSparseListImplementation<T> *ProtoSparseListImplementation<T>::removeAt(Pro
 	}
 
 	int cmp = ((long) index) - ((long) this->index);
-	ProtoSparseListImplementation *newNode;
+	ProtoSparseListImplementation<T> *newNode;
 	if (cmp < 0) {
 		if (!this->previous)
 			return this;
 		newNode = this->previous->removeAt(context, index);
 		if (newNode->getSize(context) == 0)
-			newNode = new(context) ProtoSparseListImplementation(
+			newNode = new(context) ProtoSparseListImplementation<T>(
 				context,
 				this->index,
 				this->value,
@@ -483,7 +483,7 @@ ProtoSparseListImplementation<T> *ProtoSparseListImplementation<T>::removeAt(Pro
 			if (newNode->getSize(context) == 0)
 				newNode = NULL;
 
-			newNode = new(context) ProtoSparseListImplementation(
+			newNode = new(context) ProtoSparseListImplementation<T>(
 				context,
 				this->index,
 				this->value,
@@ -496,7 +496,7 @@ ProtoSparseListImplementation<T> *ProtoSparseListImplementation<T>::removeAt(Pro
 				newNode = removeFirst(context, this->next);
 				if (newNode->count == 0)
 					newNode = NULL; 
-				newNode = new(context) ProtoSparseListImplementation(
+				newNode = new(context) ProtoSparseListImplementation<T>(
 					context,
 					firstindex(context, this->next),
 					firstValue(context, this->next),
@@ -510,12 +510,12 @@ ProtoSparseListImplementation<T> *ProtoSparseListImplementation<T>::removeAt(Pro
 	}
 
 	return rebalance(context, newNode);
-};
+}
 
 template<class T>
 struct matchState {
 	ProtoSparseListImplementation<T> *otherDictionary;
-	BOOLEAN match;
+	bool match;
 };
 
 template<class T>
@@ -524,31 +524,31 @@ void match(ProtoContext *context, void *self, unsigned long index, T *value) {
 
 	if (!state->otherDictionary->has(context, index) || 
 	    state->otherDictionary->getAt(context, index) != value)
-		state->match = FALSE;
+		state->match = false;
 
-};
+}
 
 template<class T>
 int	ProtoSparseListImplementation<T>::isEqual(ProtoContext *context, ProtoSparseList<T> *otherDict) {
 	if (this->count != otherDict->getSize(context))
-		return FALSE;
+		return false;
 
 	struct matchState<T> state;
 	state.otherDictionary = (ProtoSparseListImplementation<T> *) otherDict;
-	state.match = TRUE;
+	state.match = true;
 
 	this->processElements(context, (void *) &state, match);
 	
 	return state.match;
-};
+}
 
 template<class T>
 unsigned long ProtoSparseListImplementation<T>::getSize(ProtoContext *context) {
 	return this->count;
-};
+}
 
 template<class T>
-void ProtoSparseListImplementation<T>::finalize(ProtoContext *context) {};
+void ProtoSparseListImplementation<T>::finalize(ProtoContext *context) {}
 
 template<class T>
 void ProtoSparseListImplementation<T>::processReferences (
@@ -567,7 +567,7 @@ void ProtoSparseListImplementation<T>::processReferences (
 		this->next->processReferences(context, self, method);
 
 	method(context, self, this);
-};
+}
 
 template<class T>
 void ProtoSparseListImplementation<T>::processElements (
@@ -589,7 +589,7 @@ void ProtoSparseListImplementation<T>::processElements (
 	if (this->next)
 		this->next->processElements(context, self, method);
 
-};
+}
 
 template<class T>
 void ProtoSparseListImplementation<T>::processValues (
@@ -609,7 +609,7 @@ void ProtoSparseListImplementation<T>::processValues (
 	if (this->next)
 		this->next->processValues(context, self, method);
 
-};
+}
 
 template<class T>
 ProtoObject *ProtoSparseListImplementation<T>::asObject(ProtoContext *context) {
@@ -618,12 +618,12 @@ ProtoObject *ProtoSparseListImplementation<T>::asObject(ProtoContext *context) {
     p.op.pointer_tag = POINTER_TAG_SPARSE_LIST;
 
     return p.oid.oid;
-};
+}
 
 template<class T>
 unsigned long ProtoSparseListImplementation<T>::getHash(ProtoContext *context) {
     return this->hash;
-};
+}
 
 template<class T>
 ProtoSparseListIteratorImplementation<T> *ProtoSparseListImplementation<T>::getIterator(ProtoContext *context) {
@@ -647,6 +647,6 @@ ProtoSparseListIteratorImplementation<T> *ProtoSparseListImplementation<T>::getI
 
 	return newState;
 
-};
+}
 
-};
+}

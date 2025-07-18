@@ -18,12 +18,12 @@ ProtoByteBufferImplementation::ProtoByteBufferImplementation (
     char *buffer
 ) : Cell (context) {
     this->size = size;
-    this->freeOnExit = FALSE;
+    this->freeOnExit = false;
     if (buffer)
         this->buffer = buffer;
     else {
         this->buffer = (char *) malloc(size);
-        this->freeOnExit = TRUE;
+        this->freeOnExit = true;
     }
 };
 

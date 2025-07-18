@@ -71,7 +71,6 @@ ProtoThreadImplementation::ProtoThreadImplementation(
 ProtoThreadImplementation::~ProtoThreadImplementation(
 
 ) {
-    this->osThread->~thread();
 };
 
 void ProtoThreadImplementation::setUnmanaged() {
@@ -98,7 +97,6 @@ void ProtoThreadImplementation::join(ProtoContext *context) {
 void ProtoThreadImplementation::exit(ProtoContext *context) {
     if (this->osThread->get_id() == std::this_thread::get_id()) {
         this->space->deallocThread(context, this);
-        this->osThread->~thread();
     }
 };
 

@@ -14,12 +14,7 @@
 
 namespace proto {
 
-#ifdef NULL
-#undef NULL
-#endif
 
-#define NULL 0L
-#define TRUE 1
 
 // Root base of any internal structure.
 // All Cell objects should be non mutable once initialized
@@ -302,7 +297,7 @@ public:
 	virtual ProtoListImplementation<T> *getSlice(ProtoContext *context, int from, int to);
 	virtual unsigned long getSize(ProtoContext *context);
 
-	virtual BOOLEAN has(ProtoContext *context, T *value);
+	virtual bool has(ProtoContext *context, T *value);
 	virtual ProtoListImplementation<T> *setAt(ProtoContext *context, int index, T *value = PROTO_NONE);
 	virtual ProtoListImplementation<T> *insertAt(ProtoContext *context, int index, T *value);
 
@@ -586,7 +581,7 @@ public:
 	);
 	virtual ~ProtoSparseListImplementation();
 
-	virtual BOOLEAN	has(ProtoContext *context, unsigned long index);
+	virtual bool has(ProtoContext *context, unsigned long index);
 	virtual T* getAt(ProtoContext *context, unsigned long index);
 	virtual ProtoSparseListImplementation<T> *setAt(ProtoContext *context, unsigned long index, T* value);
 	virtual ProtoSparseListImplementation<T> *removeAt(ProtoContext *context, unsigned long index);
@@ -727,7 +722,7 @@ public:
 		)
 	);
 
-	ProtoMethod	*getMethod();
+	virtual ProtoMethod	getMethod(ProtoContext *context);
 
 	ProtoMethod	method;
 	ProtoObject *self;
@@ -813,6 +808,6 @@ public:
 	long				unmanagedCount:60;
 };
 
-};
+}
 
 #endif /* PROTO_H_ */

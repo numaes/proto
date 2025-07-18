@@ -29,9 +29,9 @@ template<class T> ProtoListIteratorImplementation<T>::~ProtoListIteratorImplemen
 
 template<class T> int ProtoListIteratorImplementation<T>::hasNext(ProtoContext *context) {
     if (this->currentIndex >= this->base->getSize(context))
-        return FALSE;
+        return false;
     else
-        return TRUE;
+        return true;
 };
 
 template<class T> T *ProtoListIteratorImplementation<T>::next(ProtoContext *context) {
@@ -155,8 +155,8 @@ ProtoListImplementation<T> *leftRotate(ProtoContext *context, ProtoListImplement
 }
 
 template<class T> 
-ProtoListImplementation<T> *rebalance(ProtoContext *context, ProtoListImplementation<T> *newNode) {
-    while (TRUE) {
+    ProtoListImplementation<T> *rebalance(ProtoContext *context, ProtoListImplementation<T> *newNode) {
+    while (true) {
         int balance = getBalance(newNode);
 
         // If this node becomes unbalanced, then
@@ -272,7 +272,7 @@ ProtoListImplementation<T> *ProtoListImplementation<T>::getSlice(ProtoContext *c
         return upperPart->splitFirst(context, to - from);
     }
     else
-        return new(context) ProtoListImplementation(context);
+        return new(context) ProtoListImplementation(context, nullptr);
 };
 
 template<class T> 
@@ -281,18 +281,18 @@ unsigned long ProtoListImplementation<T>::getSize(ProtoContext *context) {
 };
 
 template<class T> 
-BOOLEAN	ProtoListImplementation<T>::has(ProtoContext *context, T *value) {
+bool ProtoListImplementation<T>::has(ProtoContext *context, T *value) {
     for (unsigned long i=0; i <= this->count; i++)
         if (this->getAt(context, i) == value)
-            return TRUE;
+            return true;
 
-    return FALSE;
+    return false;
 };
 
 template<class T> 
 ProtoListImplementation<T> *ProtoListImplementation<T>::setAt(ProtoContext *context, int index, T *value) {
 	if (!this->value) {
-		return NULL;
+		return nullptr;
     }
 
     if (index < 0) {
@@ -302,7 +302,7 @@ ProtoListImplementation<T> *ProtoListImplementation<T>::setAt(ProtoContext *cont
     }
 
     if (((unsigned long) index) >= this->count) {
-        return NULL;
+        return nullptr;
     }
 
     int thisIndex = this->previous? this->previous->count : 0;
@@ -768,7 +768,7 @@ unsigned long ProtoListImplementation<T>::getHash(ProtoContext *context) {
 
 template<class T> 
 ProtoListIterator<T> *ProtoListImplementation<T>::getIterator(ProtoContext *context) {
-    return new(context) ProtoListIteratorImplementation(context, NULL, 0);
+    return new(context) ProtoListIteratorImplementation(context, nullptr, 0);
 }
 
 template<class T> 

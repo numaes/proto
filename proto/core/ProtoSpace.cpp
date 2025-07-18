@@ -29,7 +29,7 @@ namespace proto {
 #define GB                              1024 * MB
 #define MAX_HEAP_SIZE                   256 * MB
 
-std::mutex		ProtoSpace::globalMutex;
+std::mutex        ProtoSpace::globalMutex;
 
 void gcCollectCells(ProtoContext *context, void *self, Cell *value) {
      ProtoObjectPointer p;
@@ -68,16 +68,16 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
 
     // Acquire space lock and take all dirty segments to analyze
 
-    BOOLEAN oldValue = FALSE;
+    bool oldValue = false;
     while (space->gcLock.compare_exchange_strong(
         oldValue,
-        TRUE
+        true
     )) std::this_thread::yield();
 
     toAnalize = space->dirtySegments;
     space->dirtySegments = NULL;
 
-    space->gcLock.store(FALSE);
+    space->gcLock.store(false);
 
     ProtoContext gcContext(context); 
 
@@ -90,14 +90,14 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
         std::unique_lock<std::mutex> lk(ProtoSpace::globalMutex);
         space->stopTheWorldCV.wait(lk);
 
-        int allStoping = TRUE;
+        bool allStoping = true;
         unsigned long threadsCount = space->threads->getSize(context);
         for (unsigned n = 0; n < threadsCount; n++) {
             ProtoThreadImplementation *t = (ProtoThreadImplementation *) space->threads->getAt(&gcContext, n);
 
             // Be sure no thread is still in managed state
             if (t->state == THREAD_STATE_MANAGED) {
-                allStoping = FALSE;
+                allStoping = false;
                 break;
             }
         }
@@ -111,13 +111,13 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
         std::unique_lock<std::mutex> lk(ProtoSpace::globalMutex);
         space->stopTheWorldCV.wait(lk);
 
-        int allStopped = TRUE;
+        bool allStopped = true;
         unsigned long threadsCount = space->threads->getSize(context);
         for (unsigned n = 0; n < threadsCount; n++) {
             ProtoThreadImplementation *t = (ProtoThreadImplementation *) space->threads->getAt(&gcContext, n);
 
             if (t->state != THREAD_STATE_STOPPED) {
-                allStopped = FALSE;
+                allStopped = false;
                 break;
             }
         }
@@ -213,10 +213,10 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
     }
 
     // Update space freeCells
-    oldValue = FALSE;
+    oldValue = false;
     while (space->gcLock.compare_exchange_strong(
         oldValue,
-        TRUE
+        true
     )) std::this_thread::yield();
 
     if (firstBlock)
@@ -225,13 +225,13 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
     space->freeCells = freeBlocks;
     space->freeCellsCount += freeCount;
 
-    space->gcLock.store(FALSE);
-};
+    space->gcLock.store(false);
+}
 
 void gcThreadLoop(ProtoSpace *space) {
     ProtoContext gcContext;
 
-    space->gcStarted = TRUE;
+    space->gcStarted = true;
     space->gcCV.notify_one();
 
     while (space->state != SPACE_STATE_RUNNING) {
@@ -243,7 +243,7 @@ void gcThreadLoop(ProtoSpace *space) {
             gcScan(&gcContext, space);
         }
     }
-};
+}
 
 ProtoSpace::ProtoSpace(
     ProtoMethod mainFunction,
@@ -269,7 +269,7 @@ ProtoSpace::ProtoSpace(
     );
     ProtoList<ProtoObject> *argvList = creationContext->newList();
     if (argc && argv) {
-        for (int i; i < argc; i++)
+        for (int i = 0; i < argc; i++)
             argvList = argvList->appendLast(
                 creationContext,
                 creationContext->fromUTF8String(argv[i])->asObject(creationContext)
@@ -281,9 +281,9 @@ ProtoSpace::ProtoSpace(
 
     this->mainThreadId = std::this_thread::get_id();
 
-    this->mutableLock.store(FALSE);
-    this->threadsLock.store(FALSE);
-    this->gcLock.store(FALSE);
+    this->mutableLock.store(false);
+    this->threadsLock.store(false);
+    this->gcLock.store(false);
     this->mutableRoot.store(new(creationContext) ProtoSparseListImplementation<ProtoObject>(creationContext));
 
     this->maxAllocatedCellsPerContext = MAX_ALLOCATED_CELLS_PER_CONTEXT;
@@ -292,8 +292,8 @@ ProtoSpace::ProtoSpace(
     this->freeCellsCount = 0;
     this->gcSleepMilliseconds = GC_SLEEP_MILLISECONDS;
     this->maxHeapSize = MAX_HEAP_SIZE;
-    this->blockOnNoMemory = FALSE;
-    this->gcStarted = FALSE;
+    this->blockOnNoMemory = false;
+    this->gcStarted = false;
 
     // Create GC thread and ensure it is working
     this->gcThread = new std::thread(
@@ -318,7 +318,7 @@ ProtoSpace::ProtoSpace(
 
     mainThread->join(creationContext);
     this->gcThread->join();
-};
+}
 
 void scanThreads(ProtoContext *context, void *self, ProtoObject *value) {
     ProtoList<ProtoObject> **threadList = (ProtoList<ProtoObject> **) self;
@@ -345,30 +345,30 @@ ProtoSpace::~ProtoSpace() {
     this->triggerGC();
 
     this->gcThread->join();
-};
+}
 
 void ProtoSpace::triggerGC() {
     this->gcCV.notify_all();
 }
 
 void ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread) {
-    BOOLEAN oldValue = FALSE;
+    bool oldValue = false;
     while (this->threadsLock.compare_exchange_strong(
         oldValue,
-        TRUE
+        true
     )) std::this_thread::yield();
 
     if (this->threads)
         this->threads = this->threads->setAt(context, thread->getName(context)->getHash(context), thread->asObject(context));
     
-    this->threadsLock.store(FALSE);
-};
+    this->threadsLock.store(false);
+}
 
 void ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *thread) {
-    BOOLEAN oldValue = FALSE;
+    bool oldValue = false;
     while (this->threadsLock.compare_exchange_strong(
         oldValue,
-        TRUE
+        true
     )) std::this_thread::yield();
 
     int threadCount = this->threads->getSize(context);
@@ -380,17 +380,16 @@ void ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *thread) {
         }
     }
 
-    this->threadsLock.store(FALSE);
-};
+    this->threadsLock.store(false);
+}
 
 Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
-    Cell *freeBlocks = NULL;
     Cell *newBlock = NULL;
 
-    BOOLEAN oldValue = FALSE;
+    bool oldValue = false;
     while (this->gcLock.compare_exchange_strong(
         oldValue,
-        TRUE
+        true
     )) std::this_thread::yield();
 
     for (int i=0; i < BLOCKS_PER_ALLOCATION; i++) {
@@ -409,7 +408,7 @@ Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
             if (this->maxHeapSize != 0 && this->blockOnNoMemory && 
                 this->heapSize + toAllocBytes >= this->maxHeapSize) {
                 while (!this->freeCells) {
-                    this->gcLock.store(FALSE);
+                    this->gcLock.store(false);
 
                     currentThread->synchToGC();
 
@@ -417,7 +416,7 @@ Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
 
                     while (this->gcLock.compare_exchange_strong(
                         oldValue,
-                        TRUE
+                        true
                     )) std::this_thread::yield();
                 }
             }
@@ -460,18 +459,18 @@ Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
         }
     }
 
-    this->gcLock.store(FALSE);
+    this->gcLock.store(false);
 
     return newBlock;
-};
+}
 
 void ProtoSpace::analyzeUsedCells(Cell *cellsChain) {
     DirtySegment *newChain;
 
-    BOOLEAN oldValue = FALSE;
+    bool oldValue = false;
     while (this->gcLock.compare_exchange_strong(
         oldValue,
-        TRUE
+        true
     )) std::this_thread::yield();
 
     newChain = new DirtySegment();
@@ -479,7 +478,7 @@ void ProtoSpace::analyzeUsedCells(Cell *cellsChain) {
     newChain->nextSegment = this->dirtySegments;
     this->dirtySegments = newChain;
 
-    this->gcLock.store(FALSE);
-};
+    this->gcLock.store(false);
+}
 
-};
+}

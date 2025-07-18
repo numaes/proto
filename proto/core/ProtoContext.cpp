@@ -20,7 +20,7 @@ namespace proto {
 #define max(a, b) (((a) > (b))? (a):(b))
 #endif
 
-std::atomic<BOOLEAN> literalMutex(FALSE);
+std::atomic<bool> literalMutex(false);
 
 BigCell *literalFreeCells = NULL;
 unsigned   literalFreeCellsIndex = 0;
@@ -49,12 +49,12 @@ ProtoContext::ProtoContext(
             ((ProtoThreadImplementation *) this->thread)->currentContext = this;
     }
 
-    this->lastAllocatedCell = NULL;
+    this->lastAllocatedCell = nullptr;
     this->localsBase = localsBase;
     this->localsCount = localsCount;
     if (localsBase)
         for (int i = localsCount; i >= 0; i--)
-            *localsBase++ = NULL;
+            *localsBase++ = nullptr;
     this->allocatedCellsCount = 0;
  
 };
@@ -105,7 +105,7 @@ Cell *ProtoContext::allocCell(){
 
 ProtoObject *ProtoContext::fromInteger(int value) {
     ProtoObjectPointer p;
-    p.oid.oid = NULL;
+    p.oid.oid = nullptr;
     p.si.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
     p.si.embedded_type = EMBEDED_TYPE_SMALLINT;
     p.si.smallInteger = value;
@@ -115,7 +115,7 @@ ProtoObject *ProtoContext::fromInteger(int value) {
 
 ProtoObject *ProtoContext::fromDouble(double value) {
     ProtoObjectPointer p;
-    p.oid.oid = NULL;
+    p.oid.oid = nullptr;
     p.si.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
     p.si.embedded_type = EMBEDED_TYPE_SMALLDOUBLE;
 
@@ -131,7 +131,7 @@ ProtoObject *ProtoContext::fromDouble(double value) {
 
 ProtoObject *ProtoContext::fromUTF8Char(const char *utf8OneCharString) {
     ProtoObjectPointer p;
-    p.oid.oid = NULL;
+    p.oid.oid = nullptr;
     p.unicodeChar.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
     p.unicodeChar.embedded_type = EMBEDED_TYPE_UNICODECHAR;
 
@@ -208,7 +208,7 @@ ProtoString *ProtoContext::fromUTF8String(const char *zeroTerminatedUtf8String) 
 
 ProtoObject *ProtoContext::fromDate(unsigned year, unsigned month, unsigned day) {
     ProtoObjectPointer p;
-    p.oid.oid = NULL;
+    p.oid.oid = nullptr;
     p.op.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
     p.op.embedded_type = EMBEDED_TYPE_DATE;
     p.date.year = year;
@@ -220,7 +220,7 @@ ProtoObject *ProtoContext::fromDate(unsigned year, unsigned month, unsigned day)
 
 ProtoObject *ProtoContext::fromTimestamp(unsigned long timestamp) {
     ProtoObjectPointer p;
-    p.oid.oid = NULL;
+    p.oid.oid = nullptr;
     p.op.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
     p.op.embedded_type = EMBEDED_TYPE_TIMESTAMP;
     p.timestampValue.timestamp = timestamp;
@@ -230,7 +230,7 @@ ProtoObject *ProtoContext::fromTimestamp(unsigned long timestamp) {
 
 ProtoObject *ProtoContext::fromTimeDelta(long timedelta) {
     ProtoObjectPointer p;
-    p.oid.oid = NULL;
+    p.oid.oid = nullptr;
     p.sd.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
     p.op.embedded_type = EMBEDED_TYPE_TIMEDELTA;
     p.timedeltaValue.timedelta = timedelta;
@@ -254,9 +254,9 @@ ProtoByteBuffer *ProtoContext::newBuffer(unsigned long length) {
     return new(this) ProtoByteBufferImplementation(this, length);
 };
 
-ProtoObject *ProtoContext::fromBoolean(BOOLEAN value) {
+ProtoObject *ProtoContext::fromBoolean(bool value) {
     ProtoObjectPointer p;
-    p.oid.oid = NULL;
+    p.oid.oid = nullptr;
     p.booleanValue.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
     p.booleanValue.embedded_type = EMBEDED_TYPE_BOOLEAN;
     p.booleanValue.booleanValue = value;
@@ -266,7 +266,7 @@ ProtoObject *ProtoContext::fromBoolean(BOOLEAN value) {
 
 ProtoObject *ProtoContext::fromByte(char c) {
     ProtoObjectPointer p;
-    p.oid.oid = NULL;
+    p.oid.oid = nullptr;
     p.byteValue.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
     p.byteValue.embedded_type = EMBEDED_TYPE_BYTE;
     p.byteValue.byteData = c;

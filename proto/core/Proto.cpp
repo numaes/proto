@@ -67,7 +67,7 @@ ProtoObject *getPrototype(ProtoContext *context, ProtoObject *p) {
 	};
 }
 
-ProtoObject *ProtoObject::clone(ProtoContext *context, BOOLEAN isMutable) {
+ProtoObject *ProtoObject::clone(ProtoContext *context, bool isMutable) {
     ProtoObjectPointer pa;
 
     pa.oid.oid = this;
@@ -111,7 +111,7 @@ ProtoObject *ProtoObject::clone(ProtoContext *context, BOOLEAN isMutable) {
 
 }
 
-ProtoObject *ProtoObject::newChild(ProtoContext *context, BOOLEAN isMutable) {
+ProtoObject *ProtoObject::newChild(ProtoContext *context, bool isMutable) {
     ProtoObjectPointer pa;
 
     pa.oid.oid = this;
@@ -479,14 +479,14 @@ ProtoObject *ProtoObject::call(
     return PROTO_NONE;
 };
 
-BOOLEAN	ProtoObject::asBoolean() {
+bool ProtoObject::asBoolean() {
     ProtoObjectPointer p;
     p.oid.oid = this;
     if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
         p.op.embedded_type == EMBEDED_TYPE_BOOLEAN) 
         return p.booleanValue.booleanValue;
     else
-        return FALSE;
+        return false;
 };
 
 int ProtoObject::asInteger() {
@@ -526,44 +526,44 @@ char ProtoObject::asByte() {
         return 0;
 };
 
-BOOLEAN	ProtoObject::isBoolean() {
+bool ProtoObject::isBoolean() {
     ProtoObjectPointer p;
     p.oid.oid = this;
     if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
         p.op.embedded_type == EMBEDED_TYPE_BOOLEAN) 
-        return TRUE;
+        return true;
     else
-        return FALSE;
+        return PROTO_FALSE;
 };
 
-BOOLEAN	ProtoObject::isInteger() {
+bool ProtoObject::isInteger() {
     ProtoObjectPointer p;
     p.oid.oid = this;
     if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
         p.op.embedded_type == EMBEDED_TYPE_SMALLINT) 
-        return TRUE;
+        return true;
     else
-        return FALSE;
+        return PROTO_FALSE;
 };
 
-BOOLEAN ProtoObject::isDouble() {
+bool ProtoObject::isDouble() {
     ProtoObjectPointer p;
     p.oid.oid = this;
     if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
         p.op.embedded_type == EMBEDED_TYPE_SMALLDOUBLE) 
-        return TRUE;
+        return true;
     else
-        return FALSE;
+        return PROTO_FALSE;
 };
 
-BOOLEAN ProtoObject::isByte() {
+bool ProtoObject::isByte() {
     ProtoObjectPointer p;
     p.oid.oid = this;
     if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
         p.op.embedded_type == EMBEDED_TYPE_BYTE)
-        return TRUE;
+        return true;
     else
-        return FALSE;
+        return PROTO_FALSE;
 };
 
 unsigned long ProtoObject::getHash(ProtoContext *context) {
@@ -581,9 +581,9 @@ int ProtoObject::isCell(ProtoContext *context) {
 
 	switch (pa.op.pointer_tag) {
         case POINTER_TAG_EMBEDEDVALUE:
-            return FALSE;
+            return 0;
         default:
-            return TRUE;
+            return 1;
     }
 
 };

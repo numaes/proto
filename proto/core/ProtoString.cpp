@@ -29,9 +29,9 @@ ProtoStringIteratorImplementation::~ProtoStringIteratorImplementation() {};
 
 int ProtoStringIteratorImplementation::hasNext(ProtoContext *context) {
     if (this->currentIndex >= this->base->getSize(context))
-        return FALSE;
+        return false;
     else
-        return TRUE;
+        return true;
 };
 
 ProtoObject *ProtoStringIteratorImplementation::next(ProtoContext *context) {
