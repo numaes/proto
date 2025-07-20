@@ -7,7 +7,7 @@
 # | Subdirectories |
 # +----------------+
 # declare subdirectories of the source directory
-SUBDIRECTORIES := core header
+SUBDIRECTORIES := core headers
 
 # make sure the subdirectories are mirrored in
 # the obj/ and debug/ directories
@@ -31,7 +31,7 @@ PLATFORM := $(shell uname)
 # | Programs |
 # +----------+
 CXX_STANDARD_FLAGS := -std=c++20
-CC  := gcc
+CC  := g++
 CXX := g++
 ifeq ($(PLATFORM),Darwin) # on mac
     CXX_STANDARD_FLAGS := $(CXX_STANDARD_FLAGS) -stdlib=libc++ -Wno-c++11-extensions
@@ -84,7 +84,7 @@ SRCS         := \
 # | HEADERS defines headers to export |
 # +-----------------------------------+
 # OTHER_HEADERS := xxx.h xxx.h
-HEADERS           := proto.h proto_internal.h
+HEADERS           := proto.h proto_internal.h ProtoTuple.h
 HEADER_COPIES     := $(addprefix include/,$(HEADERS))
 
 # +-----------------------------+
@@ -125,9 +125,9 @@ debug/test_proto.o: test/test_proto.cpp
 	@echo "Compiling for debug $@"
 	@$(CXX) $(CXXDFLAGS) -o $@ -c $<
 
-bin/test_proto: $(MAIN_DEBUG) headers/proto.h debug/test_proto.o lib/lib$(LIB_TARGET_NAME)-debug.a
+bin/test_proto: $(MAIN_DEBUG) headers/proto.h lib/lib$(LIB_TARGET_NAME)-debug.a
 	@echo "Linking test_proto command line tool"
-	@$(CXX) -o bin/test_proto -lpthread -pthread $(LINKD) debug/test_proto.o lib/lib$(LIB_TARGET_NAME)-debug.a
+	@$(CXX) -o bin/test_proto -lpthread -pthread $(LINKD) $(MAIN_DEBUG) lib/lib$(LIB_TARGET_NAME)-debug.a
 
 test: bin/test_proto
 	@echo "Running test suite"
