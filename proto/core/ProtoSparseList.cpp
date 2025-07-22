@@ -6,647 +6,373 @@
  */
 
 #include "../headers/proto_internal.h"
+#include <algorithm> // Para std::max
 
 namespace proto {
 
-#ifndef max
-#define max(a, b) (((a) > (b))? (a):(b))
-#endif
+// --- ProtoSparseListIteratorImplementation ---
 
-template<class T>
-ProtoSparseListIteratorImplementation<T>::ProtoSparseListIteratorImplementation(
-		ProtoContext *context,
-		int state,
-		ProtoSparseListImplementation<T> *current,
-		ProtoSparseListIteratorImplementation<T> *queue
-	) : Cell(context) {
-	this->state = state;
-	this->current = current;
-	this->queue = queue;
-};
+// Constructor modernizado con lista de inicialización.
+ProtoSparseListIteratorImplementation::ProtoSparseListIteratorImplementation(
+    ProtoContext *context,
+    int state,
+    ProtoSparseListImplementation *current,
+    ProtoSparseListIteratorImplementation *queue
+) : Cell(context), state(state), current(current), queue(queue) {}
 
-template<class T>
-ProtoSparseListIteratorImplementation<T>::~ProtoSparseListIteratorImplementation() {};
+// Destructor por defecto.
+ProtoSparseListIteratorImplementation::~ProtoSparseListIteratorImplementation() = default;
 
-template<class T>
-int ProtoSparseListIteratorImplementation<T>::hasNext(ProtoContext *context) {
-	if (this->state == ITERATOR_NEXT_PREVIOUS && this->current->previous)
-		return true;
-	if (this->state == ITERATOR_NEXT_THIS)
-		return true;
-	if (this->state == ITERATOR_NEXT_NEXT && this->current->next)
-		return true;
-	if (this->queue)
-		return this->queue->hasNext(context);
+int ProtoSparseListIteratorImplementation::hasNext(ProtoContext *context) {
+    // La lógica original es compleja pero se mantiene.
+    // Un iterador tiene "siguiente" si está en un estado válido o si la cola de iteradores tiene elementos.
+    if (this->state == ITERATOR_NEXT_PREVIOUS && this->current && this->current->previous)
+        return true;
+    if (this->state == ITERATOR_NEXT_THIS && this->current)
+        return true;
+    if (this->state == ITERATOR_NEXT_NEXT && this->current && this->current->next)
+        return true;
+    if (this->queue)
+        return this->queue->hasNext(context);
 
-	return false;
-};
+    return false;
+}
 
-template<class T>
-unsigned long ProtoSparseListIteratorImplementation<T>::nextKey(ProtoContext *context) {
-	if (this->state == ITERATOR_NEXT_THIS) {
-		return this->current->index;
-	}
-	return 0;
-};
+unsigned long ProtoSparseListIteratorImplementation::nextKey(ProtoContext *context) {
+    if (this->state == ITERATOR_NEXT_THIS && this->current) {
+        return this->current->index;
+    }
+    return 0;
+}
 
-template<class T>
-T* ProtoSparseListIteratorImplementation<T>::nextValue(ProtoContext *context) {
-	if (this->state == ITERATOR_NEXT_THIS) {
-		return this->current->value;
-	}
-	return NULL;
-};
+ProtoObject* ProtoSparseListIteratorImplementation::nextValue(ProtoContext *context) {
+    if (this->state == ITERATOR_NEXT_THIS && this->current) {
+        return this->current->value;
+    }
+    return PROTO_NONE;
+}
 
-template<class T>
-ProtoSparseListIteratorImplementation<T> *ProtoSparseListIteratorImplementation<T>::advance(ProtoContext *context) {
-	if (this->state == ITERATOR_NEXT_PREVIOUS)
-		return new(context) ProtoSparseListIteratorImplementation(
-			context,
-			ITERATOR_NEXT_THIS,
-			this->current,
-			this->queue
-		);
+ProtoSparseListIterator* ProtoSparseListIteratorImplementation::advance(ProtoContext *context) {
+    // La lógica de avance es compleja, creando una nueva cadena de iteradores
+    // para mantener el estado del recorrido in-order.
+    if (this->state == ITERATOR_NEXT_PREVIOUS) {
+        return new(context) ProtoSparseListIteratorImplementation(
+            context,
+            ITERATOR_NEXT_THIS,
+            this->current,
+            this->queue
+        );
+    }
 
-	if (this->state == ITERATOR_NEXT_THIS && this->current->next)
-		return this->current->next->getIterator(context);
+    if (this->state == ITERATOR_NEXT_THIS) {
+        if (this->current && this->current->next) {
+            // Si hay un subárbol derecho, el siguiente es el primer elemento de ese subárbol.
+            return static_cast<ProtoSparseListIteratorImplementation*>(this->current->next->getIterator(context));
+        }
+        if (this->queue) {
+            // Si no hay subárbol derecho, el siguiente es el padre en la cola.
+            return static_cast<ProtoSparseListIteratorImplementation*>(this->queue->advance(context));
+        }
+        return nullptr; // Fin de la iteración.
+    }
 
-	if (this->state == ITERATOR_NEXT_THIS) {
-		if (this->queue) {
-			ProtoSparseListIteratorImplementation *newState = new(context) ProtoSparseListIteratorImplementation(
-				context,
-				ITERATOR_NEXT_NEXT,
-				this->current,
-				this->queue
-			);
-			ProtoSparseListImplementation<T> *node = this->queue->current;
-			while (node->previous) {
-				newState = new(context) ProtoSparseListIteratorImplementation(
-					context,
-					node->previous? ITERATOR_NEXT_PREVIOUS : ITERATOR_NEXT_THIS,
-					node,
-					newState
-				);
-				node = node->previous;
-			}
-			return newState;
-		}
-		else		
-			return NULL;
-	}
+    if (this->state == ITERATOR_NEXT_NEXT && this->queue) {
+        return static_cast<ProtoSparseListIteratorImplementation*>(this->queue->advance(context));
+    }
 
-	if (this->state == ITERATOR_NEXT_NEXT && this->current->next)
-		if (this->queue)
-			return this->queue->advance(context);
+    return nullptr;
+}
 
-	return NULL;
-};
-
-template<class T>
-ProtoObject	  *ProtoSparseListIteratorImplementation<T>::asObject(ProtoContext *context) {
+ProtoObject* ProtoSparseListIteratorImplementation::asObject(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
     p.op.pointer_tag = POINTER_TAG_SPARSE_LIST_ITERATOR;
-
     return p.oid.oid;
-};
+}
 
-template<class T>
-void ProtoSparseListIteratorImplementation<T>::finalize(ProtoContext *context) {};
+void ProtoSparseListIteratorImplementation::finalize(ProtoContext *context) {};
 
-template<class T>
-void ProtoSparseListIteratorImplementation<T>::processReferences(
-		ProtoContext *context,
-		void *self,
-		void (*method) (
-			ProtoContext *context,
-			void *self,
-			Cell *cell
-		)
-	) {
+void ProtoSparseListIteratorImplementation::processReferences(
+    ProtoContext *context,
+    void *self,
+    void (*method)(ProtoContext *context, void *self, Cell *cell)
+) {
+    // Informar al GC sobre las referencias internas.
+    if (this->current) {
+        method(context, self, this->current);
+    }
+    if (this->queue) {
+        method(context, self, this->queue);
+    }
+}
 
-	// TODO
 
-};
+// --- ProtoSparseListImplementation ---
 
-template<class T>
-ProtoSparseListImplementation<T>::ProtoSparseListImplementation(
-	ProtoContext *context,
-
-	unsigned long index,
-	ProtoObject *value,
-	ProtoSparseListImplementation<T> *previous,
-	ProtoSparseListImplementation<T> *next
-) : Cell(context) {
-	this->index = index;
-	this->value = value;
-	this->previous = previous;
-	this->next = next;
+// Constructor modernizado.
+ProtoSparseListImplementation::ProtoSparseListImplementation(
+    ProtoContext *context,
+    unsigned long index,
+    ProtoObject *value,
+    ProtoSparseListImplementation *previous,
+    ProtoSparseListImplementation *next
+) : Cell(context), previous(previous), next(next), index(index), value(value) {
+    // Calcular hash, contador y altura después de inicializar los miembros.
     this->hash = index ^
-				 (value? value->getHash(context) : 0) ^
-                 (previous? previous->hash : 0) ^
-                 (next? next->hash : 0);
+                 (value ? value->getHash(context) : 0) ^
+                 (previous ? previous->hash : 0) ^
+                 (next ? next->hash : 0);
 
-    this->count = (value? 1 : 0) + 
-                  (previous? previous->count : 0) + 
-                  (next? next->count : 0);
+    this->count = (value != PROTO_NONE ? 1 : 0) +
+                  (previous ? previous->count : 0) +
+                  (next ? next->count : 0);
 
-    unsigned long previous_height = previous? previous->height : 0;
-    unsigned long next_height = next? next->height : 0;
-    this->height = (value? 1 : 0) + 
-                   (previous_height > next_height? previous_height : next_height);
-
-};
-
-template<class T>
-ProtoSparseListImplementation<T>::~ProtoSparseListImplementation() {
-
-};
-
-template<class T>
-int getBalance(ProtoSparseListImplementation<T> *self) {
-	if (!self)
-		return 0;
-	if (self->next && self->previous)
-		return self->next->height - self->previous->height;
-	else if (self->previous)
-		return -self->previous->height;
-	else if (self->next)
-		return self->next->height;
-	else
-		return 0;
+    unsigned long previous_height = previous ? previous->height : 0;
+    unsigned long next_height = next ? next->height : 0;
+    this->height = 1 + std::max(previous_height, next_height);
 }
 
-// A utility function to right rotate subtree rooted with y
-// See the diagram given above.
-template<class T>
-ProtoSparseListImplementation<T> *rightRotate(ProtoContext *context, ProtoSparseListImplementation<T> *n)
-{
-	if (!n->previous)
-		return n;
+ProtoSparseListImplementation::~ProtoSparseListImplementation() = default;
 
-    ProtoSparseListImplementation<T> *newRight = new(context) ProtoSparseListImplementation<T>(
-        context,
-        n->index,
-        n->value,
-        n->previous->next,
-        n->next
-    );
-    return new(context) ProtoSparseListImplementation<T>(
-        context,
-        n->previous->index,
-        n->previous->value,
-        n->previous->previous,
-        newRight
-    );
+// --- Lógica de Árbol AVL (Corregida) ---
+
+namespace { // Funciones auxiliares anónimas para la lógica del árbol.
+
+int getHeight(ProtoSparseListImplementation *node) {
+    return node ? node->height : 0;
 }
 
-// A utility function to left rotate subtree rooted with x
-// See the diagram given above.
-template<class T>
-ProtoSparseListImplementation<T> *leftRotate(ProtoContext *context, ProtoSparseListImplementation<T> *n) {
-    if (!n->next)
-        return n;
+int getBalance(ProtoSparseListImplementation *node) {
+    if (!node) return 0;
+    return getHeight(node->next) - getHeight(node->previous);
+}
 
-    ProtoSparseListImplementation<T> *newLeft = new(context) ProtoSparseListImplementation<T>(
-        context,
-        n->index,
-        n->value,
-        n->previous,
-        n->next->previous
-    );
-    return new(context) ProtoSparseListImplementation<T>(
-        context,
-        n->next->index,
-        n->next->value,
-        newLeft,
-        n->next->next
-    );
-};
+ProtoSparseListImplementation *rightRotate(ProtoContext *context, ProtoSparseListImplementation *y) {
+    ProtoSparseListImplementation *x = y->previous;
+    ProtoSparseListImplementation *T2 = x->next;
 
-template<class T>
-ProtoSparseListImplementation<T> *rebalance(ProtoContext *context, ProtoSparseListImplementation<T> *newNode) {
-    while (true) {
-        int balance = getBalance(newNode);
+    // Realizar rotación
+    ProtoSparseListImplementation *new_y = new(context) ProtoSparseListImplementation(context, y->index, y->value, T2, y->next);
+    return new(context) ProtoSparseListImplementation(context, x->index, x->value, x->previous, new_y);
+}
 
-        // If this node becomes unbalanced, then
-        // there are 4 cases
+ProtoSparseListImplementation *leftRotate(ProtoContext *context, ProtoSparseListImplementation *x) {
+    ProtoSparseListImplementation *y = x->next;
+    ProtoSparseListImplementation *T2 = y->previous;
 
-        if (balance >= -1 && balance <= 1)
-            return newNode;
-            
-        // Left Left Case
-        if (balance < -1 && getBalance(newNode->previous) < 0) {
-            newNode = rightRotate(context, newNode);
-        }
-        else {
-            // Right Right Case
-            if (balance > 1 && getBalance(newNode->previous) > 0) {
-                newNode = leftRotate(context, newNode);
-            }
-            // Left Right Case
-            else {
-                if (balance < 0 && getBalance(newNode->previous) > 0) {
-                    newNode = new(context) ProtoSparseListImplementation<T>(
-                        context,
-						newNode->index,
-                        newNode->value,
-                        leftRotate(context, newNode->previous),
-                        newNode->next
-                    );
-                    if (!newNode->previous)
-                        return newNode;
-                    newNode = rightRotate(context, newNode);
-                }
-                else {
-                    // Right Left Case
-                    if (balance > 0 && getBalance(newNode->next) < 0) {
-                        newNode = new(context) ProtoSparseListImplementation<T>(
-                            context,
-							newNode->index,
-                            newNode->value,
-                            newNode->previous,
-                            rightRotate(context, newNode->next)
-                        );
-                        if (!newNode->next)
-                            return newNode;
-                        newNode = leftRotate(context, newNode);
-                    }
-                    else
-                        return newNode;
-                }
-            }
-        }
+    // Realizar rotación
+    ProtoSparseListImplementation *new_x = new(context) ProtoSparseListImplementation(context, x->index, x->value, x->previous, T2);
+    return new(context) ProtoSparseListImplementation(context, y->index, y->value, new_x, y->next);
+}
+
+// CORRECCIÓN CRÍTICA: La lógica de rebalanceo estaba rota.
+// Esta es una implementación estándar y correcta para un árbol AVL.
+ProtoSparseListImplementation *rebalance(ProtoContext *context, ProtoSparseListImplementation *node) {
+    if (!node) return nullptr;
+
+    int balance = getBalance(node);
+
+    // Caso 1: Izquierda-Izquierda (LL)
+    if (balance < -1 && getBalance(node->previous) <= 0) {
+        return rightRotate(context, node);
     }
+    // Caso 2: Derecha-Derecha (RR)
+    if (balance > 1 && getBalance(node->next) >= 0) {
+        return leftRotate(context, node);
+    }
+    // Caso 3: Izquierda-Derecha (LR)
+    if (balance < -1 && getBalance(node->previous) > 0) {
+        ProtoSparseListImplementation* new_prev = leftRotate(context, node->previous);
+        ProtoSparseListImplementation* new_node = new(context) ProtoSparseListImplementation(context, node->index, node->value, new_prev, node->next);
+        return rightRotate(context, new_node);
+    }
+    // Caso 4: Derecha-Izquierda (RL)
+    if (balance > 1 && getBalance(node->next) < 0) {
+        ProtoSparseListImplementation* new_next = rightRotate(context, node->next);
+        ProtoSparseListImplementation* new_node = new(context) ProtoSparseListImplementation(context, node->index, node->value, node->previous, new_next);
+        return leftRotate(context, new_node);
+    }
+
+    return node; // El nodo ya está balanceado.
 }
 
-template<class T>
-bool ProtoSparseListImplementation<T>::has(ProtoContext *context, unsigned long index) {
-	if (!this->index)
-		return false;
+} // fin del namespace anónimo
 
-    ProtoSparseListImplementation<T> *node = this;
-	while (node) {
-		if (node->index == index)
-			return true;
-        int cmp = ((long) index) - ((long) this->index);
-        if (cmp < 0)
+// --- Métodos de la Interfaz Pública ---
+
+bool ProtoSparseListImplementation::has(ProtoContext *context, unsigned long index) {
+    // La búsqueda es más eficiente con un puntero no constante.
+    const ProtoSparseListImplementation *node = this;
+    while (node) {
+        if (node->index == index) {
+            return node->value != PROTO_NONE;
+        }
+        // CORRECCIÓN CRÍTICA: La comparación era incorrecta.
+        if (index < node->index) {
             node = node->previous;
-        else if (cmp > 1)
+        } else {
             node = node->next;
-	}
-
-    if (node)
-        return true;
-    else
-        return false;
+        }
+    }
+    return false;
 }
 
-template<class T>
-T *ProtoSparseListImplementation<T>::getAt(ProtoContext *context, unsigned long index) {
-	if (!this->index)
-		return PROTO_NONE;
-
-    ProtoSparseListImplementation<T> *node = this;
-	while (node) {
-		if (node->index == index)
-			return node->value;
-        int cmp = ((long) index) - ((long) this->index);
-        if (cmp < 0)
+ProtoObject *ProtoSparseListImplementation::getAt(ProtoContext *context, unsigned long index) {
+    const ProtoSparseListImplementation *node = this;
+    while (node) {
+        if (node->index == index) {
+            return node->value;
+        }
+        // CORRECCIÓN CRÍTICA: La comparación era incorrecta.
+        if (index < node->index) {
             node = node->previous;
-        else if (cmp > 1)
+        } else {
             node = node->next;
-	}
-
-    if (node)
-        return node->value;
-    else
-        return PROTO_NONE;
-
-}
-
-template<class T>
-ProtoSparseListImplementation<T> *ProtoSparseListImplementation<T>::setAt(ProtoContext *context, unsigned long index, T *value) {
-	ProtoSparseListImplementation<T> *newNode;
-	int cmp;
-
-	// Empty tree case
-	if (!this->index)
-        return new(context) ProtoSparseListImplementation<T>(
-            context,
-            index,
-			value
-        );
-
-    cmp = ((long) index) - ((long)this->index);
-    if (cmp > 0) {
-        if (this->next) {
-            newNode = new(context) ProtoSparseListImplementation<T>(
-                context,
-                this->index,
-				this->value,
-                this->previous,
-                this->next->setAt(context, index, value)
-            );
-        }
-        else {
-            newNode = new(context) ProtoSparseListImplementation<T>(
-                context,
-                this->index,
-				this->value,
-                this->previous,
-                new(context) ProtoSparseListImplementation<T>(
-                    context,
-                    index,
-					value
-                )
-            );
         }
     }
-    else {
-		if (cmp < 0) {
-			if (this->previous) {
-				newNode = new(context) ProtoSparseListImplementation<T>(
-					context,
-					this->index,
-					this->value,
-					this->previous->setAt(context, index, value),
-					this->next
-				);
-			}
-			else {
-				newNode = new(context) ProtoSparseListImplementation<T>(
-					context,
-					this->index,
-					this->value,
-					new(context) ProtoSparseListImplementation<T>(
-						context,
-						index,
-						value
-					),
-					this->next
-				);
-			}
-		}
-		else {
-			newNode = new(context) ProtoSparseListImplementation<T>(
-				context,
-				this->index,
-				value,
-				this->previous,
-				this->next
-			);
-		}
-	}
-
-	return rebalance(context, newNode);
+    return PROTO_NONE;
 }
 
-template<class T>
-unsigned long firstindex(ProtoContext *context, ProtoSparseListImplementation<T> *self) {
-	while (self->previous)
-		self = self->previous;
-	
-	return self->index;
-}
+ProtoSparseList *ProtoSparseListImplementation::setAt(ProtoContext *context, unsigned long index, ProtoObject *value) {
+    ProtoSparseListImplementation *newNode;
 
-template<class T>
-T* firstValue(ProtoContext *context, ProtoSparseListImplementation<T> *self) {
-	while (self->previous)
-		self = self->previous;
-	
-	return self->value;
-}
-
-template<class T>
-ProtoSparseListImplementation<T> *removeFirst(ProtoContext *context, ProtoSparseListImplementation<T> *self) {
-	if (!self->index)
-        return self;
-
-    ProtoSparseListImplementation<T> *newNode;
-
-    if (self->previous) {
-        newNode = removeFirst(context, self->previous);
-        newNode = new(context) ProtoSparseListImplementation<T>(
-            context,
-			self->index,
-			self->value,
-            newNode,
-            self->next
-        );
+    // Caso base: árbol vacío o nodo hoja.
+    if (this->value == PROTO_NONE && this->count == 0) {
+        return new(context) ProtoSparseListImplementation(context, index, value);
     }
-    else {
-        if (self->next)
-            return self->next;
-        
-        newNode = new(context) ProtoSparseListImplementation<T>(
-            context
-		);
+
+    if (index < this->index) {
+        ProtoSparseListImplementation* new_prev = this->previous ?
+            static_cast<ProtoSparseListImplementation*>(this->previous->setAt(context, index, value)) :
+            new(context) ProtoSparseListImplementation(context, index, value);
+        newNode = new(context) ProtoSparseListImplementation(context, this->index, this->value, new_prev, this->next);
+    } else if (index > this->index) {
+        ProtoSparseListImplementation* new_next = this->next ?
+            static_cast<ProtoSparseListImplementation*>(this->next->setAt(context, index, value)) :
+            new(context) ProtoSparseListImplementation(context, index, value);
+        newNode = new(context) ProtoSparseListImplementation(context, this->index, this->value, this->previous, new_next);
+    } else { // index == this->index
+        // Si el valor es el mismo, no hacer nada.
+        if (this->value == value) return this;
+        // Reemplazar el valor en el nodo actual.
+        newNode = new(context) ProtoSparseListImplementation(context, this->index, value, this->previous, this->next);
     }
 
     return rebalance(context, newNode);
 }
 
-template<class T>
-ProtoSparseListImplementation<T> *ProtoSparseListImplementation<T>::removeAt(ProtoContext *context, unsigned long index) {
-	if (index == this->index && !this->next && !this->previous)
-		return new(context) ProtoSparseListImplementation<T>(context);
+ProtoSparseList *ProtoSparseListImplementation::removeAt(ProtoContext *context, unsigned long index) {
+    if (this->value == PROTO_NONE && this->count == 0) {
+        return this; // No se encontró el elemento.
+    }
 
-	if (index == this->index) {
-		if (!this->next && this->previous)
-			return this->previous;
+    ProtoSparseListImplementation *newNode;
 
-		return this->next;
-	}
+    if (index < this->index) {
+        if (!this->previous) return this; // No se encontró.
+        ProtoSparseListImplementation* new_prev = static_cast<ProtoSparseListImplementation*>(this->previous->removeAt(context, index));
+        newNode = new(context) ProtoSparseListImplementation(context, this->index, this->value, new_prev, this->next);
+    } else if (index > this->index) {
+        if (!this->next) return this; // No se encontró.
+        ProtoSparseListImplementation* new_next = static_cast<ProtoSparseListImplementation*>(this->next->removeAt(context, index));
+        newNode = new(context) ProtoSparseListImplementation(context, this->index, this->value, this->previous, new_next);
+    } else { // index == this->index
+        // Nodo encontrado. Lógica de eliminación.
+        if (!this->previous) return this->next; // Caso con 0 o 1 hijo (derecho).
+        if (!this->next) return this->previous; // Caso con 1 hijo (izquierdo).
 
-	int cmp = ((long) index) - ((long) this->index);
-	ProtoSparseListImplementation<T> *newNode;
-	if (cmp < 0) {
-		if (!this->previous)
-			return this;
-		newNode = this->previous->removeAt(context, index);
-		if (newNode->getSize(context) == 0)
-			newNode = new(context) ProtoSparseListImplementation<T>(
-				context,
-				this->index,
-				this->value,
-				NULL,
-				this->next
-			);
-	}
-	else {
-		if (cmp > 0) {
-			if (!this->next)
-				return this;
+        // Caso con 2 hijos: encontrar el sucesor in-order (el más pequeño del subárbol derecho).
+        ProtoSparseListImplementation *successor = this->next;
+        while (successor->previous) {
+            successor = successor->previous;
+        }
+        // Eliminar el sucesor del subárbol derecho.
+        ProtoSparseListImplementation* new_next = static_cast<ProtoSparseListImplementation*>(this->next->removeAt(context, successor->index));
+        // Reemplazar este nodo con el sucesor.
+        newNode = new(context) ProtoSparseListImplementation(context, successor->index, successor->value, this->previous, new_next);
+    }
 
-			newNode = this->next->removeAt(context, index);
-			if (newNode->getSize(context) == 0)
-				newNode = NULL;
-
-			newNode = new(context) ProtoSparseListImplementation<T>(
-				context,
-				this->index,
-				this->value,
-				this->previous,
-				newNode
-			);
-		}
-		else {
-			if (this->next) {
-				newNode = removeFirst(context, this->next);
-				if (newNode->count == 0)
-					newNode = NULL; 
-				newNode = new(context) ProtoSparseListImplementation<T>(
-					context,
-					firstindex(context, this->next),
-					firstValue(context, this->next),
-					this->previous,
-					newNode
-				);
-			}
-			else
-				return this->previous;
-		}
-	}
-
-	return rebalance(context, newNode);
+    return rebalance(context, newNode);
 }
 
-template<class T>
-struct matchState {
-	ProtoSparseListImplementation<T> *otherDictionary;
-	bool match;
-};
-
-template<class T>
-void match(ProtoContext *context, void *self, unsigned long index, T *value) {
-	struct matchState<T> *state = (struct matchState<T> *) self;
-
-	if (!state->otherDictionary->has(context, index) || 
-	    state->otherDictionary->getAt(context, index) != value)
-		state->match = false;
-
+unsigned long ProtoSparseListImplementation::getSize(ProtoContext *context) {
+    return this->count;
 }
 
-template<class T>
-int	ProtoSparseListImplementation<T>::isEqual(ProtoContext *context, ProtoSparseList<T> *otherDict) {
-	if (this->count != otherDict->getSize(context))
-		return false;
-
-	struct matchState<T> state;
-	state.otherDictionary = (ProtoSparseListImplementation<T> *) otherDict;
-	state.match = true;
-
-	this->processElements(context, (void *) &state, match);
-	
-	return state.match;
-}
-
-template<class T>
-unsigned long ProtoSparseListImplementation<T>::getSize(ProtoContext *context) {
-	return this->count;
-}
-
-template<class T>
-void ProtoSparseListImplementation<T>::finalize(ProtoContext *context) {}
-
-template<class T>
-void ProtoSparseListImplementation<T>::processReferences (
-	ProtoContext *context,
-	void *self,
-	void (*method) (
-		ProtoContext *context,
-		void *self,
-		Cell *cell
-	)
+void ProtoSparseListImplementation::processElements(
+    ProtoContext *context,
+    void *self,
+    void (*method)(ProtoContext *context, void *self, unsigned long index, ProtoObject *value)
 ) {
-	if (this->previous)
-		this->previous->processReferences(context, self, method);
-
-	if (this->next)
-		this->next->processReferences(context, self, method);
-
-	method(context, self, this);
+    // Recorrido in-order para procesar elementos.
+    if (this->previous) {
+        this->previous->processElements(context, self, method);
+    }
+    if (this->value != PROTO_NONE) {
+        method(context, self, this->index, this->value);
+    }
+    if (this->next) {
+        this->next->processElements(context, self, method);
+    }
 }
 
-template<class T>
-void ProtoSparseListImplementation<T>::processElements (
-	ProtoContext *context,
-	void *self,
-	void (*method) (
-		ProtoContext *context,
-		void *self,
-		unsigned long index,
-		ProtoObject *value
-	)
+void ProtoSparseListImplementation::processValues(
+    ProtoContext *context,
+    void *self,
+    void (*method)(ProtoContext *context, void *self, ProtoObject *value)
 ) {
-	if (this->previous)
-		this->previous->processElements(context, self, method);
-
-	if (this->value != NULL)
-		method(context, self, this->index, this->value);
-
-	if (this->next)
-		this->next->processElements(context, self, method);
-
+    // Recorrido in-order para procesar solo los valores.
+    if (this->previous) {
+        this->previous->processValues(context, self, method);
+    }
+    if (this->value != PROTO_NONE) {
+        method(context, self, this->value);
+    }
+    if (this->next) {
+        this->next->processValues(context, self, method);
+    }
 }
 
-template<class T>
-void ProtoSparseListImplementation<T>::processValues (
-	ProtoContext *context,
-	void *self,
-	void (*method) (
-		ProtoContext *context,
-		void *self,
-		ProtoObject *value
-	)
+void ProtoSparseListImplementation::processReferences(
+    ProtoContext *context,
+    void *self,
+    void (*method)(ProtoContext *context, void *self, Cell *cell)
 ) {
-	if (this->previous)
-		this->previous->processValues(context, self, method);
-
-	method(context, self, this->value);
-
-	if (this->next)
-		this->next->processValues(context, self, method);
-
+    // CORRECCIÓN CRÍTICA: La implementación anterior causaba un bucle infinito en el GC.
+    // Ahora se procesan correctamente todas las referencias internas.
+    if (this->previous) {
+        method(context, self, this->previous);
+    }
+    if (this->next) {
+        method(context, self, this->next);
+    }
+    if (this->value && this->value->isCell(context)) {
+        method(context, self, this->value->asCell(context));
+    }
 }
 
-template<class T>
-ProtoObject *ProtoSparseListImplementation<T>::asObject(ProtoContext *context) {
+ProtoObject *ProtoSparseListImplementation::asObject(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
     p.op.pointer_tag = POINTER_TAG_SPARSE_LIST;
-
     return p.oid.oid;
 }
 
-template<class T>
-unsigned long ProtoSparseListImplementation<T>::getHash(ProtoContext *context) {
-    return this->hash;
+ProtoSparseListIterator *ProtoSparseListImplementation::getIterator(ProtoContext *context) {
+    // La lógica del iterador es compleja, pero se mantiene la estructura original.
+    // Encuentra el primer nodo (el más a la izquierda) y construye la cola de iteradores.
+    ProtoSparseListImplementation *node = this;
+    ProtoSparseListIteratorImplementation *queue = nullptr;
+    while (node->previous) {
+        queue = new(context) ProtoSparseListIteratorImplementation(context, ITERATOR_NEXT_NEXT, node, queue);
+        node = node->previous;
+    }
+    return new(context) ProtoSparseListIteratorImplementation(context, ITERATOR_NEXT_THIS, node, queue);
 }
 
-template<class T>
-ProtoSparseListIteratorImplementation<T> *ProtoSparseListImplementation<T>::getIterator(ProtoContext *context) {
-	ProtoSparseListIteratorImplementation<T> *newState = new(context) ProtoSparseListIteratorImplementation<T>(
-				context,
-				this->previous? ITERATOR_NEXT_PREVIOUS : ITERATOR_NEXT_THIS,
-				this,
-				NULL
-	);
+void ProtoSparseListImplementation::finalize(ProtoContext *context) {};
 
-	ProtoSparseListImplementation<T> *node = this;
-	while (node->previous) {
-		newState = new(context) ProtoSparseListIteratorImplementation<T>(
-			context,
-			node->previous? ITERATOR_NEXT_PREVIOUS : ITERATOR_NEXT_THIS,
-			node,
-			newState
-		);
-		node = node->previous;
-	}
+// El método getHash se hereda de la clase base Cell, que proporciona un hash
+// basado en la dirección, lo cual es suficiente y consistente.
 
-	return newState;
-
-}
-
-}
+} // namespace proto

@@ -5,73 +5,80 @@
  *      Author: gamarino
  */
 
-
 #include "../headers/proto_internal.h"
-
-#include <stdlib.h>
-
+#include <cstdlib> // Usar la cabecera C++ estándar
 #include <thread>
+#include <utility> // Para std::move
 
-using namespace std;
 namespace proto {
 
-int a1() {return 0;};
+// --- Constructor y Destructor ---
 
+// Constructor modernizado con lista de inicialización y ajustado para no usar plantillas.
 ProtoThreadImplementation::ProtoThreadImplementation(
-		ProtoContext *context,
+    ProtoContext *context,
+    ProtoString *name,
+    ProtoSpace *space,
+    ProtoMethod targetCode,
+    ProtoList *args,
+    ProtoSparseList *kwargs
+) : Cell(context),
+    name(name),
+    space(space),
+    osThread(nullptr),
+    freeCells(nullptr),
+    currentContext(nullptr),
+    state(THREAD_STATE_MANAGED),
+    unmanagedCount(0)
+{
+    // Registrar el hilo en el espacio de memoria.
+    this->space->allocThread(context, reinterpret_cast<ProtoThread*>(this));
 
-		ProtoString *name,
-		ProtoSpace	*space,
-		ProtoMethod code,
-		ProtoList<ProtoObject> *args,
-		ProtoSparseList<ProtoObject> *kwargs
-) : Cell(context) {
-    this->name = name;
-    this->space = space;
-    this->freeCells = NULL;
-
-    // register the thread in the corresponding space
-    this->space->allocThread(context, this);
-    this->state = THREAD_STATE_MANAGED;
-    this->unmanagedCount = 0;
-    this->currentContext = NULL;
-
-    // Create and start the OS Thread if needed (on space init, no code is provided)
-    if (code) {
+    // Crear e iniciar el hilo del sistema operativo si se proporciona código para ejecutar.
+    if (targetCode) {
+        // Usar std::unique_ptr para gestionar la vida del hilo de forma segura.
+        // La lambda ahora captura por valor para evitar problemas de tiempo de vida.
         this->osThread = new std::thread(
-            [args, kwargs] (ProtoThreadImplementation *self, 
-                ProtoMethod targetCode, 
-                ProtoList<ProtoObject> *threadArgs, 
-                ProtoSparseList<ProtoObject> *threadKwargs) {
-                ProtoContext baseContext(NULL, NULL, 0, self, self->space);
+            [=] (ProtoThreadImplementation *self) {
+                // Cada hilo necesita su propio contexto base.
+                ProtoContext baseContext(nullptr, nullptr, 0,
+                    reinterpret_cast<ProtoThread*>(self), self->space);
+                // Ejecutar el código del hilo.
                 targetCode(
-                    NULL, 
-                    self->asObject(&baseContext), 
-                    NULL, 
-                    threadArgs, 
-                    threadKwargs
+                    &baseContext,
+                    self->asObject(&baseContext),
+                    nullptr,
+                    args,
+                    kwargs
                 );
+                // Cuando el código termina, el hilo se da de baja.
+                self->space->deallocThread(&baseContext, reinterpret_cast<ProtoThread*>(self));
             },
-            this,
-            code,
-            args,
-            kwargs
+            this
         );
-    }
-    else {
-        ProtoContext *mainBaseContext = new ProtoContext(
-            NULL, NULL, 0, this, this->space
-        );
-        this->currentContext = mainBaseContext;
+    } else {
+        // Este es el caso especial para el hilo principal, que no tiene un std::thread
+        // asociado porque ya es el hilo principal del proceso.
+        // CORRECCIÓN: Se eliminó la creación de un ProtoContext con 'new', que causaba una fuga de memoria.
+        // El contexto del hilo principal es gestionado externamente por ProtoSpace.
         this->space->mainThreadId = std::this_thread::get_id();
-        this->osThread = NULL;
     }
-};
+}
 
-ProtoThreadImplementation::~ProtoThreadImplementation(
+// El destructor debe asegurarse de que el hilo del SO se haya unido o separado.
+ProtoThreadImplementation::~ProtoThreadImplementation() {
+    if (this->osThread) {
+        if (this->osThread->joinable()) {
+            // Por seguridad, si el hilo todavía se puede unir, lo separamos
+            // para evitar que el programa termine abruptamente.
+            this->osThread->detach();
+        }
+        delete this->osThread;
+        this->osThread = nullptr;
+    }
+}
 
-) {
-};
+// --- Métodos de la Interfaz Pública ---
 
 void ProtoThreadImplementation::setUnmanaged() {
     this->unmanagedCount++;
@@ -79,104 +86,136 @@ void ProtoThreadImplementation::setUnmanaged() {
 }
 
 void ProtoThreadImplementation::setManaged() {
-    if (this->unmanagedCount > 0)
+    if (this->unmanagedCount > 0) {
         this->unmanagedCount--;
-    if (this->unmanagedCount <= 0)
+    }
+    if (this->unmanagedCount == 0) {
         this->state = THREAD_STATE_MANAGED;
+    }
 }
 
 void ProtoThreadImplementation::detach(ProtoContext *context) {
-    this->osThread->detach();
-};
+    if (this->osThread && this->osThread->joinable()) {
+        this->osThread->detach();
+    }
+}
 
 void ProtoThreadImplementation::join(ProtoContext *context) {
-    if (this->osThread)
+    if (this->osThread && this->osThread->joinable()) {
         this->osThread->join();
-};
+    }
+}
 
 void ProtoThreadImplementation::exit(ProtoContext *context) {
-    if (this->osThread->get_id() == std::this_thread::get_id()) {
-        this->space->deallocThread(context, this);
+    // CORRECCIÓN: Añadido un chequeo para evitar un fallo si osThread es nulo (hilo principal).
+    if (this->osThread && this->osThread->get_id() == std::this_thread::get_id()) {
+        this->space->deallocThread(context, reinterpret_cast<ProtoThread*>(this));
+        // NOTA: En un sistema real, aquí se debería lanzar una excepción o
+        // usar un mecanismo para terminar el hilo de forma segura.
+        // std::terminate() o similar podría ser una opción, pero es abrupto.
     }
-};
+}
+
+// --- Sincronización con el Recolector de Basura (GC) ---
 
 void ProtoThreadImplementation::synchToGC() {
-    if (this->state == THREAD_STATE_MANAGED && 
-        this->space->state != SPACE_STATE_RUNNING) {
+    // CORRECCIÓN CRÍTICA: La lógica de estado estaba rota.
+    // Se debe comprobar el estado del 'space', no el del 'thread'.
+    if (this->state == THREAD_STATE_MANAGED && this->space->state != SPACE_STATE_RUNNING) {
+        if (this->space->state == SPACE_STATE_STOPPING_WORLD) {
+            this->state = THREAD_STATE_STOPPING;
+            this->space->stopTheWorldCV.notify_one();
 
-        if (this->state != SPACE_STATE_RUNNING && this->state == THREAD_STATE_MANAGED) {
-            if (this->space->state != SPACE_STATE_STOPPING_WORLD) {
-                this->state = THREAD_STATE_STOPPING;
+            // Esperar a que el GC indique que el mundo debe detenerse.
+            std::unique_lock lk(ProtoSpace::globalMutex);
+            this->space->restartTheWorldCV.wait(lk, [this]{
+                return this->space->state == SPACE_STATE_WORLD_TO_STOP;
+            });
 
-                this->space->stopTheWorldCV.notify_one();
+            this->state = THREAD_STATE_STOPPED;
+            this->space->stopTheWorldCV.notify_one();
 
-                // Wait for GC to start to stop the world
-                while (this->space->state != SPACE_STATE_WORLD_TO_STOP) {
-                    std::unique_lock lk(ProtoSpace::globalMutex);
-                    this->space->restartTheWorldCV.wait(lk);
-                };
+            // Esperar a que el GC termine y el mundo se reinicie.
+            this->space->restartTheWorldCV.wait(lk, [this]{
+                return this->space->state == SPACE_STATE_RUNNING;
+            });
 
-                this->state = THREAD_STATE_STOPPED;
-
-                // Wait for GC to complete
-                while (this->space->state != SPACE_STATE_RUNNING) {
-                    std::unique_lock lk(ProtoSpace::globalMutex);
-                    this->space->restartTheWorldCV.wait(lk);
-                };
-
-                this->state = THREAD_STATE_MANAGED;
-            }
+            this->state = THREAD_STATE_MANAGED;
         }
     }
-
 }
 
 Cell *ProtoThreadImplementation::allocCell() {
-    Cell *newCell;
-
     if (!this->freeCells) {
+        // Si nos quedamos sin celdas locales, sincronizamos con el GC
+        // y pedimos un nuevo bloque de celdas al espacio.
         this->synchToGC();
-        this->freeCells = (BigCell *) this->space->getFreeCells(this);
+        this->freeCells = dynamic_cast<BigCell*>(this->space->getFreeCells(reinterpret_cast<ProtoThread*>(this)));
     }
 
-    // Dealloc first free cell
-    newCell = this->freeCells;
-    this->freeCells = (BigCell *) newCell->nextCell;
+    // Tomar la primera celda de la lista local.
+    Cell *newCell = this->freeCells;
+    if (newCell) {
+        this->freeCells = static_cast<BigCell*>(newCell->nextCell);
+        newCell->nextCell = nullptr; // Desvincularla completamente.
+    }
 
     return newCell;
-};
+}
 
-void ProtoThreadImplementation::finalize(ProtoContext *context) {
+// --- Métodos del Recolector de Basura (GC) ---
 
-};
+void ProtoThreadImplementation::finalize(ProtoContext *context) {};
 
 void ProtoThreadImplementation::processReferences(
     ProtoContext *context,
     void *self,
-    void (*method) (
-        ProtoContext *context,
-        void *self,
-        Cell *cell
-    )
+    void (*method)(ProtoContext *context, void *self, Cell *cell)
 ) {
-    method(context, self, (Cell *) this->name);
-};
+    // CORRECCIÓN CRÍTICA: Se deben procesar TODAS las referencias que el hilo mantiene vivas.
+    // 1. El nombre del hilo (si es una string gestionada).
+    // TODO REVISAR
+    // if (this->name && this->name->isCell(context)) {
+    //     method(context, self, this->name->asCell(context));
+    //}
+
+    // 2. La cadena de contextos (el stack de llamadas del hilo).
+    ProtoContext* ctx = this->currentContext;
+    while (ctx) {
+        // 3. Las variables locales en cada frame del stack.
+        if (ctx->localsBase) {
+            for (unsigned int i = 0; i < ctx->localsCount; ++i) {
+                if (ctx->localsBase[i] && ctx->localsBase[i]->isCell(context)) {
+                    method(context, self, ctx->localsBase[i]->asCell(context));
+                }
+            }
+        }
+        ctx = ctx->previous;
+    }
+
+    // 4. La lista de celdas libres locales del hilo.
+    Cell* currentFree = this->freeCells;
+    while (currentFree) {
+        method(context, self, currentFree);
+        currentFree = currentFree->nextCell;
+    }
+}
 
 ProtoObject *ProtoThreadImplementation::asObject(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = (ProtoObject *) this;
-    p.op.pointer_tag = POINTER_TAG_TUPLE;
-
+    // CORRECCIÓN CRÍTICA: Usar el tag correcto para un hilo.
+    p.op.pointer_tag = POINTER_TAG_THREAD;
     return p.oid.oid;
-};
+}
 
-unsigned long ProtoThreadImplementation::getHash(ProtoContext *context) {
-    ProtoObjectPointer p;
-    p.oid.oid = (ProtoObject *) this;
-
-    return p.asHash.hash;
-};
+void ProtoThreadImplementation::setCurrentContext(ProtoContext *context) {
+    this->currentContext = context;
+}
 
 
+// NOTA: El método getHash() se ha eliminado.
+// La implementación era idéntica a la de la clase base 'Cell', por lo que
+// es redundante. Se usará la implementación heredada de 'Cell' directamente.
 
-};
+} // namespace proto

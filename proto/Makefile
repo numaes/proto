@@ -7,7 +7,7 @@
 # | Subdirectories |
 # +----------------+
 # declare subdirectories of the source directory
-SUBDIRECTORIES := core headers
+SUBDIRECTORIES := core headers test
 
 # make sure the subdirectories are mirrored in
 # the obj/ and debug/ directories
@@ -46,23 +46,22 @@ CP  := cp
 ifeq ($(PLATFORM),Darwin)
   CONFIG  := $(CONFIG) -DMACOSX
 else
-
   CONFIG  := $(CONFIG)
 endif
 
 # include paths (flattens the hierarchy for include directives)
-INC       := -I headers/ 
+INC       := -I.
 
 # use the second line to disable profiling instrumentation
 # PROFILING := -pg
 PROFILING :=
 CCFLAGS   := -Wall $(INC) $(CONFIG) -O2 -DNDEBUG $(PROFILING)
 CXXFLAGS  := $(CCFLAGS) $(CXX_STANDARD_FLAGS) -MMD -MP
-CCDFLAGS  := $(INC) $(CONFIG) -ggdb 
+CCDFLAGS  := $(INC) $(CONFIG) -ggdb
 CXXDFLAGS := $(CCDFLAGS) $(CXX_STANDARD_FLAGS) -MMD -MP
 
 LINK         := -Wall $(INC) $(CONFIG) -O2 -DNDEBUG $(PROFILING)
-LINKD        := -Wall $(INC) $(CONFIG) -ggdb 
+LINKD        := -Wall $(INC) $(CONFIG) -ggdb
 ifeq ($(PLATFORM),Darwin)
   LINK  := $(LINK) -Wl,-no_pie
   LINKD := $(LINK) -Wl,-no_pie
@@ -74,34 +73,31 @@ endif
 # ***********************-----------------+
 # | SRCS defines a generic bag of sources |
 # +---------------------------------------+
-# OTHER_SRCS   := xxx xxx xxx
 SRCS         := \
     Cell ProtoList ProtoSparseList ParentLink ProtoTuple ProtoString Proto ProtoByteBuffer \
 	ProtoContext ProtoExternalPointer ProtoObjectCell \
-	ProtoSpace ProtoMethodCell Thread 
+	ProtoSpace ProtoMethodCell Thread
 
 # +-----------------------------------+
 # | HEADERS defines headers to export |
 # +-----------------------------------+
-# OTHER_HEADERS := xxx.h xxx.h
-HEADERS           := proto.h proto_internal.h ProtoTuple.h
+HEADERS           := proto.h proto_internal.h
 HEADER_COPIES     := $(addprefix include/,$(HEADERS))
 
-# +-----------------------------+
-# | stand alone program sources |
-# +-----------------------------+
-MAIN_SRC := test_proto
-
+# +--------------------------------------+
+# | Stand alone program sources (Tests)  |
+# | Finds all .cpp files in test/ folder |
+# +--------------------------------------+
+TEST_SRCS := $(wildcard test/*.cpp)
 
 
 # +--------------------------------+
 # | Object Aggregation for Targets |
 # +--------------------------------+
-FULL_SRC		  := $(addprefix core/,$(addsuffix .cpp,$(SRCS)))	
+FULL_SRC		  := $(addprefix core/,$(addsuffix .cpp,$(SRCS)))
 OBJ               := $(addprefix obj/,$(addsuffix .o,$(SRCS)))
 DEBUG             := $(addprefix debug/,$(addsuffix .o,$(SRCS)))
-MAIN_OBJ          := $(addprefix obj/,$(addsuffix .o,$(MAIN_SRC)))
-MAIN_DEBUG        := $(addprefix debug/,$(addsuffix .o,$(MAIN_SRC)))
+TEST_OBJS_DEBUG   := $(patsubst test/%.cpp,debug/%.o,$(TEST_SRCS))
 
 LIB_TARGET_NAME   := proto
 
@@ -110,7 +106,10 @@ LIB_TARGET_NAME   := proto
 # *********------+
 # | Target Rules |
 # +--------------+
-all: lib/lib$(LIB_TARGET_NAME).a includes 
+.PHONY: all debug test includes clean
+
+all: lib/lib$(LIB_TARGET_NAME).a includes
+
 debug: lib/lib$(LIB_TARGET_NAME)-debug.a bin/test_proto includes
 
 lib/lib$(LIB_TARGET_NAME).a: $(OBJ)
@@ -121,22 +120,14 @@ lib/lib$(LIB_TARGET_NAME)-debug.a: $(DEBUG)
 	@echo "Bundling debug $@"
 	@ar rcs $@ $(DEBUG)
 
-debug/test_proto.o: test/test_proto.cpp
-	@echo "Compiling for debug $@"
-	@$(CXX) $(CXXDFLAGS) -o $@ -c $<
-
-bin/test_proto: $(MAIN_DEBUG) headers/proto.h lib/lib$(LIB_TARGET_NAME)-debug.a
+# --- Test Suite Compilation and Linking ---
+bin/test_proto: $(TEST_OBJS_DEBUG) lib/lib$(LIB_TARGET_NAME)-debug.a
 	@echo "Linking test_proto command line tool"
-	@$(CXX) -o bin/test_proto -lpthread -pthread $(LINKD) $(MAIN_DEBUG) lib/lib$(LIB_TARGET_NAME)-debug.a
+	@$(CXX) -o $@ -pthread $(LINKD) $(TEST_OBJS_DEBUG) lib/lib$(LIB_TARGET_NAME)-debug.a
 
 test: bin/test_proto
 	@echo "Running test suite"
 	@./bin/test_proto
-
-# +------------------------------+
-# | Specialized File Build Rules |
-# +------------------------------+
-
 
 # +------------------------------------+
 # | Generic Source->Object Build Rules |
@@ -149,6 +140,10 @@ debug/%.o: core/%.cpp
 	@echo "Compiling for debug $@"
 	@$(CXX) $(CXXDFLAGS) -o $@ -c $<
 
+# Generic rule for compiling test files into the debug/ directory
+debug/%.o: test/%.cpp
+	@echo "Compiling test file for debug $@"
+	@$(CXX) $(CXXDFLAGS) -o $@ -c $<
 
 
 # +-------------------+
@@ -160,13 +155,10 @@ include/%.h: headers/%.h
 	@echo "updating header $@"
 	@cp $< $@
 
--include $(OBJ:.o=.d) $(DEBUG:.o=.d) debug/test_proto.d
+-include $(OBJ:.o=.d) $(DEBUG:.o=.d) $(TEST_OBJS_DEBUG:.o=.d)
 
 # +---------------+
 # | cleaning rule |
 # +---------------+
 clean:
 	-@$(RM) -r obj debug include bin lib
-
-
-

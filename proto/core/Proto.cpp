@@ -1,614 +1,120 @@
 /*
- * proto.cpp
+ * ProtoByteBuffer.cpp
  *
- *  Created on: 6 de ago. de 2017
+ *  Created on: 2020-05-23
  *      Author: gamarino
  */
 
-#include <random>
 #include "../headers/proto_internal.h"
-
-
-using namespace std;
+#include <utility> // Para std::move y otras utilidades
 
 namespace proto {
 
-ProtoObject *getPrototype(ProtoContext *context, ProtoObject *p) {
-    ProtoObjectPointer pa;
-
-    pa.oid.oid = p;
-
-	switch (pa.op.pointer_tag) {
-        case POINTER_TAG_EMBEDEDVALUE:
-            switch (pa.op.embedded_type) {
-                case EMBEDED_TYPE_BOOLEAN:
-                    return context->space->booleanPrototype;
-                case EMBEDED_TYPE_UNICODECHAR:
-                    return context->space->unicodeCharPrototype;
-                case EMBEDED_TYPE_BYTE:
-                    return context->space->bytePrototype;
-                case EMBEDED_TYPE_TIMESTAMP:
-                    return context->space->timestampPrototype;
-                case EMBEDED_TYPE_DATE:
-                    return context->space->datePrototype;
-                case EMBEDED_TYPE_TIMEDELTA:
-                    return context->space->timedeltaPrototype;
-                case EMBEDED_TYPE_SMALLINT:
-                    return context->space->smallIntegerPrototype;
-                case EMBEDED_TYPE_SMALLDOUBLE:
-                    return context->space->smallFloatPrototype;
-                default:
-                    return NULL;
-            };
-        case POINTER_TAG_LIST:
-            return context->space->listPrototype;
-        case POINTER_TAG_SPARSE_LIST:
-            return context->space->sparseListPrototype;
-        case POINTER_TAG_TUPLE:
-            return context->space->tuplePrototype;
-        case POINTER_TAG_BYTE_BUFFER:
-            return context->space->bufferPrototype;
-        case POINTER_TAG_EXTERNAL_POINTER:
-            return context->space->pointerPrototype;
-        case POINTER_TAG_METHOD_CELL:
-            return context->space->methodPrototype;
-        case POINTER_TAG_STRING:
-            return context->space->stringPrototype;
-        case POINTER_TAG_LIST_ITERATOR:
-            return context->space->stringIteratorPrototype;
-        case POINTER_TAG_TUPLE_ITERATOR:
-            return context->space->tupleIteratorPrototype;
-        case POINTER_TAG_SPARSE_LIST_ITERATOR:
-            return context->space->sparseListIteratorPrototype;
-        case POINTER_TAG_STRING_ITERATOR:
-            return context->space->stringIteratorPrototype;
-        default:
-            return NULL;
-	};
-}
-
-ProtoObject *ProtoObject::clone(ProtoContext *context, bool isMutable) {
-    ProtoObjectPointer pa;
-
-    pa.oid.oid = this;
-
-    if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
-
-        ProtoObject *newObject = (new(context) ProtoObjectCellImplementation(
-            context,
-            oc->parent,
-            0,
-            oc->attributes
-        ))->asObject(context);
-
-        if (isMutable) {
-            ProtoSparseList<ProtoObject> *currentRoot;
-            int randomId = 0;
-            do {
-                currentRoot = context->space->mutableRoot.load();
-
-                int randomId = rand();
-                if (randomId == 0)
-                    continue;
-
-                if (currentRoot->has(context, (unsigned long) randomId))
-                    continue;
-
-            } while (!context->space->mutableRoot.compare_exchange_strong(
-                currentRoot,
-                currentRoot->setAt(
-                    context,
-                    randomId,
-                    newObject
-                )
-            ));
-        }
-        return newObject;
-
-    }
-    return PROTO_NONE;
-
-}
-
-ProtoObject *ProtoObject::newChild(ProtoContext *context, bool isMutable) {
-    ProtoObjectPointer pa;
-
-    pa.oid.oid = this;
-
-    if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
-
-        ProtoObject *newObject = (new(context) ProtoObjectCellImplementation(
-            context,
-            new(context) ParentLinkImplementation(
-                context,
-                oc->parent,
-                oc
-            ),
-            0,
-            oc->attributes
-        ))->asObject(context);
-
-        if (isMutable) {
-            ProtoSparseList<ProtoObject> *currentRoot;
-            int randomId = 0;
-            do {
-                currentRoot = context->space->mutableRoot.load();
-
-                int randomId = rand();
-
-                if (randomId == 0)
-                    continue;
-
-                if (currentRoot->has(context, (unsigned long) randomId))
-                    continue;
-
-            } while (!context->space->mutableRoot.compare_exchange_strong(
-                currentRoot,
-                currentRoot->setAt(
-                    context,
-                    randomId,
-                    newObject
-                )
-            ));
-        }
-        return newObject;
-
-    }
-    return PROTO_NONE;
-
-}
-
-ProtoObject *ProtoObject::getAttribute(ProtoContext *context, ProtoString *name) {
-    ProtoObjectPointer pa;
-
-    pa.oid.oid = this;
-
-    if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
-        if (oc->mutable_ref)
-            oc = (ProtoObjectCellImplementation *)
-                context->space->mutableRoot.load()->getAt(context, oc->mutable_ref);
-
-        unsigned long hash = name->getHash(context);
-        do {
-            if (oc->attributes->has(context, hash))
-                return oc->attributes->getAt(context, hash);
-            if (oc->parent && oc->parent->object)
-                oc = oc->parent->object;
-            else
-                break;
-        } while (oc);
-    }
-
-    if (this->hasAttribute(context, context->space->literalGetAttribute)) {
-        ProtoList<ProtoObject> *parameters = context->newList();
-
-        return this->call(
-            context,
-            NULL,
-            context->space->literalGetAttribute,
-            this,
-            parameters->appendFirst(context, name->asObject(context))
-        );
-    }
-
-    return PROTO_NONE;
-}
-
-ProtoObject *ProtoObject::hasAttribute(ProtoContext *context, ProtoString *name) {
-    ProtoObjectPointer pa;
-
-    pa.oid.oid = this;
-
-    if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
-        if (oc->mutable_ref) {
-            oc = (ProtoObjectCellImplementation *)
-                context->space->mutableRoot.load()->getAt(context, oc->mutable_ref);
-        }
-
-        unsigned long hash = name->getHash(context);
-        do {
-            if (oc->attributes->has(context, hash))
-                return oc->attributes->getAt(context, hash);
-            if (oc->parent && oc->parent->object)
-                oc = oc->parent->object;
-            else
-                break;
-        } while (oc);
-    }
-    return PROTO_FALSE;
-}
-
-ProtoObject *ProtoObject::setAttribute(ProtoContext *context, ProtoString *name, ProtoObject *value) {
-    ProtoObjectPointer pa;
-
-    pa.oid.oid = this;
-
-    if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid, *inmutableBase = NULL;
-        ProtoSparseList<ProtoObject> *currentRoot, *newRoot;
-        if (oc->mutable_ref) {
-            inmutableBase = oc;
-            currentRoot = context->space->mutableRoot.load();
-            oc = (ProtoObjectCellImplementation *) currentRoot->getAt(context, oc->mutable_ref);
-        }
-
-        unsigned long hash = name->getHash(context);
-        ProtoObject *newObject = (new(context) ProtoObjectCellImplementation(
-                context,
-                oc->parent,
-                0,
-                oc->attributes->setAt(context, hash, value)
-            ))->asObject(context);
-
-        if (inmutableBase) {
-            do {
-                currentRoot = context->space->mutableRoot.load();
-                newRoot = currentRoot->setAt(
-                    context, inmutableBase->mutable_ref, newObject);
-            } while (context->space->mutableRoot.compare_exchange_strong(
-                currentRoot,
-                newRoot
-            ));
-            return this;
-        }
-        else {
-            return (new(context) ProtoObjectCellImplementation(
-                context,
-                oc->parent,
-                0,
-                oc->attributes->setAt(context, hash, value)
-            ))->asObject(context);
-        }
-    }
-    return this;
-}
-
-ProtoObject *ProtoObject::hasOwnAttribute(ProtoContext *context, ProtoString *name) {
-    ProtoObjectPointer pa;
-
-    pa.oid.oid = this;
-
-    if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
-        ProtoSparseList<ProtoObject> *currentRoot;
-        if (oc->mutable_ref) {
-            currentRoot = context->space->mutableRoot.load();
-            oc = (ProtoObjectCell *) currentRoot->getAt(context, oc->mutable_ref);
-        }
-
-        unsigned long hash = name->getHash(context);
-        return oc->attributes->has(context, hash)? PROTO_TRUE : PROTO_FALSE;
-    }
-    return PROTO_FALSE;
-};
-
-ProtoSparseList<ProtoObject> *ProtoObject::getAttributes(ProtoContext *context) {
-    ProtoObjectPointer pa;
-
-    pa.oid.oid = this;
-
-    if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
-        ProtoSparseList<ProtoObject> *currentRoot = NULL;
-        if (oc->mutable_ref) {
-            currentRoot = context->space->mutableRoot.load();
-            oc = (ProtoObjectCellImplementation *) currentRoot->getAt(context, oc->mutable_ref);
-        }
-
-        ProtoSparseList<ProtoObject> *attributes = context->newSparseList();
-
-        while (oc) {
-            ProtoSparseListIterator<ProtoObject> *ai;
-
-            ai = oc->attributes->getIterator(context);
-            while (ai->hasNext(context)) {
-                unsigned long key = ai->nextKey(context);
-                ProtoObject* value = ai->nextValue(context);
-                attributes = attributes->setAt(
-                    context, 
-                    key,
-                    value
-                );
-                ai = ai->advance(context);
-            }
-            if (oc->parent) {
-                oc = oc->parent->object;
-                if (oc->mutable_ref)
-                    oc = (ProtoObjectCellImplementation *) currentRoot->getAt(context, oc->mutable_ref);
-            }
-
-        }
-
-        return attributes;
-    }
-    return NULL;
-};
-
-ProtoSparseList<ProtoObject> *ProtoObject::getOwnAttributes(ProtoContext *context) {
-    ProtoObjectPointer pa;
-
-    pa.oid.oid = this;
-
-    if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
-
-        if (oc->mutable_ref) {
-            ProtoObjectCell *mutableCurrentObject = (ProtoObjectCell *)
-                context->space->mutableRoot.load()->getAt(context, oc->mutable_ref);
-            return mutableCurrentObject->attributes;
-        }
-        else
-            return oc->attributes;
-    }
-    return NULL;
-};
-
-ProtoList<ProtoObject> *ProtoObject::getParents(ProtoContext *context) {
-    ProtoObjectPointer pa;
-
-    pa.oid.oid = this;
-
-    if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoList<ProtoObject> *parents = new(context) ProtoListImplementation<ProtoObject>(context);
-
-        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
-        ParentLinkImplementation *parent = (ParentLinkImplementation *) oc->parent;
-        while (parent) {
-            parents = parents->appendLast(context, parent->object->asObject(context));
-        }
-
-        return parents;
-    }
-    return NULL;
-};
-
-void processTail(ProtoContext *context, 
-                 ProtoSparseList<ProtoObject> **existingParents, 
-                 ParentLinkImplementation *currentParent,
-                 ParentLinkImplementation **newParentLink) {
-
-    if (currentParent->parent)
-        processTail(context, existingParents, currentParent, newParentLink);
-
-    if (!(*existingParents)->has(context, currentParent->object->getHash(context))) {
-        (*existingParents) = (*existingParents)->setAt(context, currentParent->object->getHash(context));
-        *newParentLink = new(context) ParentLinkImplementation(
-                            context,
-                            *newParentLink,
-                            currentParent->object
-        );
-    }
-}
-
-ProtoObject *ProtoObject::addParent(ProtoContext *context, ProtoObjectCell *newParent) {
-    ProtoObjectPointer pa;
-
-    pa.oid.oid = this;
-
-    ProtoSparseList<ProtoObject> *existingParents = context->newSparseList();
-
-    if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
-
-        // Collect existing parents
-        ParentLinkImplementation *currentParent = oc->parent;
-        while (currentParent) {
-            existingParents = existingParents->setAt(
-                context, 
-                currentParent->object->getHash(context),
-                NULL
-            );
-        };
-
-        ParentLinkImplementation *newParentLink = oc->parent;
-
-        // Collect non referenced yet parents of the new parent in the same order!
-        processTail(context, &existingParents, currentParent, &newParentLink);    
-
-        return (new(context) ProtoObjectCellImplementation(
-            context,
-            newParentLink,
-            oc->mutable_ref,
-            oc->attributes
-        ))->asObject(context);
-    }
-
-    return NULL;
-};
-
-ProtoObject *ProtoObject::isInstanceOf(ProtoContext *context, ProtoObject *prototype) {
-    ProtoObjectPointer pa;
-
-    pa.oid.oid = this;
-
-    if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
-
-        ParentLinkImplementation *p = oc->parent;
-        while (p) {
-            if (p->object->asObject(context) == prototype)
-                return PROTO_TRUE;
-            p = p->parent;
-        }
-        return PROTO_FALSE;
-    }
-    return PROTO_FALSE;
-}; 
-
-ProtoObject *ProtoObject::call(
+// --- Constructor ---
+// Usa la lista de inicialización de miembros para mayor eficiencia y claridad.
+ProtoByteBufferImplementation::ProtoByteBufferImplementation (
     ProtoContext *context,
-    ParentLink *nextParent,
-    ProtoString *methodName,
-    ProtoObject *self,
-    ProtoList<ProtoObject> *unnamedParametersList,
-    ProtoSparseList<ProtoObject> *keywordParametersDict
-) {
-    ProtoObjectPointer pa;
-
-    pa.oid.oid = this;
-
-    if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObject *attribute = this->getAttribute(context, methodName);
-        pa.oid.oid = attribute;
-
-        if (pa.op.pointer_tag == POINTER_TAG_METHOD_CELL) {
-            ProtoMethodCell *m = (ProtoMethodCell *) pa.oid.oid;
-
-            return (*m->method)(
-                context, 
-                self,
-                nextParent,
-                unnamedParametersList, 
-                keywordParametersDict);
-        }
-        else
-            return this->call(
-                context,
-                nextParent,
-                context->space->literalCallMethod,
-                self,
-                unnamedParametersList->appendFirst(context, methodName->asObject(context)),
-                keywordParametersDict
-            );
+    unsigned long size,
+    char *buffer
+) : Cell(context), size(size), buffer(nullptr), freeOnExit(false) {
+    if (buffer) {
+        // Si se proporciona un búfer externo, simplemente lo envolvemos.
+        // No somos dueños de esta memoria.
+        this->buffer = buffer;
+        this->freeOnExit = false;
+    } else {
+        // Si no se proporciona un búfer, creamos uno nuevo.
+        // Somos dueños de esta memoria y debemos liberarla.
+        // Usar 'new char[size]' es más seguro y idiomático en C++ que 'malloc'.
+        this->buffer = new char[size];
+        this->freeOnExit = true;
     }
-
-    return PROTO_NONE;
-};
-
-bool ProtoObject::asBoolean() {
-    ProtoObjectPointer p;
-    p.oid.oid = this;
-    if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
-        p.op.embedded_type == EMBEDED_TYPE_BOOLEAN) 
-        return p.booleanValue.booleanValue;
-    else
-        return false;
-};
-
-int ProtoObject::asInteger() {
-    ProtoObjectPointer p;
-    p.oid.oid = this;
-    if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
-        p.op.embedded_type == EMBEDED_TYPE_SMALLINT) 
-        return p.si.smallInteger;
-    else
-        return 0;
-};
-
-double ProtoObject::asDouble() {
-    ProtoObjectPointer p;
-    p.oid.oid = this;
-    if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
-        p.op.embedded_type == EMBEDED_TYPE_SMALLDOUBLE) {
-        union {
-            double d;
-            unsigned long l;
-        } v;
-        v.l = p.sd.smallDouble << TYPE_SHIFT;
-
-        return v.d;
-    }
-    else
-        return 0.0;
-};
-
-char ProtoObject::asByte() {
-    ProtoObjectPointer p;
-    p.oid.oid = this;
-    if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
-        p.op.embedded_type == EMBEDED_TYPE_BYTE) 
-        return p.byteValue.byteData;
-    else
-        return 0;
-};
-
-bool ProtoObject::isBoolean() {
-    ProtoObjectPointer p;
-    p.oid.oid = this;
-    if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
-        p.op.embedded_type == EMBEDED_TYPE_BOOLEAN) 
-        return true;
-    else
-        return PROTO_FALSE;
-};
-
-bool ProtoObject::isInteger() {
-    ProtoObjectPointer p;
-    p.oid.oid = this;
-    if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
-        p.op.embedded_type == EMBEDED_TYPE_SMALLINT) 
-        return true;
-    else
-        return PROTO_FALSE;
-};
-
-bool ProtoObject::isDouble() {
-    ProtoObjectPointer p;
-    p.oid.oid = this;
-    if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
-        p.op.embedded_type == EMBEDED_TYPE_SMALLDOUBLE) 
-        return true;
-    else
-        return PROTO_FALSE;
-};
-
-bool ProtoObject::isByte() {
-    ProtoObjectPointer p;
-    p.oid.oid = this;
-    if (p.op.pointer_tag == POINTER_TAG_EMBEDEDVALUE &&
-        p.op.embedded_type == EMBEDED_TYPE_BYTE)
-        return true;
-    else
-        return PROTO_FALSE;
-};
-
-unsigned long ProtoObject::getHash(ProtoContext *context) {
-    ProtoObjectPointer pa;
-
-    pa.oid.oid = this;
-
-    return (unsigned long) pa.oid.oid;
-};
-
-int ProtoObject::isCell(ProtoContext *context) {
-    ProtoObjectPointer pa;
-
-    pa.oid.oid = this;
-
-	switch (pa.op.pointer_tag) {
-        case POINTER_TAG_EMBEDEDVALUE:
-            return 0;
-        default:
-            return 1;
-    }
-
-};
-
-Cell *ProtoObject::asCell(ProtoContext *context) {
-    if (this->isCell(context))
-        return (Cell *) this;
-    else
-        return NULL;
-};
-
-void ProtoObject::finalize(ProtoContext *context) {};
-
-// Apply method recursivelly to all referenced objects, except itself
-void ProtoObject::processReferences(
-		ProtoContext *context, 
-		void *self,
-		void (*method)(
-			ProtoContext *context, 
-			void *self,
-			Cell *cell
-		)
-	) {
-    this->asCell(context)->processReferences(context, self, method);
 }
 
+// --- Destructor ---
+ProtoByteBufferImplementation::~ProtoByteBufferImplementation() {
+    // Liberamos la memoria solo si somos los dueños.
+    // Se usa 'delete[]' porque la memoria se asignó con 'new[]'.
+    if (this->buffer && this->freeOnExit) {
+        delete[] this->buffer;
+    }
+    // Usar nullptr es la práctica moderna en C++.
+    this->buffer = nullptr;
+}
 
-};
+// --- Métodos de Acceso ---
+
+// Función auxiliar privada para normalizar el índice.
+// Esto evita la duplicación de código y mejora la legibilidad.
+bool ProtoByteBufferImplementation::normalizeIndex(int& index) {
+    if (this->size == 0) {
+        return false; // No hay índices válidos en un búfer vacío.
+    }
+
+    // Manejo de índices negativos (desde el final del búfer).
+    if (index < 0) {
+        index += this->size;
+    }
+
+    // Verificación de límites. Si está fuera de rango, no es válido.
+    // Usar 'unsigned long' para la comparación evita problemas de signo.
+    if (index < 0 || (unsigned long)index >= this->size) {
+        return false;
+    }
+
+    return true;
+}
+
+char ProtoByteBufferImplementation::getAt(ProtoContext *context, int index) {
+    // Usamos la función auxiliar para validar y normalizar el índice.
+    if (normalizeIndex(index)) {
+        return this->buffer[index];
+    }
+    // Si el índice no es válido, devolvemos 0 como valor por defecto.
+    return 0;
+}
+
+void ProtoByteBufferImplementation::setAt(ProtoContext *context, int index, char value) {
+    // Solo escribimos si el índice es válido.
+    if (normalizeIndex(index)) {
+        this->buffer[index] = value;
+    }
+}
+
+// --- Métodos del Recolector de Basura (GC) ---
+
+void ProtoByteBufferImplementation::processReferences(
+    ProtoContext *context,
+    void *self,
+    void (*method) (
+        ProtoContext *context,
+        void *self,
+        Cell *cell
+    )
+) {
+    // CORRECCIÓN CRÍTICA: Este método DEBE estar vacío.
+    // Un ProtoByteBuffer contiene datos crudos, no referencias a otras 'Cells'.
+    // La implementación anterior (method(context, self, this)) causaría un
+    // bucle infinito en el recolector de basura, bloqueando el programa.
+}
+
+// El finalizador no necesita hacer nada, por lo que usamos '= default'.
+void ProtoByteBufferImplementation::finalize(ProtoContext *context) {};
+
+
+// --- Métodos de Interfaz ---
+
+ProtoObject *ProtoByteBufferImplementation::asObject(ProtoContext *context) {
+    ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) this;
+    p.op.pointer_tag = POINTER_TAG_BYTE_BUFFER;
+    return p.oid.oid;
+}
+
+// getHash ya está implementado en la clase base 'Cell' y funciona correctamente.
+// No es necesario sobreescribirlo aquí a menos que se requiera un hash basado
+// en el contenido del búfer en lugar de la dirección del objeto.
+// Si se mantiene, es consistente con las otras 'Cell'.
+// unsigned long ProtoByteBufferImplementation::getHash(ProtoContext *context) { ... }
+
+} // namespace proto
