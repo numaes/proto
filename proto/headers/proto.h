@@ -5,15 +5,14 @@
  *      Author: Gustavo Adrian Marino <gamarino@numaes.com>
  */
 
-#include <atomic>
-#include <condition_variable>
-#include <thread>
-#include <mutex>
+#ifndef PROTO_H_
+#define PROTO_H_
+
 
 namespace proto
 {
-#ifndef PROTO_H_
-#define PROTO_H_
+#include <atomic>
+#include <condition_variable>
 
 	typedef int BOOLEAN;
 
@@ -139,6 +138,7 @@ namespace proto
 	class ProtoListIterator
 	{
 	public:
+		virtual ~ProtoListIterator() = default;
 		virtual int hasNext(ProtoContext* context);
 		virtual ProtoObject* next(ProtoContext* context);
 		virtual ProtoListIterator* advance(ProtoContext* context);
@@ -149,6 +149,7 @@ namespace proto
 	class ProtoList
 	{
 	public:
+		virtual ~ProtoList() = default;
 		virtual ProtoObject* getAt(ProtoContext* context, int index);
 		virtual ProtoObject* getFirst(ProtoContext* context);
 		virtual ProtoObject* getLast(ProtoContext* context);
@@ -156,7 +157,7 @@ namespace proto
 		virtual unsigned long getSize(ProtoContext* context);
 
 		virtual bool has(ProtoContext* context, ProtoObject* value);
-		virtual ProtoList* setAt(ProtoContext* context, int index, ProtoObject* value = PROTO_NONE);
+		virtual ProtoList* setAt(ProtoContext* context, int index, ProtoObject* value);
 		virtual ProtoList* insertAt(ProtoContext* context, int index, ProtoObject* value);
 
 		virtual ProtoList* appendFirst(ProtoContext* context, ProtoObject* value);
@@ -181,6 +182,7 @@ namespace proto
 	class ProtoTupleIterator
 	{
 	public:
+		virtual ~ProtoTupleIterator() = default;
 		virtual int hasNext(ProtoContext* context);
 		virtual ProtoObject* next(ProtoContext* context);
 		virtual ProtoTupleIterator* advance(ProtoContext* context);
@@ -191,6 +193,7 @@ namespace proto
 	class ProtoTuple
 	{
 	public:
+		virtual ~ProtoTuple() = default;
 		virtual ProtoObject* getAt(ProtoContext* context, int index);
 		virtual ProtoObject* getFirst(ProtoContext* context);
 		virtual ProtoObject* getLast(ProtoContext* context);
@@ -204,11 +207,11 @@ namespace proto
 		virtual ProtoTuple* appendFirst(ProtoContext* context, ProtoTuple* otherTuple);
 		virtual ProtoTuple* appendLast(ProtoContext* context, ProtoTuple* otherTuple);
 
-		virtual ProtoTuple* splitFirst(ProtoContext* context, int count = 1);
-		virtual ProtoTuple* splitLast(ProtoContext* context, int count = 1);
+		virtual ProtoTuple* splitFirst(ProtoContext* context, int count);
+		virtual ProtoTuple* splitLast(ProtoContext* context, int count);
 
-		virtual ProtoTuple* removeFirst(ProtoContext* context, int count = 1);
-		virtual ProtoTuple* removeLast(ProtoContext* context, int count = 1);
+		virtual ProtoTuple* removeFirst(ProtoContext* context, int count);
+		virtual ProtoTuple* removeLast(ProtoContext* context, int count);
 		virtual ProtoTuple* removeAt(ProtoContext* context, int index);
 		virtual ProtoTuple* removeSlice(ProtoContext* context, int from, int to);
 
@@ -221,6 +224,7 @@ namespace proto
 	class ProtoStringIterator
 	{
 	public:
+		virtual ~ProtoStringIterator() = default;
 		virtual int hasNext(ProtoContext* context);
 		virtual ProtoObject* next(ProtoContext* context);
 		virtual ProtoStringIterator* advance(ProtoContext* context);
@@ -231,12 +235,13 @@ namespace proto
 	class ProtoString
 	{
 	public:
+		virtual ~ProtoString() = default;
 		int cmp_to_string(ProtoContext* context, ProtoString* otherString);
 
 		virtual ProtoObject* getAt(ProtoContext* context, int index);
 		virtual ProtoString* setAt(ProtoContext* context, int index, ProtoObject* character);
 		virtual ProtoString* insertAt(ProtoContext* context, int index, ProtoObject* character);
-		unsigned long getSize(ProtoContext* context);
+		virtual unsigned long getSize(ProtoContext* context);
 		virtual ProtoString* getSlice(ProtoContext* context, int from, int to);
 
 		virtual ProtoString* setAtString(ProtoContext* context, int index, ProtoString* otherString);
@@ -245,11 +250,11 @@ namespace proto
 		virtual ProtoString* appendFirst(ProtoContext* context, ProtoString* otherString);
 		virtual ProtoString* appendLast(ProtoContext* context, ProtoString* otherString);
 
-		virtual ProtoString* splitFirst(ProtoContext* context, int count = 1);
-		virtual ProtoString* splitLast(ProtoContext* context, int count = 1);
+		virtual ProtoString* splitFirst(ProtoContext* context, int count);
+		virtual ProtoString* splitLast(ProtoContext* context, int count);
 
-		virtual ProtoString* removeFirst(ProtoContext* context, int count = 1);
-		virtual ProtoString* removeLast(ProtoContext* context, int count = 1);
+		virtual ProtoString* removeFirst(ProtoContext* context, int count);
+		virtual ProtoString* removeLast(ProtoContext* context, int count);
 		virtual ProtoString* removeAt(ProtoContext* context, int index);
 		virtual ProtoString* removeSlice(ProtoContext* context, int from, int to);
 
@@ -262,6 +267,7 @@ namespace proto
 	class ProtoSparseListIterator
 	{
 	public:
+		virtual ~ProtoSparseListIterator() = default;
 		virtual int hasNext(ProtoContext* context);
 		virtual unsigned long nextKey(ProtoContext* context);
 		virtual ProtoObject* nextValue(ProtoContext* context);
@@ -274,9 +280,10 @@ namespace proto
 	class ProtoSparseList
 	{
 	public:
+		virtual ~ProtoSparseList() = default;
 		virtual bool has(ProtoContext* context, unsigned long index);
 		virtual ProtoObject* getAt(ProtoContext* context, unsigned long index);
-		virtual ProtoSparseList* setAt(ProtoContext* context, unsigned long index, ProtoObject* value = PROTO_NONE);
+		virtual ProtoSparseList* setAt(ProtoContext* context, unsigned long index, ProtoObject* value);
 		virtual ProtoSparseList* removeAt(ProtoContext* context, unsigned long index);
 		virtual int isEqual(ProtoContext* context, ProtoSparseList* otherDict);
 		virtual ProtoObject* getAtOffset(ProtoContext* context, int offset);
@@ -311,6 +318,7 @@ namespace proto
 	class ProtoByteBuffer
 	{
 	public:
+		virtual ~ProtoByteBuffer() = default;
 		virtual unsigned long getSize(ProtoContext* context);
 		virtual char* getBuffer(ProtoContext* context);
 		virtual char getAt(ProtoContext* context, int index);
@@ -323,6 +331,7 @@ namespace proto
 	class ProtoExternalPointer
 	{
 	public:
+		virtual ~ProtoExternalPointer() = default;
 		virtual void* getPointer(ProtoContext* context);
 		virtual ProtoObject* asObject(ProtoContext* context);
 		virtual unsigned long getHash(ProtoContext* context);
@@ -403,32 +412,35 @@ namespace proto
 	class ProtoMethodCell
 	{
 	public:
+		virtual ~ProtoMethodCell() = default;
 		virtual ProtoObject* getSelf(ProtoContext* context);
 		virtual ProtoMethod getMethod(ProtoContext* context);
 
 		virtual ProtoObject* asObject(ProtoContext* context);
 		virtual unsigned long getHash(ProtoContext* context);
 
-		ProtoMethod method;
-		ProtoObject* self;
+		ProtoMethod method{};
+		ProtoObject* self{};
 	};
 
 	class ProtoObjectCell
 	{
 	public:
+		virtual ~ProtoObjectCell() = default;
 		virtual ProtoObjectCell* addParent(ProtoContext* context, ProtoObjectCell* object);
 
 		virtual ProtoObject* asObject(ProtoContext* context);
 		virtual unsigned long getHash(ProtoContext* context);
 
-		unsigned long mutable_ref;
-		ParentLink* parent;
-		ProtoSparseList* attributes;
+		unsigned long mutable_ref{};
+		ParentLink* parent{};
+		ProtoSparseList* attributes{};
 	};
 
 	class ProtoThread
 	{
 	public:
+		virtual ~ProtoThread() = default;
 		static ProtoThread* getCurrentThread(ProtoContext* context);
 
 		virtual ProtoString* getName(ProtoContext* context);
@@ -449,12 +461,12 @@ namespace proto
 	class ProtoContext
 	{
 	public:
-		ProtoContext(
-			ProtoContext* previous = NULL,
-			ProtoObject** localsBase = NULL,
+		explicit ProtoContext(
+			ProtoContext* previous = nullptr,
+			ProtoObject** localsBase = nullptr,
 			unsigned int localsCount = 0,
-			ProtoThread* thread = NULL,
-			ProtoSpace* space = NULL
+			ProtoThread* thread = nullptr,
+			ProtoSpace* space = nullptr
 		);
 
 		virtual ~ProtoContext();
@@ -472,7 +484,6 @@ namespace proto
 		// Constructors for base types, here to get the right context on invoke
 		ProtoObject* fromInteger(int value);
 		ProtoObject* fromDouble(double value);
-		ProtoTuple* tupleFromList(ProtoList* list);
 		ProtoObject* fromUTF8Char(const char* utf8OneCharString);
 		ProtoString* fromUTF8String(const char* zeroTerminatedUtf8String);
 		ProtoMethodCell* fromMethod(ProtoObject* self, ProtoMethod method);
@@ -499,10 +510,10 @@ namespace proto
 	class ProtoSpace
 	{
 	public:
-		ProtoSpace(
+		explicit ProtoSpace(
 			ProtoMethod mainFunction,
 			int argc = 0,
-			char** argv = NULL
+			char** argv = nullptr
 		);
 		virtual ~ProtoSpace();
 
