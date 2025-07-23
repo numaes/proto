@@ -1,472 +1,486 @@
 /*
- * ProtoSparseList.cpp
+ * ProtoSpace.cpp
  *
- *  Created on: 2017-05-01
+ *  Created on: 20 de jun. de 2016
  *      Author: gamarino
  */
 
 #include "../headers/proto_internal.h"
-#include <algorithm> // Para std::max
 
-namespace proto
-{
-    // --- ProtoSparseListIteratorImplementation ---
+#include <malloc.h>
+#include <stdio.h>
+#include <thread>
+#include <chrono>
+#include <functional>
+#include <condition_variable>
 
-    // Constructor modernizado con lista de inicialización.
-    ProtoSparseListIteratorImplementation::ProtoSparseListIteratorImplementation(
-        ProtoContext* context,
-        int state,
-        ProtoSparseListImplementation* current,
-        ProtoSparseListIteratorImplementation* queue
-    ) : Cell(context), state(state), current(current), queue(queue)
-    {
-    }
+using namespace std;
+using namespace std::literals::chrono_literals;
 
-    // Destructor por defecto.
-    ProtoSparseListIteratorImplementation::~ProtoSparseListIteratorImplementation() = default;
+namespace proto {
 
-    int ProtoSparseListIteratorImplementation::hasNext(ProtoContext* context)
-    {
-        // La lógica original es compleja pero se mantiene.
-        // Un iterador tiene "siguiente" si está en un estado válido o si la cola de iteradores tiene elementos.
-        if (this->state == ITERATOR_NEXT_PREVIOUS && this->current && this->current->previous)
-            return true;
-        if (this->state == ITERATOR_NEXT_THIS && this->current)
-            return true;
-        if (this->state == ITERATOR_NEXT_NEXT && this->current && this->current->next)
-            return true;
-        if (this->queue)
-            return this->queue->hasNext(context);
+#define GC_SLEEP_MILLISECONDS           1000
+#define BLOCKS_PER_ALLOCATION           1024
+#define BLOCKS_PER_MALLOC_REQUEST       8 * BLOCKS_PER_ALLOCATION
+#define MAX_ALLOCATED_CELLS_PER_CONTEXT 1024
 
-        return false;
-    }
+#define KB                              1024
+#define MB                              1024 * KB
+#define GB                              1024 * MB
+#define MAX_HEAP_SIZE                   256 * MB
 
-    unsigned long ProtoSparseListIteratorImplementation::nextKey(ProtoContext* context)
-    {
-        if (this->state == ITERATOR_NEXT_THIS && this->current)
-        {
-            return this->current->index;
+std::mutex		ProtoSpace::globalMutex;
+
+void gcCollectCells(ProtoContext *context, void *self, Cell *value) {
+     ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) value;
+
+    ProtoSparseListImplementation *cellSet = new(context) ProtoSparseListImplementation(context);
+
+    // Go further in the scanning only if it is a cell and the cell belongs to current context!
+    if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
+        // It is an object pointer with references
+        if (! cellSet->has(context, p.asHash.hash)) {
+            cellSet = cellSet->setAt(context, p.asHash.hash, PROTO_NONE);
+            p.cell.cell->processReferences(context, (void *) cellSet, gcCollectCells);
         }
-        return 0;
     }
+}
 
-    ProtoObject* ProtoSparseListIteratorImplementation::nextValue(ProtoContext* context)
-    {
-        if (this->state == ITERATOR_NEXT_THIS && this->current)
-        {
-            return this->current->value;
+void gcCollectObjects(ProtoContext *context, void *self, ProtoObject *value) {
+     ProtoObjectPointer p;
+    p.oid.oid = (ProtoObject *) value;
+
+    ProtoSparseListImplementation *cellSet = new(context) ProtoSparseListImplementation(context);
+
+    // Go further in the scanning only if it is a cell and the cell belongs to current context!
+    if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
+        // It is an object pointer with references
+        if (! cellSet->has(context, p.asHash.hash)) {
+            cellSet = cellSet->setAt(context, p.asHash.hash, PROTO_NONE);
+            p.cell.cell->processReferences(context, (void *) cellSet, gcCollectCells);
         }
-        return PROTO_NONE;
+    }
+}
+
+void gcScan(ProtoContext *context, ProtoSpace *space) {
+    DirtySegment *toAnalize;
+
+    // Acquire space lock and take all dirty segments to analyze
+
+    bool oldValue = false;
+    while (space->gcLock.compare_exchange_strong(
+        oldValue,
+        true
+    )) std::this_thread::yield();
+
+    toAnalize = space->dirtySegments;
+    space->dirtySegments = nullptr;
+
+    space->gcLock.store(false);
+
+    ProtoContext gcContext(context);
+
+    // Stop the world
+    // Wait till all managed threads join the stopped state
+    // After stopping the world, no managed thread is changing its state
+
+    space->state = SPACE_STATE_STOPPING_WORLD;
+    while (space->state == SPACE_STATE_STOPPING_WORLD) {
+        std::unique_lock<std::mutex> lk(ProtoSpace::globalMutex);
+        space->stopTheWorldCV.wait(lk);
+
+        int allStoping = true;
+        unsigned long threadsCount = space->threads->getSize(context);
+        for (unsigned n = 0; n < threadsCount; n++) {
+            ProtoThreadImplementation *t = (ProtoThreadImplementation *) space->threads->getAt(&gcContext, n);
+
+            // Be sure no thread is still in managed state
+            if (t->state == THREAD_STATE_MANAGED) {
+                allStoping = false;
+                break;
+            }
+        }
+        if (allStoping)
+            space->state = SPACE_STATE_WORLD_TO_STOP;
     }
 
-    ProtoSparseListIterator* ProtoSparseListIteratorImplementation::advance(ProtoContext* context)
-    {
-        // La lógica de avance es compleja, creando una nueva cadena de iteradores
-        // para mantener el estado del recorrido in-order.
-        if (this->state == ITERATOR_NEXT_PREVIOUS)
-        {
-            return new(context) ProtoSparseListIteratorImplementation(
-                context,
-                ITERATOR_NEXT_THIS,
-                this->current,
-                this->queue
+    space->restartTheWorldCV.notify_all();
+
+    while (space->state == SPACE_STATE_WORLD_TO_STOP) {
+        std::unique_lock<std::mutex> lk(ProtoSpace::globalMutex);
+        space->stopTheWorldCV.wait(lk);
+
+        int allStopped = true;
+        unsigned long threadsCount = space->threads->getSize(context);
+        for (unsigned n = 0; n < threadsCount; n++) {
+            ProtoThreadImplementation *t = (ProtoThreadImplementation *) space->threads->getAt(&gcContext, n);
+
+            if (t->state != THREAD_STATE_STOPPED) {
+                allStopped = false;
+                break;
+            }
+        }
+        if (allStopped)
+            space->state = SPACE_STATE_WORLD_STOPPED;
+
+        space->restartTheWorldCV.notify_all();
+    }
+
+    // cellSet: a set of all referenced Cells
+
+    ProtoSparseListImplementation *cellSet = new(context) ProtoSparseListImplementation(context);
+
+    // Add all mutables to cellSet
+    ((ProtoSparseList *) space->mutableRoot.load())->processValues(
+        &gcContext,
+        &cellSet,
+        gcCollectObjects
+    );
+
+    // Collect all roots from thread stacks
+
+    unsigned long threadsCount = space->threads->getSize(context);
+    while (threadsCount--) {
+        ProtoThreadImplementation *thread = (ProtoThreadImplementation *) space->threads->getAt(&gcContext, threadsCount);
+
+        // Collect allocated objects
+        ProtoContext *currentContext = thread->currentContext;
+        while (currentContext) {
+            Cell * currentCell = currentContext->lastAllocatedCell;
+            while (currentCell) {
+                if (! cellSet->has(context, currentCell->getHash(context))) {
+                    cellSet = cellSet->setAt(context, currentCell->getHash(context), PROTO_NONE);
+                }
+
+                currentCell = currentCell->nextCell;
+            }
+
+            if (currentContext->localsBase) {
+                ProtoObjectPointer p;
+                p.oid.oid = *currentContext->localsBase;
+                for (int n = currentContext->localsCount;
+                     n > 0;
+                     n--) {
+                    if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
+                            cellSet = cellSet->setAt(context, p.asHash.hash, PROTO_NONE);
+                    }
+                }
+            }
+
+            currentContext = currentContext->previous;
+        }
+    };
+
+    // Free the world. Let them run
+    space->state = SPACE_STATE_RUNNING;
+    space->restartTheWorldCV.notify_all();
+
+    // Deep Scan all indirect roots. Deep traversal of cellSet
+    cellSet->processValues(context, cellSet, gcCollectObjects);
+
+    // Scan all blocks to analyze and if they are not referenced, free them
+
+    Cell *freeBlocks = nullptr;
+    Cell *firstBlock = nullptr;
+    int freeCount = 0;
+    while (toAnalize) {
+        Cell *block = toAnalize->cellChain;
+
+        while (block) {
+            Cell *nextCell = block->nextCell;
+
+            if (!cellSet->has(&gcContext, block->getHash(context))) {
+                block->~Cell();
+
+                void **p = (void **) block;
+                for (unsigned i = 0; i < sizeof(BigCell) / sizeof(void *); i++)
+                    *p++ = nullptr;
+
+                if (! firstBlock)
+                    firstBlock = block;
+
+                block->nextCell = freeBlocks;
+                freeBlocks = block;
+                freeCount++;
+            }
+            block = nextCell;
+        }
+
+        DirtySegment *segmentToFree = toAnalize;
+        toAnalize = toAnalize->nextSegment;
+        delete segmentToFree;
+    }
+
+    // Update space freeCells
+    oldValue = false;
+    while (space->gcLock.compare_exchange_strong(
+        oldValue,
+        true
+    )) std::this_thread::yield();
+
+    if (firstBlock)
+        firstBlock->nextCell = space->freeCells;
+
+    space->freeCells = freeBlocks;
+    space->freeCellsCount += freeCount;
+
+    space->gcLock.store(false);
+};
+
+void gcThreadLoop(ProtoSpace *space) {
+    ProtoContext gcContext;
+
+    space->gcStarted = true;
+    space->gcCV.notify_one();
+
+    while (space->state != SPACE_STATE_RUNNING) {
+        std::unique_lock<std::mutex> lk(ProtoSpace::globalMutex);
+
+        space->gcCV.wait_for(lk, std::chrono::milliseconds(space->gcSleepMilliseconds));
+
+        if (space->dirtySegments) {
+            gcScan(&gcContext, space);
+        }
+    }
+};
+
+ProtoSpace::ProtoSpace(
+    ProtoMethod mainFunction,
+    int argc,
+    char **argv
+) {
+    this->state = SPACE_STATE_RUNNING;
+
+    auto *creationContext = new ProtoContext(
+        nullptr,
+        nullptr,
+        0,
+        nullptr,
+        this
+    );
+    this->threads = creationContext->newSparseList();
+    this->tupleRoot = new(creationContext) TupleDictionary(creationContext);
+
+    ProtoList *mainParameters = creationContext->newList();
+    mainParameters = mainParameters->appendLast(
+        creationContext,
+        creationContext->fromInteger(argc)
+    );
+    ProtoList *argvList = creationContext->newList();
+    if (argc && argv) {
+        for (int i; i < argc; i++)
+            argvList = argvList->appendLast(
+                creationContext,
+                creationContext->fromUTF8String(argv[i])->asObject(creationContext)
             );
-        }
+    }
+    mainParameters = mainParameters->appendLast(
+        creationContext, argvList->asObject(creationContext)
+    );
 
-        if (this->state == ITERATOR_NEXT_THIS)
-        {
-            if (this->current && this->current->next)
-            {
-                // Si hay un subárbol derecho, el siguiente es el primer elemento de ese subárbol.
-                return static_cast<ProtoSparseListIteratorImplementation*>(this->current->next->getIterator(context));
-            }
-            if (this->queue)
-            {
-                // Si no hay subárbol derecho, el siguiente es el padre en la cola.
-                return static_cast<ProtoSparseListIteratorImplementation*>(this->queue->advance(context));
-            }
-            return nullptr; // Fin de la iteración.
-        }
+    this->mainThreadId = std::this_thread::get_id();
 
-        if (this->state == ITERATOR_NEXT_NEXT && this->queue)
-        {
-            return static_cast<ProtoSparseListIteratorImplementation*>(this->queue->advance(context));
-        }
+    this->mutableLock.store(false);
+    this->threadsLock.store(false);
+    this->gcLock.store(false);
+    this->mutableRoot.store(new(creationContext) ProtoSparseListImplementation(creationContext));
 
-        return nullptr;
+    this->maxAllocatedCellsPerContext = MAX_ALLOCATED_CELLS_PER_CONTEXT;
+    this->blocksPerAllocation = BLOCKS_PER_ALLOCATION;
+    this->heapSize = 0;
+    this->freeCellsCount = 0;
+    this->gcSleepMilliseconds = GC_SLEEP_MILLISECONDS;
+    this->maxHeapSize = MAX_HEAP_SIZE;
+    this->blockOnNoMemory = false;
+    this->gcStarted = false;
+
+    // Create GC thread and ensure it is working
+    this->gcThread = new std::thread(
+        (void (*)(ProtoSpace *)) (&gcThreadLoop),
+        this
+    );
+
+    while (!this->gcStarted) {
+        std::unique_lock<std::mutex> lk(globalMutex);
+        this->gcCV.wait_for(lk, 100ms);
     }
 
-    ProtoObject* ProtoSparseListIteratorImplementation::asObject(ProtoContext* context)
-    {
-        ProtoObjectPointer p;
-        p.oid.oid = (ProtoObject*)this;
-        p.op.pointer_tag = POINTER_TAG_SPARSE_LIST_ITERATOR;
-        return p.oid.oid;
+    ProtoThreadImplementation* mainThread = new(creationContext) ProtoThreadImplementation(
+        creationContext,
+        creationContext->fromUTF8String("Main thread"),
+        this,
+        mainFunction,
+        mainParameters,
+        nullptr
+    );
+
+    // Wait till main thread and gcThread end
+
+    mainThread->join(creationContext);
+    this->gcThread->join();
+};
+
+void scanThreads(ProtoContext *context, void *self, ProtoObject *value) {
+    ProtoList **threadList = (ProtoList **) self;
+
+    *threadList = (*threadList)->appendLast(context, value);
+}
+
+ProtoSpace::~ProtoSpace() {
+    ProtoContext finalContext(nullptr);
+
+    int threadCount = this->threads->getSize(&finalContext);
+
+    this->state = SPACE_STATE_ENDING;
+
+    // Wait till all threads are ended
+    for (int i = 0; i < threadCount; i++) {
+        ProtoThread *t = (ProtoThread *) this->threads->getAt(
+            &finalContext,
+            i
+        );
+        t->join(&finalContext);
     }
 
-    void ProtoSparseListIteratorImplementation::finalize(ProtoContext* context)
-    {
-    };
+    this->triggerGC();
 
-    void ProtoSparseListIteratorImplementation::processReferences(
-        ProtoContext* context,
-        void* self,
-        void (*method)(ProtoContext* context, void* self, Cell* cell)
-    )
-    {
-        // Informar al GC sobre las referencias internas.
-        if (this->current)
-        {
-            method(context, self, this->current);
-        }
-        if (this->queue)
-        {
-            method(context, self, this->queue);
+    this->gcThread->join();
+};
+
+void ProtoSpace::triggerGC() {
+    this->gcCV.notify_all();
+}
+
+void ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread) {
+    bool oldValue = false;
+    while (this->threadsLock.compare_exchange_strong(
+        oldValue,
+        true
+    )) std::this_thread::yield();
+
+    if (this->threads)
+        this->threads = this->threads->setAt(context, thread->getName(context)->getHash(context), thread->asObject(context));
+
+    this->threadsLock.store(false);
+};
+
+void ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *thread) {
+    bool oldValue = false;
+    while (this->threadsLock.compare_exchange_strong(
+        oldValue,
+        true
+    )) std::this_thread::yield();
+
+    int threadCount = this->threads->getSize(context);
+    while (threadCount--) {
+        ProtoThread * t = (ProtoThread *) this->threads->getAt(context, threadCount);
+        if (t == thread) {
+            this->threads = this->threads->removeAt(context, threadCount);
+            break;
         }
     }
 
+    this->threadsLock.store(false);
+};
 
-    // --- ProtoSparseListImplementation ---
+Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
+    Cell *freeBlocks = nullptr;
+    Cell *newBlock = nullptr;
 
-    // Constructor modernizado.
-    ProtoSparseListImplementation::ProtoSparseListImplementation(
-        ProtoContext* context,
-        unsigned long index,
-        ProtoObject* value,
-        ProtoSparseListImplementation* previous,
-        ProtoSparseListImplementation* next
-    ) : Cell(context), previous(previous), next(next), index(index), value(value)
-    {
-        // Calcular hash, contador y altura después de inicializar los miembros.
-        this->hash = index ^
-            (value ? value->getHash(context) : 0) ^
-            (previous ? previous->hash : 0) ^
-            (next ? next->hash : 0);
+    bool oldValue = false;
+    while (this->gcLock.compare_exchange_strong(
+        oldValue,
+        true
+    )) std::this_thread::yield();
 
-        this->count = (value != PROTO_NONE ? 1 : 0) +
-            (previous ? previous->count : 0) +
-            (next ? next->count : 0);
+    for (int i=0; i < BLOCKS_PER_ALLOCATION; i++) {
+        if (! this->freeCells) {
+            // Alloc from OS
 
-        unsigned long previous_height = previous ? previous->height : 0;
-        unsigned long next_height = next ? next->height : 0;
-        this->height = 1 + std::max(previous_height, next_height);
-    }
-
-    ProtoSparseListImplementation::~ProtoSparseListImplementation() = default;
-
-    // --- Lógica de Árbol AVL (Corregida) ---
-
-    namespace
-    {
-        // Funciones auxiliares anónimas para la lógica del árbol.
-
-        int getHeight(ProtoSparseListImplementation* node)
-        {
-            return node ? node->height : 0;
-        }
-
-        int getBalance(ProtoSparseListImplementation* node)
-        {
-            if (!node) return 0;
-            return getHeight(node->next) - getHeight(node->previous);
-        }
-
-        ProtoSparseListImplementation* rightRotate(ProtoContext* context, ProtoSparseListImplementation* y)
-        {
-            ProtoSparseListImplementation* x = y->previous;
-            ProtoSparseListImplementation* T2 = x->next;
-
-            // Realizar rotación
-            ProtoSparseListImplementation* new_y = new(context) ProtoSparseListImplementation(
-                context, y->index, y->value, T2, y->next);
-            return new(context) ProtoSparseListImplementation(context, x->index, x->value, x->previous, new_y);
-        }
-
-        ProtoSparseListImplementation* leftRotate(ProtoContext* context, ProtoSparseListImplementation* x)
-        {
-            ProtoSparseListImplementation* y = x->next;
-            ProtoSparseListImplementation* T2 = y->previous;
-
-            // Realizar rotación
-            ProtoSparseListImplementation* new_x = new(context) ProtoSparseListImplementation(
-                context, x->index, x->value, x->previous, T2);
-            return new(context) ProtoSparseListImplementation(context, y->index, y->value, new_x, y->next);
-        }
-
-        // CORRECCIÓN CRÍTICA: La lógica de rebalanceo estaba rota.
-        // Esta es una implementación estándar y correcta para un árbol AVL.
-        ProtoSparseListImplementation* rebalance(ProtoContext* context, ProtoSparseListImplementation* node)
-        {
-            if (!node) return nullptr;
-
-            int balance = getBalance(node);
-
-            // Caso 1: Izquierda-Izquierda (LL)
-            if (balance < -1 && getBalance(node->previous) <= 0)
-            {
-                return rightRotate(context, node);
-            }
-            // Caso 2: Derecha-Derecha (RR)
-            if (balance > 1 && getBalance(node->next) >= 0)
-            {
-                return leftRotate(context, node);
-            }
-            // Caso 3: Izquierda-Derecha (LR)
-            if (balance < -1 && getBalance(node->previous) > 0)
-            {
-                ProtoSparseListImplementation* new_prev = leftRotate(context, node->previous);
-                ProtoSparseListImplementation* new_node = new(context) ProtoSparseListImplementation(
-                    context, node->index, node->value, new_prev, node->next);
-                return rightRotate(context, new_node);
-            }
-            // Caso 4: Derecha-Izquierda (RL)
-            if (balance > 1 && getBalance(node->next) < 0)
-            {
-                ProtoSparseListImplementation* new_next = rightRotate(context, node->next);
-                ProtoSparseListImplementation* new_node = new(context) ProtoSparseListImplementation(
-                    context, node->index, node->value, node->previous, new_next);
-                return leftRotate(context, new_node);
+            int toAllocBytes = sizeof(BigCell) * BLOCKS_PER_MALLOC_REQUEST;
+            if (this->maxHeapSize != 0 && !this->blockOnNoMemory &&
+                this->heapSize + toAllocBytes >= this->maxHeapSize) {
+                printf("\nPANIC ERROR: HEAP size will be bigger than configured maximun (%d is over %d bytes)! Exiting ...\n",
+                       this->heapSize + toAllocBytes, this->maxHeapSize
+                );
+                std::exit(1);
             }
 
-            return node; // El nodo ya está balanceado.
-        }
-    } // fin del namespace anónimo
+            if (this->maxHeapSize != 0 && this->blockOnNoMemory &&
+                this->heapSize + toAllocBytes >= this->maxHeapSize) {
+                while (!this->freeCells) {
+                    this->gcLock.store(false);
 
-    // --- Métodos de la Interfaz Pública ---
+                    currentThread->synchToGC();
 
-    bool ProtoSparseListImplementation::has(ProtoContext* context, unsigned long index)
-    {
-        // La búsqueda es más eficiente con un puntero no constante.
-        const ProtoSparseListImplementation* node = this;
-        while (node)
-        {
-            if (node->index == index)
-            {
-                return node->value != PROTO_NONE;
-            }
-            // CORRECCIÓN CRÍTICA: La comparación era incorrecta.
-            if (index < node->index)
-            {
-                node = node->previous;
-            }
-            else
-            {
-                node = node->next;
-            }
-        }
-        return false;
-    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    ProtoObject* ProtoSparseListImplementation::getAt(ProtoContext* context, unsigned long index)
-    {
-        const ProtoSparseListImplementation* node = this;
-        while (node)
-        {
-            if (node->index == index)
-            {
-                return node->value;
+                    while (this->gcLock.compare_exchange_strong(
+                        oldValue,
+                        true
+                    )) std::this_thread::yield();
+                }
             }
-            // CORRECCIÓN CRÍTICA: La comparación era incorrecta.
-            if (index < node->index)
-            {
-                node = node->previous;
-            }
-            else
-            {
-                node = node->next;
+            else {
+                BigCell *newBlocks = (BigCell *) malloc(toAllocBytes);
+                if (!newBlocks) {
+                    printf("\nPANIC ERROR: Not enough MEMORY! Exiting ...\n");
+                    std::exit(1);
+                }
+
+                BigCell *currentBlock = newBlocks;
+                Cell *lastBlock = this->freeCells;
+                int allocatedBlocks = toAllocBytes / sizeof(BigCell);
+                for (int n = 0; n < allocatedBlocks; n++) {
+                    // Clear new allocated block
+                    void **p =(void **) newBlocks;
+                    for (unsigned long count = 0;
+                        count < sizeof(BigCell) / sizeof(void *);
+                        count++)
+                        *p++ = nullptr;
+
+                    // Chain new blocks as a list
+                    currentBlock->nextCell = lastBlock;
+                    lastBlock = currentBlock++;
+                }
+
+                this->freeCells = lastBlock;
+
+                this->heapSize += toAllocBytes;
+                this->freeCellsCount += allocatedBlocks;
             }
         }
-        return PROTO_NONE;
-    }
 
-    ProtoSparseList* ProtoSparseListImplementation::setAt(ProtoContext* context, unsigned long index,
-                                                          ProtoObject* value)
-    {
-        ProtoSparseListImplementation* newNode;
+        if (this->freeCells) {
+            newBlock = this->freeCells;
+            this->freeCells = newBlock->nextCell;
 
-        // Caso base: árbol vacío o nodo hoja.
-        if (this->value == PROTO_NONE && this->count == 0)
-        {
-            return new(context) ProtoSparseListImplementation(context, index, value);
-        }
-
-        if (index < this->index)
-        {
-            ProtoSparseListImplementation* new_prev = this->previous
-                                                          ? static_cast<ProtoSparseListImplementation*>(this->previous->
-                                                              setAt(context, index, value))
-                                                          : new(context) ProtoSparseListImplementation(
-                                                              context, index, value);
-            newNode = new(context) ProtoSparseListImplementation(context, this->index, this->value, new_prev,
-                                                                 this->next);
-        }
-        else if (index > this->index)
-        {
-            ProtoSparseListImplementation* new_next = this->next
-                                                          ? static_cast<ProtoSparseListImplementation*>(this->next->
-                                                              setAt(context, index, value))
-                                                          : new(context) ProtoSparseListImplementation(
-                                                              context, index, value);
-            newNode = new(context) ProtoSparseListImplementation(context, this->index, this->value, this->previous,
-                                                                 new_next);
-        }
-        else
-        {
-            // index == this->index
-            // Si el valor es el mismo, no hacer nada.
-            if (this->value == value) return this;
-            // Reemplazar el valor en el nodo actual.
-            newNode = new(context) ProtoSparseListImplementation(context, this->index, value, this->previous,
-                                                                 this->next);
-        }
-
-        return rebalance(context, newNode);
-    }
-
-    ProtoSparseList* ProtoSparseListImplementation::removeAt(ProtoContext* context, unsigned long index)
-    {
-        if (this->value == PROTO_NONE && this->count == 0)
-        {
-            return this; // No se encontró el elemento.
-        }
-
-        ProtoSparseListImplementation* newNode;
-
-        if (index < this->index)
-        {
-            if (!this->previous) return this; // No se encontró.
-            ProtoSparseListImplementation* new_prev = static_cast<ProtoSparseListImplementation*>(this->previous->
-                removeAt(context, index));
-            newNode = new(context) ProtoSparseListImplementation(context, this->index, this->value, new_prev,
-                                                                 this->next);
-        }
-        else if (index > this->index)
-        {
-            if (!this->next) return this; // No se encontró.
-            ProtoSparseListImplementation* new_next = static_cast<ProtoSparseListImplementation*>(this->next->removeAt(
-                context, index));
-            newNode = new(context) ProtoSparseListImplementation(context, this->index, this->value, this->previous,
-                                                                 new_next);
-        }
-        else
-        {
-            // index == this->index
-            // Nodo encontrado. Lógica de eliminación.
-            if (!this->previous) return this->next; // Caso con 0 o 1 hijo (derecho).
-            if (!this->next) return this->previous; // Caso con 1 hijo (izquierdo).
-
-            // Caso con 2 hijos: encontrar el sucesor in-order (el más pequeño del subárbol derecho).
-            ProtoSparseListImplementation* successor = this->next;
-            while (successor->previous)
-            {
-                successor = successor->previous;
-            }
-            // Eliminar el sucesor del subárbol derecho.
-            ProtoSparseListImplementation* new_next = static_cast<ProtoSparseListImplementation*>(this->next->removeAt(
-                context, successor->index));
-            // Reemplazar este nodo con el sucesor.
-            newNode = new(context) ProtoSparseListImplementation(context, successor->index, successor->value,
-                                                                 this->previous, new_next);
-        }
-
-        return rebalance(context, newNode);
-    }
-
-    unsigned long ProtoSparseListImplementation::getSize(ProtoContext* context)
-    {
-        return this->count;
-    }
-
-    void ProtoSparseListImplementation::processElements(
-        ProtoContext* context,
-        void* self,
-        void (*method)(ProtoContext* context, void* self, unsigned long index, ProtoObject* value)
-    )
-    {
-        // Recorrido in-order para procesar elementos.
-        if (this->previous)
-        {
-            this->previous->processElements(context, self, method);
-        }
-        if (this->value != PROTO_NONE)
-        {
-            method(context, self, this->index, this->value);
-        }
-        if (this->next)
-        {
-            this->next->processElements(context, self, method);
+            this->freeCellsCount -= 1;
+            newBlock->nextCell = nullptr;
         }
     }
 
-    void ProtoSparseListImplementation::processValues(
-        ProtoContext* context,
-        void* self,
-        void (*method)(ProtoContext* context, void* self, ProtoObject* value)
-    )
-    {
-        // Recorrido in-order para procesar solo los valores.
-        if (this->previous)
-        {
-            this->previous->processValues(context, self, method);
-        }
-        if (this->value != PROTO_NONE)
-        {
-            method(context, self, this->value);
-        }
-        if (this->next)
-        {
-            this->next->processValues(context, self, method);
-        }
-    }
+    this->gcLock.store(false);
 
-    void ProtoSparseListImplementation::processReferences(
-        ProtoContext* context,
-        void* self,
-        void (*method)(ProtoContext* context, void* self, Cell* cell)
-    )
-    {
-        // CORRECCIÓN CRÍTICA: La implementación anterior causaba un bucle infinito en el GC.
-        // Ahora se procesan correctamente todas las referencias internas.
-        if (this->previous)
-        {
-            method(context, self, this->previous);
-        }
-        if (this->next)
-        {
-            method(context, self, this->next);
-        }
-        if (this->value && this->value->isCell(context))
-        {
-            method(context, self, this->value->asCell(context));
-        }
-    }
+    return newBlock;
+};
 
-    ProtoObject* ProtoSparseListImplementation::asObject(ProtoContext* context)
-    {
-        ProtoObjectPointer p;
-        p.oid.oid = (ProtoObject*)this;
-        p.op.pointer_tag = POINTER_TAG_SPARSE_LIST;
-        return p.oid.oid;
-    }
+void ProtoSpace::analyzeUsedCells(Cell *cellsChain) {
+    DirtySegment *newChain;
 
-    ProtoSparseListIterator* ProtoSparseListImplementation::getIterator(ProtoContext* context)
-    {
-        // La lógica del iterador es compleja, pero se mantiene la estructura original.
-        // Encuentra el primer nodo (el más a la izquierda) y construye la cola de iteradores.
-        ProtoSparseListImplementation* node = this;
-        ProtoSparseListIteratorImplementation* queue = nullptr;
-        while (node->previous)
-        {
-            queue = new(context) ProtoSparseListIteratorImplementation(context, ITERATOR_NEXT_NEXT, node, queue);
-            node = node->previous;
-        }
-        return new(context) ProtoSparseListIteratorImplementation(context, ITERATOR_NEXT_THIS, node, queue);
-    }
+    bool oldValue = false;
+    while (this->gcLock.compare_exchange_strong(
+        oldValue,
+        true
+    )) std::this_thread::yield();
 
-    void ProtoSparseListImplementation::finalize(ProtoContext* context)
-    {
-    };
+    newChain = new DirtySegment();
+    newChain->cellChain = (BigCell *) cellsChain;
+    newChain->nextSegment = this->dirtySegments;
+    this->dirtySegments = newChain;
 
-    // El método getHash se hereda de la clase base Cell, que proporciona un hash
-    // basado en la dirección, lo cual es suficiente y consistente.
-} // namespace proto
+    this->gcLock.store(false);
+};
+
+};

@@ -248,8 +248,14 @@ namespace proto
         this->currentContext = context;
     }
 
+    unsigned long ProtoThreadImplementation::getHash(ProtoContext* context)
+    {
+        // El hash de una Cell se deriva directamente de su dirección de memoria.
+        // Esto proporciona un identificador rápido y único para el objeto.
+        ProtoObjectPointer p{};
+        p.oid.oid = reinterpret_cast<ProtoObject*>(this);
 
-    // NOTA: El método getHash() se ha eliminado.
-    // La implementación era idéntica a la de la clase base 'Cell', por lo que
-    // es redundante. Se usará la implementación heredada de 'Cell' directamente.
+        return p.asHash.hash;
+    }
+
 } // namespace proto

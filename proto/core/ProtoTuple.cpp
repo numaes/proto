@@ -12,6 +12,451 @@
 
 namespace proto
 {
+    TupleDictionary::TupleDictionary(
+        ProtoContext* context,
+        ProtoTupleImplementation* key,
+        TupleDictionary* next,
+        TupleDictionary* previous
+    ): Cell(context)
+    {
+        this->key = key;
+        this->next = next;
+        this->previous = previous;
+        this->height = (key ? 1 : 0) + std::max((previous ? previous->height : 0), (next ? next->height : 0)),
+            this->count = (previous ? previous->count : 0) + (key ? 1 : 0) + (next ? next->count : 0);
+    };
+
+    void TupleDictionary::finalize(ProtoContext* context)
+    {
+    };
+
+    void TupleDictionary::processReferences(
+        ProtoContext* context,
+        void* self,
+        void (*method)(
+            ProtoContext* context,
+            void* self,
+            Cell* cell
+        )
+    )
+    {
+        if (this->next)
+            this->next->processReferences(context, self, method);
+        if (this->previous)
+            this->previous->processReferences(context, self, method);
+        (*method)(context, this, this);
+    };
+
+    int TupleDictionary::compareList(ProtoContext* context, ProtoList* list)
+    {
+        int thisSize = this->key->getSize(context);
+        int listSize = list->getSize(context);
+
+        int cmpSize = (thisSize < listSize) ? thisSize : listSize;
+        int i;
+        for (i = 0; i <= cmpSize; i++)
+        {
+            int thisElementHash = this->key->getAt(context, i)->getHash(context);
+            int tupleElementHash = list->getAt(context, i)->getHash(context);
+            if (thisElementHash > tupleElementHash)
+                return 1;
+            else if (thisElementHash < tupleElementHash)
+                return 1;
+        }
+        if (i > thisSize)
+            return -1;
+        else if (i > listSize)
+            return 1;
+        return 0;
+    };
+
+    bool TupleDictionary::hasList(ProtoContext* context, ProtoList* list)
+    {
+        TupleDictionary* node = this;
+        int cmp;
+
+        // Empty tree case
+        if (!this->key)
+            return false;
+
+        while (node)
+        {
+            cmp = node->compareList(context, list);
+            if (cmp == 0)
+                return true;
+            if (cmp > 0)
+                node = node->next;
+            else
+                node = node->previous;
+        }
+        return false;
+    };
+
+    bool TupleDictionary::has(ProtoContext* context, ProtoTuple* tuple)
+    {
+        TupleDictionary* node = this;
+        int cmp;
+
+        // Empty tree case
+        if (!this->key)
+            return false;
+
+        while (node)
+        {
+            cmp = node->compareTuple(context, tuple);
+            if (cmp == 0)
+                return true;
+            if (cmp > 0)
+                node = node->next;
+            else
+                node = node->previous;
+        }
+        return false;
+    };
+
+    ProtoTupleImplementation* TupleDictionary::getAt(ProtoContext* context, ProtoTupleImplementation* tuple)
+    {
+        TupleDictionary* node = this;
+        int cmp;
+
+        // Empty tree case
+        if (!this->key)
+            return nullptr;
+
+        while (node)
+        {
+            cmp = node->compareTuple(context, tuple);
+            if (cmp == 0)
+                return node->key;
+            if (cmp > 0)
+                node = node->next;
+            else
+                node = node->previous;
+        }
+        return nullptr;
+    };
+
+    TupleDictionary* TupleDictionary::set(ProtoContext* context, ProtoTupleImplementation* tuple)
+    {
+        TupleDictionary* newNode;
+        int cmp;
+
+        // Empty tree case
+        if (!this->key)
+            return new(context) TupleDictionary(
+                context,
+                key = tuple
+            );
+
+        cmp = this->compareTuple(context, tuple);
+        if (cmp > 0)
+        {
+            if (this->next)
+            {
+                newNode = new(context) TupleDictionary(
+                    context,
+                    key = this->key,
+                    previous = this->previous,
+                    next = this->next->set(context, tuple)
+                );
+            }
+            else
+            {
+                newNode = new(context) TupleDictionary(
+                    context,
+                    key = this->key,
+                    previous = this->previous,
+                    next = new(context) TupleDictionary(
+                        context,
+                        key = this->key
+                    )
+                );
+            }
+        }
+        else if (cmp < 0)
+        {
+            if (this->previous)
+            {
+                newNode = new(context) TupleDictionary(
+                    context,
+                    key = this->key,
+                    previous = this->previous->set(context, tuple),
+                    next = this->next
+                );
+            }
+            else
+            {
+                newNode = new(context) TupleDictionary(
+                    context,
+                    key = this->key,
+                    previous = new(context) TupleDictionary(
+                        context,
+                        key = this->key
+                    ),
+                    next = this->next
+                );
+            }
+        }
+        else
+            return this;
+
+        return newNode->rebalance(context);
+    };
+
+    TupleDictionary* TupleDictionary::removeFirst(ProtoContext* context)
+    {
+        TupleDictionary* newNode;
+
+        if (this->previous)
+        {
+            if (this->previous->previous)
+                newNode = new(context) TupleDictionary(
+                    context,
+                    this->key,
+                    this->next,
+                    this->previous->removeFirst(context)
+                );
+            else if (this->previous->next)
+                newNode = new(context) TupleDictionary(
+                    context,
+                    this->key,
+                    this->next,
+                    this->previous->next
+                );
+            else
+                newNode = new(context) TupleDictionary(
+                    context,
+                    this->key,
+                    this->next,
+                    NULL
+                );
+        }
+        else
+        {
+            return this->next;
+        }
+
+        return newNode->rebalance(context);
+    };
+
+    ProtoTupleImplementation* TupleDictionary::getFirst(ProtoContext* context)
+    {
+        TupleDictionary* node = this;
+
+        while (node)
+        {
+            if (node->previous)
+                node = node->previous;
+            return node->key;
+        }
+        return NULL;
+    };
+
+    TupleDictionary* TupleDictionary::removeAt(ProtoContext* context, ProtoTupleImplementation* key)
+    {
+        TupleDictionary* newNode;
+
+        if (this->key == key)
+        {
+            if (this->previous && this->next)
+            {
+                if (!this->previous->previous && !this->previous->next)
+                    newNode = new(context) TupleDictionary(
+                        context,
+                        this->previous->key,
+                        this->next
+                    );
+                else
+                {
+                    ProtoTupleImplementation* first = this->next->getFirst(context);
+                    newNode = new(context) TupleDictionary(
+                        context,
+                        first,
+                        this->next->removeFirst(context),
+                        this->previous
+                    );
+                }
+            }
+            else if (this->previous)
+                newNode = this->previous;
+            else
+                newNode = this->next;
+        }
+        else
+        {
+            if (key->getHash(context) < this->key->getHash(context))
+            {
+                newNode = this->previous->removeAt(context, key);
+                newNode = new(context) TupleDictionary(
+                    context,
+                    this->key,
+                    newNode,
+                    this->next
+                );
+            }
+            else
+            {
+                newNode = this->next->removeAt(context, key);
+                newNode = new(context) TupleDictionary(
+                    context,
+                    this->key,
+                    this->previous,
+                    newNode
+                );
+            }
+        }
+
+        return newNode->rebalance(context);
+    };
+
+    int TupleDictionary::compareTuple(ProtoContext* context, ProtoTuple* tuple)
+    {
+        int thisSize = this->key->getSize(context);
+        int tupleSize = tuple->getSize(context);
+
+        int cmpSize = (thisSize < tupleSize) ? thisSize : tupleSize;
+        int i;
+        for (i = 0; i < cmpSize; i++)
+        {
+            int thisElementHash = this->key->getAt(context, i)->getHash(context);
+            int tupleElementHash = tuple->getAt(context, i)->getHash(context);
+            if (thisElementHash > tupleElementHash)
+                return 1;
+            else if (thisElementHash < tupleElementHash)
+                return 1;
+        }
+        if (i > thisSize)
+            return -1;
+        else if (i > tupleSize)
+            return 1;
+        return 0;
+    }
+
+    // A utility function to right rotate subtree rooted with y
+    // See the diagram given above.
+    TupleDictionary* TupleDictionary::rightRotate(ProtoContext* context)
+    {
+        if (!this->previous)
+            return this;
+
+        TupleDictionary* newRight = new(context) TupleDictionary(
+            context,
+            this->key,
+            this->previous->next,
+            this->next
+        );
+        return new(context) TupleDictionary(
+            context,
+            this->previous->key,
+            this->previous->previous,
+            newRight
+        );
+    }
+
+    // A utility function to left rotate subtree rooted with x
+    // See the diagram given above.
+    TupleDictionary* TupleDictionary::leftRotate(ProtoContext* context)
+    {
+        if (!this->next)
+            return this;
+
+        TupleDictionary* newLeft = new(context) TupleDictionary(
+            context,
+            this->key,
+            this->previous,
+            this->next->previous
+        );
+        return new(context) TupleDictionary(
+            context,
+            this->next->key,
+            newLeft,
+            this->next->next
+        );
+    }
+
+    TupleDictionary* TupleDictionary::rebalance(ProtoContext* context)
+    {
+        TupleDictionary* newNode = this;
+        while (true)
+        {
+            // If this node becomes unbalanced, then
+            // there are 4 cases
+
+            int balance = (newNode->next ? newNode->next->height : 0) - (newNode->previous
+                                                                             ? newNode->previous->height
+                                                                             : 0);
+
+            if (balance >= -1 && balance <= 1)
+                return newNode;
+
+            // Left Left Case
+            if (balance < -1)
+            {
+                newNode = newNode->rightRotate(context);
+            }
+            else
+            {
+                // Right Right Case
+                if (balance > 1)
+                {
+                    newNode = newNode->leftRotate(context);
+                }
+                // Left Right Case
+                else
+                {
+                    if (balance < 0 && newNode->previous)
+                    {
+                        newNode = new(context) TupleDictionary(
+                            context,
+                            newNode->key,
+                            newNode->previous->leftRotate(context),
+                            newNode->next
+                        );
+                        if (!newNode->previous)
+                            return newNode;
+                        newNode = newNode->rightRotate(context);
+                    }
+                    else
+                    {
+                        // Right Left Case
+                        if (balance > 0 && newNode->next)
+                        {
+                            newNode = new(context) TupleDictionary(
+                                context,
+                                newNode->key,
+                                newNode->previous,
+                                newNode->next->rightRotate(context)
+                            );
+                            if (!newNode->next)
+                                return newNode;
+                            newNode = newNode->leftRotate(context);
+                        }
+                        else
+                            return newNode;
+                    }
+                }
+            }
+        }
+    }
+
+    long unsigned int TupleDictionary::getHash(proto::ProtoContext*)
+    {
+        // El hash de una Cell se deriva directamente de su dirección de memoria.
+        // Esto proporciona un identificador rápido y único para el objeto.
+        ProtoObjectPointer p;
+        p.oid.oid = (ProtoObject*)this;
+
+        return p.asHash.hash;
+    }
+
+    proto::ProtoObject* TupleDictionary::asObject(proto::ProtoContext*)
+    {
+        ProtoObjectPointer p;
+        p.oid.oid = (ProtoObject*)this;
+        p.op.pointer_tag = POINTER_TAG_OBJECT;
+        return p.oid.oid;
+    }
+
     // --- ProtoTupleIteratorImplementation ---
 
     // Constructor modernizado con lista de inicialización.
@@ -48,7 +493,7 @@ namespace proto
     }
 
     // CORRECCIÓN CRÍTICA: El iterador debe avanzar creando uno nuevo en la siguiente posición.
-    ProtoTupleIterator* ProtoTupleIteratorImplementation::advance(ProtoContext* context)
+    ProtoTupleIteratorImplementation* ProtoTupleIteratorImplementation::advance(ProtoContext* context)
     {
         return new(context) ProtoTupleIteratorImplementation(context, this->base, this->currentIndex + 1);
     }
@@ -89,7 +534,7 @@ namespace proto
     // Constructor para un nuevo nodo hoja.
     ProtoTupleImplementation::ProtoTupleImplementation(
         ProtoContext* context,
-        unsigned long elementCount,
+        const unsigned long elementCount,
         ProtoObject** data
     ) : Cell(context),
         elementCount(elementCount),
@@ -102,7 +547,7 @@ namespace proto
     // Constructor para un nuevo nodo indirecto
     ProtoTupleImplementation::ProtoTupleImplementation(
         ProtoContext* context,
-        unsigned long elementCount,
+        const unsigned long elementCount,
         ProtoTupleImplementation** indirect
     ) : Cell(context),
         elementCount(elementCount),
@@ -121,7 +566,7 @@ namespace proto
     }
 
     // CORRECCIÓN: La creación de tuplas debe ser robusta y gestionar la memoria correctamente.
-    ProtoTuple* ProtoTupleImplementation::tupleFromList(ProtoContext* context, ProtoList* list)
+    ProtoTupleImplementation* ProtoTupleImplementation::tupleFromList(ProtoContext* context, ProtoList* list)
     {
         if (!list)
         {
@@ -198,8 +643,8 @@ namespace proto
 
     ProtoObject* ProtoTupleImplementation::asObject(ProtoContext* context)
     {
-        ProtoObjectPointer p;
-        p.oid.oid = (ProtoObject*)this;
+        ProtoObjectPointer p{};
+        p.oid.oid = reinterpret_cast<ProtoObject*>(this);
         p.op.pointer_tag = POINTER_TAG_TUPLE; // Usar el tag correcto.
         return p.oid.oid;
     }
@@ -210,14 +655,14 @@ namespace proto
         return Cell::getHash(context);
     }
 
-    ProtoTupleIterator* ProtoTupleImplementation::getIterator(ProtoContext* context)
+    ProtoTupleIteratorImplementation* ProtoTupleImplementation::getIterator(ProtoContext* context)
     {
         // CORRECCIÓN: El iterador debe apuntar a 'this', no a 'nullptr'.
         return new(context) ProtoTupleIteratorImplementation(context, this, 0);
     }
 
     // Para tuplas inmutables, 'setAt' devuelve una *nueva* tupla con el cambio.
-    ProtoTuple* ProtoTupleImplementation::setAt(ProtoContext* context, int index, ProtoObject* value)
+    ProtoTupleImplementation* ProtoTupleImplementation::setAt(ProtoContext* context, int index, ProtoObject* value)
     {
         if (index < 0)
         {

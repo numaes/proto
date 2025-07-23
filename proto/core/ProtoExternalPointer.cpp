@@ -21,7 +21,8 @@ namespace proto
     }
 
     // Para destructores vacíos, usar '= default' es la práctica recomendada.
-    ProtoExternalPointerImplementation::~ProtoExternalPointerImplementation() = default;
+    ProtoExternalPointerImplementation::~ProtoExternalPointerImplementation() {}
+
 
     // --- Métodos de la Interfaz ---
 

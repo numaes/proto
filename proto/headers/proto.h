@@ -8,20 +8,21 @@
 #ifndef PROTO_H_
 #define PROTO_H_
 
+#include <atomic>
+#include <condition_variable>
+
 
 namespace proto
 {
-#include <atomic>
-#include <condition_variable>
 
 	typedef int BOOLEAN;
 
 	// Usefull constants.
 	// ATENTION: They should be kept on synch with proto_internal.h!
 
-#define PROTO_TRUE ((ProtoObject *)  0x010FL)
-#define PROTO_FALSE ((ProtoObject *) 0x000FL)
-#define PROTO_NONE ((ProtoObject *) NULL)
+#define PROTO_TRUE ((proto::ProtoObject *)  0x010FL)
+#define PROTO_FALSE ((proto::ProtoObject *) 0x000FL)
+#define PROTO_NONE ((proto::ProtoObject *) NULL)
 
 	// Root base of any internal structure.
 	// All Cell objects should be non mutable once initialized
@@ -173,7 +174,6 @@ namespace proto
 		virtual ProtoList* removeAt(ProtoContext* context, int index);
 		virtual ProtoList* removeSlice(ProtoContext* context, int from, int to);
 
-		virtual ProtoTuple* asTuple(ProtoContext* context);
 		virtual ProtoObject* asObject(ProtoContext* context);
 		virtual unsigned long getHash(ProtoContext* context);
 		virtual ProtoListIterator* getIterator(ProtoContext* context);

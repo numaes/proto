@@ -26,7 +26,7 @@ namespace proto
     // Para destructores vacíos, usar '= default' es la práctica recomendada.
     ProtoObjectCellImplementation::~ProtoObjectCellImplementation()
     {
-    };
+    }
 
 
     // --- Métodos de la Interfaz ---

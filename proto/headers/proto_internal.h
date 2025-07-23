@@ -115,6 +115,19 @@ namespace proto
         } cell;
     };
 
+    class AllocatedSegment {
+    public:
+        BigCell *memoryBlock;
+        int     cellsCount;
+        AllocatedSegment *nextBlock;
+    };
+
+    class DirtySegment {
+    public:
+        BigCell	 *cellChain;
+        DirtySegment *nextSegment;
+    };
+
     // Pointer tags
 #define POINTER_TAG_EMBEDEDVALUE            0
 #define POINTER_TAG_OBJECT                  1
@@ -314,7 +327,7 @@ namespace proto
 
         int hasNext(ProtoContext* context) override;
         ProtoObject* next(ProtoContext* context) override;
-        ProtoListIterator* advance(ProtoContext* context) override;
+        ProtoListIteratorImplementation* advance(ProtoContext* context) override;
 
         ProtoObject* asObject(ProtoContext* context) override;
         unsigned long getHash(ProtoContext* context) override;
@@ -352,30 +365,29 @@ namespace proto
         ProtoObject* getAt(ProtoContext* context, int index) override;
         ProtoObject* getFirst(ProtoContext* context) override;
         ProtoObject* getLast(ProtoContext* context) override;
-        ProtoList* getSlice(ProtoContext* context, int from, int to) override;
+        ProtoListImplementation* getSlice(ProtoContext* context, int from, int to) override;
         unsigned long getSize(ProtoContext* context) override;
 
         bool has(ProtoContext* context, ProtoObject* value) override;
-        ProtoList* setAt(ProtoContext* context, int index, ProtoObject* value = PROTO_NONE) override;
-        ProtoList* insertAt(ProtoContext* context, int index, ProtoObject* value) override;
+        ProtoListImplementation* setAt(ProtoContext* context, int index, ProtoObject* value = PROTO_NONE) override;
+        ProtoListImplementation* insertAt(ProtoContext* context, int index, ProtoObject* value) override;
 
-        ProtoList* appendFirst(ProtoContext* context, ProtoObject* value) override;
-        ProtoList* appendLast(ProtoContext* context, ProtoObject* value) override;
+        ProtoListImplementation* appendFirst(ProtoContext* context, ProtoObject* value) override;
+        ProtoListImplementation* appendLast(ProtoContext* context, ProtoObject* value) override;
 
-        ProtoList* extend(ProtoContext* context, ProtoList* other) override;
+        ProtoListImplementation* extend(ProtoContext* context, ProtoList* other) override;
 
-        ProtoList* splitFirst(ProtoContext* context, int index) override;
-        ProtoList* splitLast(ProtoContext* context, int index) override;
+        ProtoListImplementation* splitFirst(ProtoContext* context, int index) override;
+        ProtoListImplementation* splitLast(ProtoContext* context, int index) override;
 
-        ProtoList* removeFirst(ProtoContext* context) override;
-        ProtoList* removeLast(ProtoContext* context) override;
-        ProtoList* removeAt(ProtoContext* context, int index) override;
-        ProtoList* removeSlice(ProtoContext* context, int from, int to) override;
+        ProtoListImplementation* removeFirst(ProtoContext* context) override;
+        ProtoListImplementation* removeLast(ProtoContext* context) override;
+        ProtoListImplementation* removeAt(ProtoContext* context, int index) override;
+        ProtoListImplementation* removeSlice(ProtoContext* context, int from, int to) override;
 
-        ProtoTuple* asTuple(ProtoContext* context) override;
         ProtoObject* asObject(ProtoContext* context) override;
         unsigned long getHash(ProtoContext* context) override;
-        ProtoListIterator* getIterator(ProtoContext* context) override;
+        ProtoListIteratorImplementation* getIterator(ProtoContext* context) override;
 
         void finalize(ProtoContext* context) override;
         void processReferences(
@@ -392,11 +404,11 @@ namespace proto
         ProtoListImplementation* next;
 
         ProtoObject* value;
-        unsigned long hash;
+        unsigned long hash{};
 
-        unsigned long count : 52;
+        unsigned long count : 52{};
         unsigned long height : 8;
-        unsigned long type : 4;
+        unsigned long type : 4{};
     };
 
     // --- ProtoSparseList ---
@@ -416,7 +428,7 @@ namespace proto
         unsigned long nextKey(ProtoContext* context) override;
         ProtoObject* nextValue(ProtoContext* context) override;
 
-        ProtoSparseListIterator* advance(ProtoContext* context) override;
+        ProtoSparseListIteratorImplementation* advance(ProtoContext* context) override;
         ProtoObject* asObject(ProtoContext* context) override;
         unsigned long getHash(ProtoContext* context) override;
 
@@ -451,15 +463,15 @@ namespace proto
 
         bool has(ProtoContext* context, unsigned long index) override;
         ProtoObject* getAt(ProtoContext* context, unsigned long index) override;
-        ProtoSparseList* setAt(ProtoContext* context, unsigned long index, ProtoObject* value) override;
-        ProtoSparseList* removeAt(ProtoContext* context, unsigned long index) override;
+        ProtoSparseListImplementation* setAt(ProtoContext* context, unsigned long index, ProtoObject* value) override;
+        ProtoSparseListImplementation* removeAt(ProtoContext* context, unsigned long index) override;
         int isEqual(ProtoContext* context, ProtoSparseList* otherDict) override;
         ProtoObject* getAtOffset(ProtoContext* context, int offset) override;
 
         unsigned long getSize(ProtoContext* context) override;
         ProtoObject* asObject(ProtoContext* context) override;
         unsigned long getHash(ProtoContext* context) override;
-        virtual ProtoSparseListIterator* getIterator(ProtoContext* context);
+        virtual ProtoSparseListIteratorImplementation* getIterator(ProtoContext* context);
 
         void processElements(
             ProtoContext* context,
@@ -502,7 +514,42 @@ namespace proto
 
         unsigned long count : 52;
         unsigned long height : 8;
-        unsigned long type : 4;
+        unsigned long type : 4{};
+    };
+
+    // --- Iterador de Tuplas ---
+    // Implementación concreta para ProtoTupleIterator
+    class ProtoTupleIteratorImplementation : public Cell, public ProtoTupleIterator
+    {
+    public:
+        // Constructor
+        ProtoTupleIteratorImplementation(
+            ProtoContext* context,
+            ProtoTupleImplementation* base,
+            unsigned long currentIndex
+        );
+
+        // Destructor
+        ~ProtoTupleIteratorImplementation() override;
+
+        // --- Métodos de la interfaz ProtoTupleIterator ---
+        int hasNext(ProtoContext* context) override;
+        ProtoObject* next(ProtoContext* context) override;
+        ProtoTupleIteratorImplementation* advance(ProtoContext* context) override;
+
+        // --- Métodos de la interfaz Cell ---
+        ProtoObject* asObject(ProtoContext* context) override;
+        unsigned long getHash(ProtoContext* context) override;
+        void finalize(ProtoContext* context) override;
+        void processReferences(
+            ProtoContext* context,
+            void* self,
+            void (*method)(ProtoContext*, void*, Cell*)
+        ) override;
+
+    private:
+        ProtoTupleImplementation* base; // La tupla que se está iterando
+        unsigned long currentIndex; // La posición actual en la tupla
     };
 
     // --- ProtoTuple ---
@@ -529,10 +576,10 @@ namespace proto
         // --- Métodos de la interfaz ProtoTuple ---
         ProtoObject* getAt(ProtoContext* context, int index) override;
         unsigned long getSize(ProtoContext* context) override { return elementCount; }
-        ProtoList* asList(ProtoContext* context) override;
-        static ProtoTuple* tupleFromList(ProtoContext* context, ProtoList* list);
-        ProtoTupleIterator* getIterator(ProtoContext* context) override;
-        ProtoTuple* setAt(ProtoContext* context, int index, ProtoObject* value) override;
+        ProtoListImplementation* asList(ProtoContext* context) override;
+        static ProtoTupleImplementation* tupleFromList(ProtoContext* context, ProtoList* list);
+        ProtoTupleIteratorImplementation* getIterator(ProtoContext* context) override;
+        ProtoTupleImplementation* setAt(ProtoContext* context, int index, ProtoObject* value) override;
 
         // --- Métodos de la interfaz Cell ---
         ProtoObject* asObject(ProtoContext* context) override;
@@ -555,29 +602,29 @@ namespace proto
         };
     };
 
-    // --- Iterador de Tuplas ---
-    // Implementación concreta para ProtoTupleIterator
-    class ProtoTupleIteratorImplementation : public Cell, public ProtoTupleIterator
+    // --- ProtoStringIterator ---
+    // Implementación concreta para el iterador de ProtoString.
+    class ProtoStringIteratorImplementation : public Cell, public ProtoStringIterator
     {
     public:
         // Constructor
-        ProtoTupleIteratorImplementation(
+        ProtoStringIteratorImplementation(
             ProtoContext* context,
-            ProtoTupleImplementation* base,
+            ProtoStringImplementation* base,
             unsigned long currentIndex
         );
 
         // Destructor
-        ~ProtoTupleIteratorImplementation() override;
+        ~ProtoStringIteratorImplementation() override;
 
-        // --- Métodos de la interfaz ProtoTupleIterator ---
+        // --- Métodos de la interfaz ProtoStringIterator ---
         int hasNext(ProtoContext* context) override;
         ProtoObject* next(ProtoContext* context) override;
-        ProtoTupleIterator* advance(ProtoContext* context) override;
+        ProtoStringIteratorImplementation* advance(ProtoContext* context) override;
 
         // --- Métodos de la interfaz Cell ---
         ProtoObject* asObject(ProtoContext* context) override;
-        unsigned long getHash(ProtoContext* context) override;
+        unsigned long getHash(ProtoContext* context) override; // Heredado de Cell, importante para la consistencia.
         void finalize(ProtoContext* context) override;
         void processReferences(
             ProtoContext* context,
@@ -586,8 +633,8 @@ namespace proto
         ) override;
 
     private:
-        ProtoTupleImplementation* base; // La tupla que se está iterando
-        unsigned long currentIndex; // La posición actual en la tupla
+        ProtoStringImplementation* base; // La string que se está iterando.
+        unsigned long currentIndex; // La posición actual en la string.
     };
 
     // --- ProtoString ---
@@ -607,14 +654,14 @@ namespace proto
         // --- Métodos de la interfaz ProtoString ---
         ProtoObject* getAt(ProtoContext* context, int index) override;
         unsigned long getSize(ProtoContext* context) override;
-        ProtoString* getSlice(ProtoContext* context, int from, int to) override;
-        ProtoString* setAt(ProtoContext* context, int index, ProtoObject* value) override;
-        ProtoString* insertAt(ProtoContext* context, int index, ProtoObject* value) override;
-        ProtoString* appendLast(ProtoContext* context, ProtoString* otherString) override;
-        ProtoString* appendFirst(ProtoContext* context, ProtoString* otherString) override;
-        ProtoString* removeSlice(ProtoContext* context, int from, int to) override;
-        ProtoList* asList(ProtoContext* context) override;
-        ProtoStringIterator* getIterator(ProtoContext* context) override;
+        ProtoStringImplementation* getSlice(ProtoContext* context, int from, int to) override;
+        ProtoStringImplementation* setAt(ProtoContext* context, int index, ProtoObject* value) override;
+        ProtoStringImplementation* insertAt(ProtoContext* context, int index, ProtoObject* value) override;
+        ProtoStringImplementation* appendLast(ProtoContext* context, ProtoString* otherString) override;
+        ProtoStringImplementation* appendFirst(ProtoContext* context, ProtoString* otherString) override;
+        ProtoStringImplementation* removeSlice(ProtoContext* context, int from, int to) override;
+        ProtoListImplementation* asList(ProtoContext* context) override;
+        ProtoStringIteratorImplementation* getIterator(ProtoContext* context) override;
 
         // --- Métodos de la interfaz Cell ---
         ProtoObject* asObject(ProtoContext* context) override;
@@ -630,41 +677,6 @@ namespace proto
         ProtoTuple* baseTuple; // La tupla subyacente que almacena los caracteres.
     };
 
-
-    // --- ProtoStringIterator ---
-    // Implementación concreta para el iterador de ProtoString.
-    class ProtoStringIteratorImplementation : public Cell, public ProtoStringIterator
-    {
-    public:
-        // Constructor
-        ProtoStringIteratorImplementation(
-            ProtoContext* context,
-            ProtoStringImplementation* base,
-            unsigned long currentIndex
-        );
-
-        // Destructor
-        ~ProtoStringIteratorImplementation() override;
-
-        // --- Métodos de la interfaz ProtoStringIterator ---
-        int hasNext(ProtoContext* context) override;
-        ProtoObject* next(ProtoContext* context) override;
-        ProtoStringIterator* advance(ProtoContext* context) override;
-
-        // --- Métodos de la interfaz Cell ---
-        ProtoObject* asObject(ProtoContext* context) override;
-        unsigned long getHash(ProtoContext* context) override; // Heredado de Cell, importante para la consistencia.
-        void finalize(ProtoContext* context) override;
-        void processReferences(
-            ProtoContext* context,
-            void* self,
-            void (*method)(ProtoContext*, void*, Cell*)
-        ) override;
-
-    private:
-        ProtoStringImplementation* base; // La string que se está iterando.
-        unsigned long currentIndex; // La posición actual en la string.
-    };
 
     // --- ProtoByteBufferImplementation ---
     // Implementación de un búfer de bytes que puede gestionar su propia memoria
@@ -786,53 +798,131 @@ namespace proto
         void* pointer; // El puntero opaco a los datos externos.
     };
 
-    // --- Declaración de la Clase ProtoThreadImplementation ---
-
-    class ProtoThreadImplementation : public Cell
+        // --- ProtoThreadImplementation ---
+    // La implementación interna de un hilo gestionado por el runtime de Proto.
+    // Hereda de 'Cell' para ser gestionada por el recolector de basura.
+    class ProtoThreadImplementation : public Cell, public ProtoThread
     {
     public:
-        // --- Miembros de Datos ---
-        ProtoString* name;
-        ProtoSpace* space;
-        std::thread* osThread;
-        BigCell* freeCells;
-        ProtoContext* currentContext;
-        int state;
-        int unmanagedCount;
-
         // --- Constructor y Destructor ---
+
+        // Crea una nueva instancia de hilo.
         ProtoThreadImplementation(
             ProtoContext* context,
             ProtoString* name,
             ProtoSpace* space,
-            ProtoMethod code,
+            ProtoMethod targetCode,
             ProtoList* args,
-            ProtoSparseList* kwargs
-        );
+            ProtoSparseList* kwargs);
 
-        ~ProtoThreadImplementation() override;
+        // Destructor virtual para asegurar la limpieza correcta.
+        virtual ~ProtoThreadImplementation();
 
-        // --- Métodos de la Interfaz Pública ---
-        void setCurrentContext(ProtoContext* context);
+        unsigned long getHash(ProtoContext* context) override;
+
+        // --- Control de Gestión del GC ---
+
+        // Marca el hilo como "no gestionado" para que el GC no lo detenga.
         void setUnmanaged();
+
+        // Devuelve el hilo al estado "gestionado" por el GC.
         void setManaged();
+
+        // --- Control del Ciclo de Vida del Hilo ---
+
+        // Desvincula el hilo del objeto, permitiendo que se ejecute de forma independiente.
         void detach(ProtoContext* context);
+
+        // Bloquea el hilo actual hasta que este hilo termine su ejecución.
         void join(ProtoContext* context);
+
+        // Solicita la finalización del hilo.
         void exit(ProtoContext* context);
 
-        // --- Sincronización y Gestión de Memoria ---
-        void synchToGC();
+        // --- Asignación de Memoria y Sincronización ---
+
+        // Asigna una nueva celda de memoria para el hilo.
         Cell* allocCell();
 
-        // --- Métodos Virtuales Sobrescritos de la Clase Base 'Cell' ---
+        // Sincroniza el hilo con el recolector de basura.
+        void synchToGC();
+
+        // --- Interfaz con el Sistema de Tipos ---
+
+        // Establece el contexto de ejecución actual para el hilo.
+        void setCurrentContext(ProtoContext* context);
+
+        // Convierte la implementación a un ProtoObject* genérico.
+        ProtoObject* asObject(ProtoContext* context) override;
+
+        // --- Métodos para el Recolector de Basura (Heredados de Cell) ---
+
+        // Finalizador llamado por el GC antes de liberar la memoria.
         void finalize(ProtoContext* context) override;
+
+        // Procesa las referencias a otras celdas para el barrido del GC.
         void processReferences(
             ProtoContext* context,
             void* self,
-            void (*method)(ProtoContext* context, void* self, Cell* cell)
-        ) override;
-        ProtoObject* asObject(ProtoContext* context) override;
+            void (*method)(ProtoContext* context, void* self, Cell* cell)) override;
+
+        // --- Datos Miembro ---
+        int state;     // Estado actual del hilo respecto al GC.
+        ProtoString* name;          // Nombre del hilo (para depuración).
+        ProtoSpace* space;          // El espacio de memoria al que pertenece el hilo.
+        std::thread* osThread;      // El hilo real del sistema operativo.
+        BigCell* freeCells;         // Lista de celdas de memoria libres locales al hilo.
+        ProtoContext* currentContext; // Pila de llamadas actual del hilo.
+        unsigned int unmanagedCount; // Contador para llamadas anidadas a setUnmanaged/setManaged.
     };
+
+    class TupleDictionary: public Cell {
+    private:
+        TupleDictionary *next;
+        TupleDictionary *previous;
+        ProtoTupleImplementation *key;
+        int count;
+        int height;
+
+        int compareTuple(ProtoContext *context, ProtoTuple *tuple);
+        TupleDictionary *rightRotate(ProtoContext *context);
+        TupleDictionary *leftRotate(ProtoContext *context);
+        TupleDictionary *rebalance(ProtoContext *context);
+        TupleDictionary *removeFirst(ProtoContext *context);
+        ProtoTupleImplementation *getFirst(ProtoContext *context);
+
+    public:
+        TupleDictionary(
+            ProtoContext *context,
+            ProtoTupleImplementation *key = NULL,
+            TupleDictionary *next = NULL,
+            TupleDictionary *previous = NULL
+        );
+
+        virtual long unsigned int getHash(proto::ProtoContext*);
+        virtual proto::ProtoObject* asObject(proto::ProtoContext*);
+        virtual void finalize(ProtoContext *context);
+
+        virtual void processReferences(
+            ProtoContext *context,
+            void *self,
+            void (*method) (
+                ProtoContext *context,
+                void *self,
+                Cell *cell
+            )
+        );
+
+        int compareList(ProtoContext *context, ProtoList *list);
+        bool hasList(ProtoContext *context, ProtoList *list);
+        bool has(ProtoContext *context, ProtoTuple *tuple);
+        ProtoTupleImplementation *getAt(ProtoContext *context, ProtoTupleImplementation *tuple);
+        TupleDictionary *set(ProtoContext *context, ProtoTupleImplementation *tuple);
+        TupleDictionary *removeAt(ProtoContext *context, ProtoTupleImplementation *tuple);
+
+    };
+
+
 }
 
 #endif /* PROTO_INTERNAL_H */

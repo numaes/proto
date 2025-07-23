@@ -12,21 +12,21 @@
 // que se abre en 'proto.h'.
 
 // Declaraciones anticipadas de las funciones de prueba
-void test_primitives(ProtoContext& c);
-void test_string(ProtoContext& c);
-void test_tuple(ProtoContext& c);
-void test_list(ProtoContext& c);
-void test_sparse_list(ProtoContext& c);
-void test_objects_and_prototypes(ProtoContext& c);
-void test_method_call(ProtoContext& c);
-void test_gc_stress(ProtoContext& c);
+void test_primitives(proto::ProtoContext& c);
+void test_string(proto::ProtoContext& c);
+void test_tuple(proto::ProtoContext& c);
+void test_list(proto::ProtoContext& c);
+void test_sparse_list(proto::ProtoContext& c);
+void test_objects_and_prototypes(proto::ProtoContext& c);
+void test_method_call(proto::ProtoContext& c);
+void test_gc_stress(proto::ProtoContext& c);
 
 // Un método nativo para propósitos de prueba
-ProtoObject* native_method_for_test(
-        ProtoContext& c,
-        ProtoObject* self,
-        ProtoObject* slot,
-        ProtoList* args
+proto::ProtoObject* native_method_for_test(
+        proto::ProtoContext& c,
+        proto::ProtoObject* self,
+        proto::ProtoObject* slot,
+        proto::ProtoList* args
 ) {
     std::cout << "llamada a método nativo" << std::endl;
     return PROTO_NONE;
@@ -35,7 +35,7 @@ ProtoObject* native_method_for_test(
 int main(int argc, char **argv) {
     std::cout << "Suite de pruebas de Proto" << std::endl;
 
-    ProtoContext c;
+    proto::ProtoContext c;
 
     // Ejecutar todas las pruebas
     test_primitives(c);
@@ -53,36 +53,35 @@ int main(int argc, char **argv) {
 
 // --- Implementaciones de las Pruebas ---
 
-void test_primitives(ProtoContext& c) {
+void test_primitives(proto::ProtoContext& c) {
     // Implementación para pruebas de primitivas
 }
 
-void test_string(ProtoContext& c) {
+void test_string(proto::ProtoContext& c) {
     // Implementación para pruebas de strings
 }
 
-void test_tuple(ProtoContext& c) {
+void test_tuple(proto::ProtoContext& c) {
     // Implementación para pruebas de tuplas
 }
 
-void test_list(ProtoContext& c) {
+void test_list(proto::ProtoContext& c) {
     // Implementación para pruebas de listas
 }
 
-void test_sparse_list(ProtoContext& c) {
+void test_sparse_list(proto::ProtoContext& c) {
     // Implementación para pruebas de listas dispersas
 }
 
-void test_objects_and_prototypes(ProtoContext& c) {
+void test_objects_and_prototypes(proto::ProtoContext& c) {
     // Implementación para pruebas de objetos y prototipos
 }
 
-void test_method_call(ProtoContext& c) {
+void test_method_call(proto::ProtoContext& c) {
     // Implementación para pruebas de llamadas a métodos
 }
 
-void test_gc_stress(ProtoContext& c) {
+void test_gc_stress(proto::ProtoContext& c) {
     // Implementación para pruebas de estrés del GC
 }
 
-} // Cierra el 'namespace proto' abierto en 'proto.h'

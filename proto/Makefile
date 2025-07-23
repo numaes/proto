@@ -74,7 +74,7 @@ endif
 # | SRCS defines a generic bag of sources |
 # +---------------------------------------+
 SRCS         := \
-    Cell ProtoList ProtoSparseList ParentLink ProtoTuple ProtoString Proto ProtoByteBuffer \
+    Cell ProtoList ProtoSparseList ParentLink ProtoTuple ProtoString ProtoByteBuffer \
 	ProtoContext ProtoExternalPointer ProtoObjectCell \
 	ProtoSpace ProtoMethodCell Thread
 
@@ -161,4 +161,10 @@ include/%.h: headers/%.h
 # | cleaning rule |
 # +---------------+
 clean:
-	-@$(RM) -r obj debug include bin lib
+	@echo "--- Limpiando artefactos de compilacion ---"
+	-@$(RM) -fv $(DEBUG)
+	-@$(RM) -fv $(OBJ)
+	-@$(RM) -fv $(TEST_OBJS_DEBUG)
+	-@$(RM) -fv $(DEBUG:.o=.d) $(OBJ:.o=.d) $(TEST_OBJS_DEBUG:.o=.d)
+	-@$(RM) -rfv bin lib obj debug include
+	@echo "--- Limpieza finalizada ---"
