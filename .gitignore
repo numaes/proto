@@ -1,10 +1,5 @@
-include
-lib
-bin
-obj
-debug
-test
-*.a
-*.o
-*.so
 
+.idea/
+docs/_build/
+proto/debug/
+proto/lib/
