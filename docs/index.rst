@@ -10,5 +10,8 @@ Welcome to Proto's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   project_overview
+   target_applications
+   commercial_potential
    api
 
