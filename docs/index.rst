@@ -13,5 +13,6 @@ Welcome to Proto's documentation!
    project_overview
    target_applications
    commercial_potential
+   conceptual_introduction
    api
 
