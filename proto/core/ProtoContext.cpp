@@ -142,7 +142,7 @@ namespace proto
         ProtoObjectPointer p;
         p.oid.oid = nullptr;
         p.sd.pointer_tag = POINTER_TAG_EMBEDEDVALUE;
-        p.sd.embedded_type = EMBEDED_TYPE_SMALLDOUBLE;
+        p.sd.embedded_type = EMBEDED_TYPE_FLOAT;
 
         union
         {
@@ -150,7 +150,7 @@ namespace proto
             double dv;
         } u;
         u.dv = value;
-        p.sd.smallDouble = u.lv >> TYPE_SHIFT;
+        p.sd.floatValue = u.lv >> TYPE_SHIFT;
         return p.oid.oid;
     }
 

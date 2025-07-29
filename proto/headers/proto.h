@@ -71,6 +71,7 @@ namespace proto
 	class ProtoObject
 	{
 	public:
+		ProtoObject* getPrototype(ProtoContext* c);
 		ProtoObject* clone(ProtoContext* c, bool isMutable = false);
 		ProtoObject* newChild(ProtoContext* c, bool isMutable = false);
 
@@ -110,21 +111,21 @@ namespace proto
 		);
 
 
-		bool asBoolean();
-		int asInteger();
-		double asDouble();
-		char asByte();
-		void asDate(unsigned int& year, unsigned& month, unsigned& day);
-		unsigned long asTimestamp();
-		long asTimeDelta();
+		bool asBoolean(ProtoContext *context);
+		int asInteger(ProtoContext *context);
+		float asFloat(ProtoContext *context);
+		char asByte(ProtoContext *context);
+		void asDate(ProtoContext *context, unsigned int& year, unsigned& month, unsigned& day);
+		unsigned long asTimestamp(ProtoContext *context);
+		long asTimeDelta(ProtoContext *context);
 
-		bool isBoolean();
-		bool isInteger();
-		bool isDouble();
-		bool isByte();
-		bool isDate();
-		bool isTimestamp();
-		bool isTimeDelta();
+		bool isBoolean(ProtoContext *context);
+		bool isInteger(ProtoContext *context);
+		bool isFloat(ProtoContext *context);
+		bool isByte(ProtoContext *context);
+		bool isDate(ProtoContext *context);
+		bool isTimestamp(ProtoContext *context);
+		bool isTimeDelta(ProtoContext *context);
 	};
 
 
@@ -521,7 +522,7 @@ namespace proto
 
 		ProtoObject* objectPrototype;
 		ProtoObject* smallIntegerPrototype;
-		ProtoObject* smallFloatPrototype;
+		ProtoObject* floatPrototype;
 		ProtoObject* unicodeCharPrototype;
 		ProtoObject* bytePrototype;
 		ProtoObject* nonePrototype;

@@ -73,10 +73,7 @@ endif
 # ***********************-----------------+
 # | SRCS defines a generic bag of sources |
 # +---------------------------------------+
-SRCS         := \
-    Cell ProtoList ProtoSparseList ParentLink ProtoTuple ProtoString ProtoByteBuffer \
-	ProtoContext ProtoExternalPointer ProtoObjectCell \
-	ProtoSpace ProtoMethodCell Thread
+SRCS         :=     Cell ProtoList ProtoSparseList ParentLink ProtoTuple ProtoString ProtoByteBuffer 	ProtoContext Proto ProtoExternalPointer ProtoObjectCell 	ProtoSpace ProtoMethodCell Thread ProtoTuple ProtoString
 
 # +-----------------------------------+
 # | HEADERS defines headers to export |

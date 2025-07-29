@@ -687,4 +687,34 @@ namespace proto
         // Crear y devolver una nueva tupla con los datos modificados.
         return new(context) ProtoTupleImplementation(context, this->elementCount, newData);
     }
+
+    ProtoObject* ProtoTuple::getFirst(ProtoContext* context) { return getAt(context, 0); }
+    ProtoObject* ProtoTuple::getLast(ProtoContext* context) { return getAt(context, getSize(context) - 1); }
+    ProtoListImplementation* ProtoTupleImplementation::asList(ProtoContext* context) {
+        ProtoList* list = context->newList();
+        for (unsigned long i = 0; i < this->elementCount; ++i) {
+            list = list->appendLast(context, this->data[i]);
+        }
+        return (ProtoListImplementation*) list;
+    }
+
+    ProtoTuple* ProtoTuple::getSlice(ProtoContext* context, int from, int to) { return nullptr; }
+    BOOLEAN ProtoTuple::has(ProtoContext* context, ProtoObject* value) { return 0; }
+    ProtoTuple* ProtoTuple::insertAt(ProtoContext* context, int index, ProtoObject* value) { return nullptr; }
+    ProtoTuple* ProtoTuple::appendFirst(ProtoContext* context, ProtoTuple* otherTuple) { return nullptr; }
+    ProtoTuple* ProtoTuple::appendLast(ProtoContext* context, ProtoTuple* otherTuple) { return nullptr; }
+    ProtoTuple* ProtoTuple::splitFirst(ProtoContext* context, int count) { return nullptr; }
+    ProtoTuple* ProtoTuple::splitLast(ProtoContext* context, int count) { return nullptr; }
+    ProtoTuple* ProtoTuple::removeFirst(ProtoContext* context, int count) { return nullptr; }
+    ProtoTuple* ProtoTuple::removeLast(ProtoContext* context, int count) { return nullptr; }
+    ProtoTuple* ProtoTuple::removeAt(ProtoContext* context, int index) { return nullptr; }
+    ProtoTuple* ProtoTuple::removeSlice(ProtoContext* context, int from, int to) { return nullptr; }
+    ProtoObject* ProtoTuple::asObject(ProtoContext* context) { return nullptr; }
+    unsigned long ProtoTuple::getHash(ProtoContext* context) { return 0; }
+    ProtoTupleIterator* ProtoTuple::getIterator(ProtoContext* context) { return nullptr; }
+
+    unsigned long ProtoTupleIteratorImplementation::getHash(ProtoContext* context) {
+        return Cell::getHash(context);
+    }
+
 } // namespace proto

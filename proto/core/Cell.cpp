@@ -38,6 +38,10 @@ namespace proto
         // No hace nada en la clase base.
     };
 
+    ProtoObject* Cell::asObject(ProtoContext* context) {
+        return PROTO_NONE;
+    }
+
     // Sobrecarga del operador 'new' para usar el asignador de memoria del contexto.
     void* Cell::operator new(unsigned long size, ProtoContext* context)
     {

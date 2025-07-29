@@ -269,7 +269,7 @@ ProtoSpace::ProtoSpace(
     );
     ProtoList *argvList = creationContext->newList();
     if (argc && argv) {
-        for (int i; i < argc; i++)
+        for (int i = 0; i < argc; i++)
             argvList = argvList->appendLast(
                 creationContext,
                 creationContext->fromUTF8String(argv[i])->asObject(creationContext)
@@ -385,7 +385,6 @@ void ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *thread) {
 };
 
 Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
-    Cell *freeBlocks = nullptr;
     Cell *newBlock = nullptr;
 
     bool oldValue = false;

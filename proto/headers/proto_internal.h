@@ -39,7 +39,8 @@ namespace proto
         struct
         {
             unsigned long pointer_tag : 4;
-            unsigned long value : 60;
+            unsigned long embedded_type : 4;
+            unsigned long value : 56;
         } op;
 
         struct
@@ -53,7 +54,7 @@ namespace proto
         {
             unsigned long pointer_tag : 4;
             unsigned long embedded_type : 4;
-            unsigned long smallDouble : 56;
+            unsigned long floatValue : 32;
         } sd;
 
         struct
@@ -146,7 +147,7 @@ namespace proto
 
     // Embedded types
 #define EMBEDED_TYPE_SMALLINT               0
-#define EMBEDED_TYPE_SMALLDOUBLE            1
+#define EMBEDED_TYPE_FLOAT                  1
 #define EMBEDED_TYPE_UNICODECHAR            2
 #define EMBEDED_TYPE_BOOLEAN                3
 #define EMBEDED_TYPE_BYTE                   4
@@ -307,7 +308,6 @@ namespace proto
         ) override;
         long unsigned getHash(ProtoContext* context) override;
 
-    private:
         ParentLinkImplementation* parent;
         unsigned long mutable_ref;
         ProtoSparseListImplementation* attributes;

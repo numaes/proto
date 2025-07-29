@@ -104,4 +104,16 @@ namespace proto
 
         return p.asHash.hash;
     }
+
+    ProtoObjectCell* ProtoObjectCell::addParent(ProtoContext* context, ProtoObjectCell* object) {
+        return nullptr;
+    }
+
+    ProtoObject* ProtoObjectCell::asObject(ProtoContext* context) {
+        return nullptr;
+    }
+
+    unsigned long ProtoObjectCell::getHash(ProtoContext* context) {
+        return 0;
+    }
 } // namespace proto
