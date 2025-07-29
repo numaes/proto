@@ -575,11 +575,24 @@ namespace proto
 
         // --- Métodos de la interfaz ProtoTuple ---
         ProtoObject* getAt(ProtoContext* context, int index) override;
+        ProtoObject* getFirst(ProtoContext* context) override;
+        ProtoObject* getLast(ProtoContext* context) override;
+        ProtoObject* getSlice(ProtoContext* context, int from, int to) override;
         unsigned long getSize(ProtoContext* context) override { return elementCount; }
         ProtoListImplementation* asList(ProtoContext* context) override;
-        static ProtoTupleImplementation* tupleFromList(ProtoContext* context, ProtoList* list);
+        static ProtoObject* tupleFromList(ProtoContext* context, ProtoList* list);
         ProtoTupleIteratorImplementation* getIterator(ProtoContext* context) override;
-        ProtoTupleImplementation* setAt(ProtoContext* context, int index, ProtoObject* value) override;
+        ProtoObject* setAt(ProtoContext* context, int index, ProtoObject* value) override;
+        BOOLEAN has(ProtoContext* context, ProtoObject* value) override;
+        ProtoObject* insertAt(ProtoContext* context, int index, ProtoObject* value) override;
+        ProtoObject* appendFirst(ProtoContext* context, ProtoTuple* otherTuple) override;
+        ProtoObject* appendLast(ProtoContext* context, ProtoTuple* otherTuple) override;
+        ProtoObject* splitFirst(ProtoContext* context, int count) override;
+        ProtoObject* splitLast(ProtoContext* context, int count) override;
+        ProtoObject* removeFirst(ProtoContext* context, int count) override;
+        ProtoObject* removeLast(ProtoContext* context, int count) override;
+        ProtoObject* removeAt(ProtoContext* context, int index) override;
+        ProtoObject* removeSlice(ProtoContext* context, int from, int to) override;
 
         // --- Métodos de la interfaz Cell ---
         ProtoObject* asObject(ProtoContext* context) override;

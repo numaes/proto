@@ -141,158 +141,157 @@ namespace proto
 	{
 	public:
 		virtual ~ProtoListIterator() = default;
-		virtual int hasNext(ProtoContext* context);
-		virtual ProtoObject* next(ProtoContext* context);
-		virtual ProtoListIterator* advance(ProtoContext* context);
+		virtual int hasNext(ProtoContext* context) = 0;
+		virtual ProtoObject* next(ProtoContext* context) = 0;
+		virtual ProtoListIterator* advance(ProtoContext* context) = 0;
 
-		virtual ProtoObject* asObject(ProtoContext* context);
+		virtual ProtoObject* asObject(ProtoContext* context) = 0;
 	};
 
 	class ProtoList
 	{
 	public:
 		virtual ~ProtoList() = default;
-		virtual ProtoObject* getAt(ProtoContext* context, int index);
-		virtual ProtoObject* getFirst(ProtoContext* context);
-		virtual ProtoObject* getLast(ProtoContext* context);
-		virtual ProtoList* getSlice(ProtoContext* context, int from, int to);
-		virtual unsigned long getSize(ProtoContext* context);
+		virtual ProtoObject* getAt(ProtoContext* context, int index) = 0;
+		virtual ProtoObject* getFirst(ProtoContext* context) = 0;
+		virtual ProtoObject* getLast(ProtoContext* context) = 0;
+		virtual ProtoList* getSlice(ProtoContext* context, int from, int to) = 0;
+		virtual unsigned long getSize(ProtoContext* context) = 0;
 
-		virtual bool has(ProtoContext* context, ProtoObject* value);
-		virtual ProtoList* setAt(ProtoContext* context, int index, ProtoObject* value);
-		virtual ProtoList* insertAt(ProtoContext* context, int index, ProtoObject* value);
+		virtual bool has(ProtoContext* context, ProtoObject* value) = 0;
+		virtual ProtoList* setAt(ProtoContext* context, int index, ProtoObject* value) = 0;
+		virtual ProtoList* insertAt(ProtoContext* context, int index, ProtoObject* value) = 0;
 
-		virtual ProtoList* appendFirst(ProtoContext* context, ProtoObject* value);
-		virtual ProtoList* appendLast(ProtoContext* context, ProtoObject* value);
+		virtual ProtoList* appendFirst(ProtoContext* context, ProtoObject* value) = 0;
+		virtual ProtoList* appendLast(ProtoContext* context, ProtoObject* value) = 0;
 
-		virtual ProtoList* extend(ProtoContext* context, ProtoList* other);
+		virtual ProtoList* extend(ProtoContext* context, ProtoList* other) = 0;
 
-		virtual ProtoList* splitFirst(ProtoContext* context, int index);
-		virtual ProtoList* splitLast(ProtoContext* context, int index);
+		virtual ProtoList* splitFirst(ProtoContext* context, int index) = 0;
+		virtual ProtoList* splitLast(ProtoContext* context, int index) = 0;
 
-		virtual ProtoList* removeFirst(ProtoContext* context);
-		virtual ProtoList* removeLast(ProtoContext* context);
-		virtual ProtoList* removeAt(ProtoContext* context, int index);
-		virtual ProtoList* removeSlice(ProtoContext* context, int from, int to);
+		virtual ProtoList* removeFirst(ProtoContext* context) = 0;
+		virtual ProtoList* removeLast(ProtoContext* context) = 0;
+		virtual ProtoList* removeAt(ProtoContext* context, int index) = 0;
+		virtual ProtoList* removeSlice(ProtoContext* context, int from, int to) = 0;
 
-		virtual ProtoObject* asObject(ProtoContext* context);
-		virtual unsigned long getHash(ProtoContext* context);
-		virtual ProtoListIterator* getIterator(ProtoContext* context);
+		virtual ProtoObject* asObject(ProtoContext* context) = 0;
+		virtual unsigned long getHash(ProtoContext* context) = 0;
+		virtual ProtoListIterator* getIterator(ProtoContext* context) = 0;
 	};
 
 	class ProtoTupleIterator
 	{
 	public:
 		virtual ~ProtoTupleIterator() = default;
-		virtual int hasNext(ProtoContext* context);
-		virtual ProtoObject* next(ProtoContext* context);
-		virtual ProtoTupleIterator* advance(ProtoContext* context);
+		virtual int hasNext(ProtoContext* context) = 0;
+		virtual ProtoObject* next(ProtoContext* context) = 0;
+		virtual ProtoTupleIterator* advance(ProtoContext* context) = 0;
 
-		virtual ProtoObject* asObject(ProtoContext* context);
+		virtual ProtoObject* asObject(ProtoContext* context) = 0;
 	};
 
 	class ProtoTuple
 	{
 	public:
-		virtual ~ProtoTuple() = default;
-		virtual ProtoObject* getAt(ProtoContext* context, int index);
-		virtual ProtoObject* getFirst(ProtoContext* context);
-		virtual ProtoObject* getLast(ProtoContext* context);
-		virtual ProtoTuple* getSlice(ProtoContext* context, int from, int to);
-		virtual unsigned long getSize(ProtoContext* context);
+		virtual ProtoObject* getAt(ProtoContext* context, int index) = 0;
+		virtual ProtoObject* getFirst(ProtoContext* context) = 0;
+		virtual ProtoObject* getLast(ProtoContext* context) = 0;
+		virtual ProtoObject* getSlice(ProtoContext* context, int from, int to) = 0;
+		virtual unsigned long getSize(ProtoContext* context) = 0;
 
-		virtual BOOLEAN has(ProtoContext* context, ProtoObject* value);
-		virtual ProtoTuple* setAt(ProtoContext* context, int index, ProtoObject* value);
-		virtual ProtoTuple* insertAt(ProtoContext* context, int index, ProtoObject* value);
+		virtual BOOLEAN has(ProtoContext* context, ProtoObject* value) = 0;
+		virtual ProtoObject* setAt(ProtoContext* context, int index, ProtoObject* value) = 0;
+		virtual ProtoObject* insertAt(ProtoContext* context, int index, ProtoObject* value) = 0;
 
-		virtual ProtoTuple* appendFirst(ProtoContext* context, ProtoTuple* otherTuple);
-		virtual ProtoTuple* appendLast(ProtoContext* context, ProtoTuple* otherTuple);
+		virtual ProtoObject* appendFirst(ProtoContext* context, ProtoTuple* otherTuple) = 0;
+		virtual ProtoObject* appendLast(ProtoContext* context, ProtoTuple* otherTuple) = 0;
 
-		virtual ProtoTuple* splitFirst(ProtoContext* context, int count);
-		virtual ProtoTuple* splitLast(ProtoContext* context, int count);
+		virtual ProtoObject* splitFirst(ProtoContext* context, int count) = 0;
+		virtual ProtoObject* splitLast(ProtoContext* context, int count) = 0;
 
-		virtual ProtoTuple* removeFirst(ProtoContext* context, int count);
-		virtual ProtoTuple* removeLast(ProtoContext* context, int count);
-		virtual ProtoTuple* removeAt(ProtoContext* context, int index);
-		virtual ProtoTuple* removeSlice(ProtoContext* context, int from, int to);
+		virtual ProtoObject* removeFirst(ProtoContext* context, int count) = 0;
+		virtual ProtoObject* removeLast(ProtoContext* context, int count) = 0;
+		virtual ProtoObject* removeAt(ProtoContext* context, int index) = 0;
+		virtual ProtoObject* removeSlice(ProtoContext* context, int from, int to) = 0;
 
-		virtual ProtoList* asList(ProtoContext* context);
-		virtual ProtoObject* asObject(ProtoContext* context);
-		virtual unsigned long getHash(ProtoContext* context);
-		virtual ProtoTupleIterator* getIterator(ProtoContext* context);
+		virtual ProtoList* asList(ProtoContext* context) = 0;
+		virtual ProtoObject* asObject(ProtoContext* context) = 0;
+		virtual unsigned long getHash(ProtoContext* context) = 0;
+		virtual ProtoTupleIterator* getIterator(ProtoContext* context) = 0;
 	};
 
 	class ProtoStringIterator
 	{
 	public:
 		virtual ~ProtoStringIterator() = default;
-		virtual int hasNext(ProtoContext* context);
-		virtual ProtoObject* next(ProtoContext* context);
-		virtual ProtoStringIterator* advance(ProtoContext* context);
+		virtual int hasNext(ProtoContext* context) = 0;
+		virtual ProtoObject* next(ProtoContext* context) = 0;
+		virtual ProtoStringIterator* advance(ProtoContext* context) = 0;
 
-		virtual ProtoObject* asObject(ProtoContext* context);
+		virtual ProtoObject* asObject(ProtoContext* context) = 0;
 	};
 
 	class ProtoString
 	{
 	public:
 		virtual ~ProtoString() = default;
-		int cmp_to_string(ProtoContext* context, ProtoString* otherString);
+		virtual int cmp_to_string(ProtoContext* context, ProtoString* otherString);
 
-		virtual ProtoObject* getAt(ProtoContext* context, int index);
-		virtual ProtoString* setAt(ProtoContext* context, int index, ProtoObject* character);
-		virtual ProtoString* insertAt(ProtoContext* context, int index, ProtoObject* character);
-		virtual unsigned long getSize(ProtoContext* context);
-		virtual ProtoString* getSlice(ProtoContext* context, int from, int to);
+		virtual ProtoObject* getAt(ProtoContext* context, int index) = 0;
+		virtual ProtoString* setAt(ProtoContext* context, int index, ProtoObject* character) = 0;
+		virtual ProtoString* insertAt(ProtoContext* context, int index, ProtoObject* character) = 0;
+		virtual unsigned long getSize(ProtoContext* context) = 0;
+		virtual ProtoString* getSlice(ProtoContext* context, int from, int to) = 0;
 
-		virtual ProtoString* setAtString(ProtoContext* context, int index, ProtoString* otherString);
-		virtual ProtoString* insertAtString(ProtoContext* context, int index, ProtoString* otherString);
+		virtual ProtoString* setAtString(ProtoContext* context, int index, ProtoString* otherString) = 0;
+		virtual ProtoString* insertAtString(ProtoContext* context, int index, ProtoString* otherString) = 0;
 
-		virtual ProtoString* appendFirst(ProtoContext* context, ProtoString* otherString);
-		virtual ProtoString* appendLast(ProtoContext* context, ProtoString* otherString);
+		virtual ProtoString* appendFirst(ProtoContext* context, ProtoString* otherString) = 0;
+		virtual ProtoString* appendLast(ProtoContext* context, ProtoString* otherString) = 0;
 
-		virtual ProtoString* splitFirst(ProtoContext* context, int count);
-		virtual ProtoString* splitLast(ProtoContext* context, int count);
+		virtual ProtoString* splitFirst(ProtoContext* context, int count) = 0;
+		virtual ProtoString* splitLast(ProtoContext* context, int count) = 0;
 
-		virtual ProtoString* removeFirst(ProtoContext* context, int count);
-		virtual ProtoString* removeLast(ProtoContext* context, int count);
-		virtual ProtoString* removeAt(ProtoContext* context, int index);
-		virtual ProtoString* removeSlice(ProtoContext* context, int from, int to);
+		virtual ProtoString* removeFirst(ProtoContext* context, int count) = 0;
+		virtual ProtoString* removeLast(ProtoContext* context, int count) = 0;
+		virtual ProtoString* removeAt(ProtoContext* context, int index) = 0;
+		virtual ProtoString* removeSlice(ProtoContext* context, int from, int to) = 0;
 
-		virtual ProtoObject* asObject(ProtoContext* context);
-		virtual ProtoList* asList(ProtoContext* context);
-		virtual unsigned long getHash(ProtoContext* context);
-		virtual ProtoStringIterator* getIterator(ProtoContext* context);
+		virtual ProtoObject* asObject(ProtoContext* context) = 0;
+		virtual ProtoList* asList(ProtoContext* context) = 0;
+		virtual unsigned long getHash(ProtoContext* context) = 0;
+		virtual ProtoStringIterator* getIterator(ProtoContext* context) = 0;
 	};
 
 	class ProtoSparseListIterator
 	{
 	public:
 		virtual ~ProtoSparseListIterator() = default;
-		virtual int hasNext(ProtoContext* context);
-		virtual unsigned long nextKey(ProtoContext* context);
-		virtual ProtoObject* nextValue(ProtoContext* context);
-		virtual ProtoSparseListIterator* advance(ProtoContext* context);
+		virtual int hasNext(ProtoContext* context) = 0;
+		virtual unsigned long nextKey(ProtoContext* context) = 0;
+		virtual ProtoObject* nextValue(ProtoContext* context) = 0;
+		virtual ProtoSparseListIterator* advance(ProtoContext* context) = 0;
 
-		virtual ProtoObject* asObject(ProtoContext* context);
-		virtual void finalize(ProtoContext* context);
+		virtual ProtoObject* asObject(ProtoContext* context) = 0;
+		virtual void finalize(ProtoContext* context) = 0;
 	};
 
 	class ProtoSparseList
 	{
 	public:
 		virtual ~ProtoSparseList() = default;
-		virtual bool has(ProtoContext* context, unsigned long index);
-		virtual ProtoObject* getAt(ProtoContext* context, unsigned long index);
-		virtual ProtoSparseList* setAt(ProtoContext* context, unsigned long index, ProtoObject* value);
-		virtual ProtoSparseList* removeAt(ProtoContext* context, unsigned long index);
-		virtual int isEqual(ProtoContext* context, ProtoSparseList* otherDict);
-		virtual ProtoObject* getAtOffset(ProtoContext* context, int offset);
+		virtual bool has(ProtoContext* context, unsigned long index) = 0;
+		virtual ProtoObject* getAt(ProtoContext* context, unsigned long index) = 0;
+		virtual ProtoSparseList* setAt(ProtoContext* context, unsigned long index, ProtoObject* value) = 0;
+		virtual ProtoSparseList* removeAt(ProtoContext* context, unsigned long index) = 0;
+		virtual int isEqual(ProtoContext* context, ProtoSparseList* otherDict) = 0;
+		virtual ProtoObject* getAtOffset(ProtoContext* context, int offset) = 0;
 
-		virtual unsigned long getSize(ProtoContext* context);
-		virtual ProtoObject* asObject(ProtoContext* context);
-		virtual unsigned long getHash(ProtoContext* context);
-		virtual ProtoSparseListIterator* getIterator(ProtoContext* context);
+		virtual unsigned long getSize(ProtoContext* context) = 0;
+		virtual ProtoObject* asObject(ProtoContext* context) = 0;
+		virtual unsigned long getHash(ProtoContext* context) = 0;
+		virtual ProtoSparseListIterator* getIterator(ProtoContext* context) = 0;
 
 		virtual void processElements(
 			ProtoContext* context,
@@ -303,7 +302,7 @@ namespace proto
 				unsigned long index,
 				ProtoObject* value
 			)
-		);
+		) = 0;
 
 		virtual void processValues(
 			ProtoContext* context,
@@ -313,29 +312,29 @@ namespace proto
 				void* self,
 				ProtoObject* value
 			)
-		);
+		) = 0;
 	};
 
 	class ProtoByteBuffer
 	{
 	public:
 		virtual ~ProtoByteBuffer() = default;
-		virtual unsigned long getSize(ProtoContext* context);
-		virtual char* getBuffer(ProtoContext* context);
-		virtual char getAt(ProtoContext* context, int index);
-		virtual void setAt(ProtoContext* context, int index, char value);
+		virtual unsigned long getSize(ProtoContext* context) = 0;
+		virtual char* getBuffer(ProtoContext* context) = 0;
+		virtual char getAt(ProtoContext* context, int index) = 0;
+		virtual void setAt(ProtoContext* context, int index, char value) = 0;
 
-		virtual ProtoObject* asObject(ProtoContext* context);
-		virtual unsigned long getHash(ProtoContext* context);
+		virtual ProtoObject* asObject(ProtoContext* context) = 0;
+		virtual unsigned long getHash(ProtoContext* context) = 0;
 	};
 
 	class ProtoExternalPointer
 	{
 	public:
 		virtual ~ProtoExternalPointer() = default;
-		virtual void* getPointer(ProtoContext* context);
-		virtual ProtoObject* asObject(ProtoContext* context);
-		virtual unsigned long getHash(ProtoContext* context);
+		virtual void* getPointer(ProtoContext* context) = 0;
+		virtual ProtoObject* asObject(ProtoContext* context) = 0;
+		virtual unsigned long getHash(ProtoContext* context) = 0;
 	};
 
 	// In order to compile a method the folling structure is recommended:
@@ -414,11 +413,11 @@ namespace proto
 	{
 	public:
 		virtual ~ProtoMethodCell() = default;
-		virtual ProtoObject* getSelf(ProtoContext* context);
-		virtual ProtoMethod getMethod(ProtoContext* context);
+		virtual ProtoObject* getSelf(ProtoContext* context) = 0;
+		virtual ProtoMethod getMethod(ProtoContext* context) = 0;
 
-		virtual ProtoObject* asObject(ProtoContext* context);
-		virtual unsigned long getHash(ProtoContext* context);
+		virtual ProtoObject* asObject(ProtoContext* context) = 0;
+		virtual unsigned long getHash(ProtoContext* context) = 0;
 
 		ProtoMethod method{};
 		ProtoObject* self{};
@@ -428,10 +427,10 @@ namespace proto
 	{
 	public:
 		virtual ~ProtoObjectCell() = default;
-		virtual ProtoObjectCell* addParent(ProtoContext* context, ProtoObjectCell* object);
+		virtual ProtoObjectCell* addParent(ProtoContext* context, ProtoObjectCell* object) = 0;
 
-		virtual ProtoObject* asObject(ProtoContext* context);
-		virtual unsigned long getHash(ProtoContext* context);
+		virtual ProtoObject* asObject(ProtoContext* context) = 0;
+		virtual unsigned long getHash(ProtoContext* context) = 0;
 
 		unsigned long mutable_ref{};
 		ParentLink* parent{};
@@ -444,19 +443,19 @@ namespace proto
 		virtual ~ProtoThread() = default;
 		static ProtoThread* getCurrentThread(ProtoContext* context);
 
-		virtual ProtoString* getName(ProtoContext* context);
+		virtual ProtoString* getName(ProtoContext* context) = 0;
 
-		virtual void detach(ProtoContext* context);
-		virtual void join(ProtoContext* context);
-		virtual void exit(ProtoContext* context); // ONLY for current thread!!!
+		virtual void detach(ProtoContext* context) = 0;
+		virtual void join(ProtoContext* context) = 0;
+		virtual void exit(ProtoContext* context) = 0; // ONLY for current thread!!!
 
-		virtual void setCurrentContext(ProtoContext* context);
-		virtual void setManaged();
-		virtual void setUnmanaged();
-		virtual void synchToGC();
+		virtual void setCurrentContext(ProtoContext* context) = 0;
+		virtual void setManaged() = 0;
+		virtual void setUnmanaged() = 0;
+		virtual void synchToGC() = 0;
 
-		virtual ProtoObject* asObject(ProtoContext* context);
-		virtual unsigned long getHash(ProtoContext* context);
+		virtual ProtoObject* asObject(ProtoContext* context) = 0;
+		virtual unsigned long getHash(ProtoContext* context) = 0;
 	};
 
 	class ProtoContext
