@@ -139,5 +139,15 @@ namespace proto
         return p.asHash.hash;
     }
 
+    unsigned long ProtoByteBufferImplementation::getSize(ProtoContext* context)
+    {
+        return this->size;
+    }
+
+    char* ProtoByteBufferImplementation::getBuffer(ProtoContext* context)
+    {
+        return this->buffer;
+    }
+
 
 } // namespace proto

@@ -125,6 +125,11 @@ namespace proto
         }
     }
 
+    unsigned long ProtoSparseListIteratorImplementation::getHash(ProtoContext* context)
+    {
+        return Cell::getHash(context);
+    }
+
 
     // --- ProtoSparseListImplementation ---
 
@@ -461,6 +466,11 @@ namespace proto
             node = node->previous;
         }
         return new(context) ProtoSparseListIteratorImplementation(context, ITERATOR_NEXT_THIS, node, queue);
+    }
+
+    unsigned long ProtoSparseListImplementation::getHash(ProtoContext* context)
+    {
+        return this->hash;
     }
 
     void ProtoSparseListImplementation::finalize(ProtoContext* context)

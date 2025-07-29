@@ -306,6 +306,6 @@ namespace proto
 
     ProtoByteBuffer* ProtoContext::newBuffer(unsigned long length)
     {
-        return new(this) ProtoByteBufferImplementation(this, length);
+        return new(this) ProtoByteBufferImplementation(this, length, NULL);
     }
 } // namespace proto

@@ -248,6 +248,11 @@ namespace proto
         this->currentContext = context;
     }
 
+    ProtoContext* ProtoThreadImplementation::getCurrentContext()
+    {
+        return this->currentContext;
+    }
+
     unsigned long ProtoThreadImplementation::getHash(ProtoContext* context)
     {
         // El hash de una Cell se deriva directamente de su dirección de memoria.
@@ -257,5 +262,7 @@ namespace proto
 
         return p.asHash.hash;
     }
+
+    
 
 } // namespace proto

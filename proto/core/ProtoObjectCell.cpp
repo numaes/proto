@@ -31,28 +31,24 @@ namespace proto
 
     // --- Métodos de la Interfaz ---
 
-    // CORREGIDO: Se ha corregido la llamada al constructor para que pase todos
-    // los parámetros necesarios, evitando un error de compilación.
-    ProtoObjectCellImplementation* ProtoObjectCellImplementation::addParent(
-        ProtoContext* context,
-        ProtoObjectCellImplementation* newParentToAdd
-    )
-    {
+    ProtoObjectCell* ProtoObjectCellImplementation::addParent(ProtoContext* context, ProtoObjectCell* newParent) {
         // Crea un nuevo eslabón en la cadena de herencia.
         ParentLinkImplementation* newParentLink = new(context) ParentLinkImplementation(
             context,
             this->parent, // El padre del nuevo eslabón es nuestro padre actual.
-            newParentToAdd // El objeto del nuevo eslabón es el nuevo padre.
+            (ProtoObjectCellImplementation*)newParent // El objeto del nuevo eslabón es el nuevo padre.
         );
 
         // Devuelve una nueva ProtoObjectCell que es una copia de la actual,
         // pero con la cadena de herencia extendida.
-        return new(context) ProtoObjectCellImplementation(
-            context,
-            newParentLink,
-            this->mutable_ref, // Se conservan las demás propiedades.
-            this->attributes
-        );
+        return reinterpret_cast<ProtoObjectCell*>(
+			new(context) ProtoObjectCellImplementation(
+	            context,
+    	        newParentLink,
+        	    this->mutable_ref, // Se conservan las demás propiedades.
+            	this->attributes
+        	)
+		);
     }
 
     ProtoObject* ProtoObjectCellImplementation::asObject(ProtoContext* context)
@@ -105,9 +101,7 @@ namespace proto
         return p.asHash.hash;
     }
 
-    ProtoObjectCell* ProtoObjectCell::addParent(ProtoContext* context, ProtoObjectCell* object) {
-        return nullptr;
-    }
+    
 
     ProtoObject* ProtoObjectCell::asObject(ProtoContext* context) {
         return nullptr;

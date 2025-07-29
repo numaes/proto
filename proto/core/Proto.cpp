@@ -419,6 +419,8 @@ ProtoObject *ProtoObject::addParent(ProtoContext *context, ProtoObjectCell *newP
         return this;
 }
 
+
+
 bool ProtoObject::isInteger(ProtoContext *context) {
     ProtoObjectPointer p;
     p.oid.oid = this;
@@ -518,6 +520,161 @@ void ProtoObject::processReferences(ProtoContext* context,
                     Cell* cell
                  )) {
 }
+
+/*
+ *  Este bloque proporciona implementaciones "stub" para las clases de la
+ *  interfaz pública definidas en proto.h. Su único propósito es darle al
+ *  compilador un lugar para generar las v-tables necesarias para el enlazado,
+ *  respetando el diseño de ocultación de la implementación.
+ *
+ *  Estas funciones nunca deberían ser llamadas directamente. El polimorfismo
+ *  debería redirigir las llamadas a las clases de implementación.
+ */
+
+    // --- Stubs para ParentLink ---
+    ProtoObject* ParentLink::getObject(ProtoContext* context) { return PROTO_NONE; }
+    ParentLink* ParentLink::getParent(ProtoContext* context) { return nullptr; }
+
+    // --- Stubs para ProtoListIterator ---
+    int ProtoListIterator::hasNext(ProtoContext* context) { return 0; }
+    ProtoObject* ProtoListIterator::next(ProtoContext* context) { return PROTO_NONE; }
+    ProtoListIterator* ProtoListIterator::advance(ProtoContext* context) { return nullptr; }
+    ProtoObject* ProtoListIterator::asObject(ProtoContext* context) { return PROTO_NONE; }
+
+    // --- Stubs para ProtoList ---
+    ProtoObject* ProtoList::getAt(ProtoContext* context, int index) { return PROTO_NONE; }
+    ProtoObject* ProtoList::getFirst(ProtoContext* context) { return PROTO_NONE; }
+    ProtoObject* ProtoList::getLast(ProtoContext* context) { return PROTO_NONE; }
+    ProtoList* ProtoList::getSlice(ProtoContext* context, int from, int to) { return nullptr; }
+    unsigned long ProtoList::getSize(ProtoContext* context) { return 0; }
+    bool ProtoList::has(ProtoContext* context, ProtoObject* value) { return false; }
+    ProtoList* ProtoList::setAt(ProtoContext* context, int index, ProtoObject* value) { return nullptr; }
+    ProtoList* ProtoList::insertAt(ProtoContext* context, int index, ProtoObject* value) { return nullptr; }
+    ProtoList* ProtoList::appendFirst(ProtoContext* context, ProtoObject* value) { return nullptr; }
+    ProtoList* ProtoList::appendLast(ProtoContext* context, ProtoObject* value) { return nullptr; }
+    ProtoList* ProtoList::extend(ProtoContext* context, ProtoList* other) { return nullptr; }
+    ProtoList* ProtoList::splitFirst(ProtoContext* context, int index) { return nullptr; }
+    ProtoList* ProtoList::splitLast(ProtoContext* context, int index) { return nullptr; }
+    ProtoList* ProtoList::removeFirst(ProtoContext* context) { return nullptr; }
+    ProtoList* ProtoList::removeLast(ProtoContext* context) { return nullptr; }
+    ProtoList* ProtoList::removeAt(ProtoContext* context, int index) { return nullptr; }
+    ProtoList* ProtoList::removeSlice(ProtoContext* context, int from, int to) { return nullptr; }
+    ProtoObject* ProtoList::asObject(ProtoContext* context) { return PROTO_NONE; }
+    unsigned long ProtoList::getHash(ProtoContext* context) { return 0; }
+    ProtoListIterator* ProtoList::getIterator(ProtoContext* context) { return nullptr; }
+
+    // --- Stubs para ProtoTupleIterator ---
+    int ProtoTupleIterator::hasNext(ProtoContext* context) { return 0; }
+    ProtoObject* ProtoTupleIterator::next(ProtoContext* context) { return PROTO_NONE; }
+    ProtoTupleIterator* ProtoTupleIterator::advance(ProtoContext* context) { return nullptr; }
+    ProtoObject* ProtoTupleIterator::asObject(ProtoContext* context) { return PROTO_NONE; }
+
+    // --- Stubs para ProtoTuple ---
+    ProtoObject* ProtoTuple::getAt(ProtoContext* context, int index) { return PROTO_NONE; }
+    ProtoObject* ProtoTuple::getFirst(ProtoContext* context) { return PROTO_NONE; }
+    ProtoObject* ProtoTuple::getLast(ProtoContext* context) { return PROTO_NONE; }
+    ProtoObject* ProtoTuple::getSlice(ProtoContext* context, int from, int to) { return nullptr; }
+    unsigned long ProtoTuple::getSize(ProtoContext* context) { return 0; }
+    bool ProtoTuple::has(ProtoContext* context, ProtoObject* value) { return false; }
+    ProtoObject* ProtoTuple::setAt(ProtoContext* context, int index, ProtoObject* value) { return nullptr; }
+    ProtoObject* ProtoTuple::insertAt(ProtoContext* context, int index, ProtoObject* value) { return nullptr; }
+    ProtoObject* ProtoTuple::appendFirst(ProtoContext* context, ProtoTuple* otherTuple) { return nullptr; }
+    ProtoObject* ProtoTuple::appendLast(ProtoContext* context, ProtoTuple* otherTuple) { return nullptr; }
+    ProtoObject* ProtoTuple::splitFirst(ProtoContext* context, int count) { return nullptr; }
+    ProtoObject* ProtoTuple::splitLast(ProtoContext* context, int count) { return nullptr; }
+    ProtoObject* ProtoTuple::removeFirst(ProtoContext* context, int count) { return nullptr; }
+    ProtoObject* ProtoTuple::removeLast(ProtoContext* context, int count) { return nullptr; }
+    ProtoObject* ProtoTuple::removeAt(ProtoContext* context, int index) { return nullptr; }
+    ProtoObject* ProtoTuple::removeSlice(ProtoContext* context, int from, int to) { return nullptr; }
+    ProtoList* ProtoTuple::asList(ProtoContext* context) { return nullptr; }
+    ProtoObject* ProtoTuple::asObject(ProtoContext* context) { return PROTO_NONE; }
+    unsigned long ProtoTuple::getHash(ProtoContext* context) { return 0; }
+    ProtoTupleIterator* ProtoTuple::getIterator(ProtoContext* context) { return nullptr; }
+
+    // --- Stubs para ProtoStringIterator ---
+    int ProtoStringIterator::hasNext(ProtoContext* context) { return 0; }
+    ProtoObject* ProtoStringIterator::next(ProtoContext* context) { return PROTO_NONE; }
+    ProtoStringIterator* ProtoStringIterator::advance(ProtoContext* context) { return nullptr; }
+    ProtoObject* ProtoStringIterator::asObject(ProtoContext* context) { return PROTO_NONE; }
+
+    // --- Stubs para ProtoString ---
+    int ProtoString::cmp_to_string(ProtoContext* context, ProtoString* otherString) { return -1; }
+    ProtoObject* ProtoString::getAt(ProtoContext* context, int index) { return PROTO_NONE; }
+    ProtoString* ProtoString::setAt(ProtoContext* context, int index, ProtoObject* character) { return nullptr; }
+    ProtoString* ProtoString::insertAt(ProtoContext* context, int index, ProtoObject* character) { return nullptr; }
+    unsigned long ProtoString::getSize(ProtoContext* context) { return 0; }
+    ProtoString* ProtoString::getSlice(ProtoContext* context, int from, int to) { return nullptr; }
+    ProtoString* ProtoString::setAtString(ProtoContext* context, int index, ProtoString* otherString) { return nullptr; }
+    ProtoString* ProtoString::insertAtString(ProtoContext* context, int index, ProtoString* otherString) { return nullptr; }
+    ProtoString* ProtoString::appendFirst(ProtoContext* context, ProtoString* otherString) { return nullptr; }
+    ProtoString* ProtoString::appendLast(ProtoContext* context, ProtoString* otherString) { return nullptr; }
+    ProtoString* ProtoString::splitFirst(ProtoContext* context, int count) { return nullptr; }
+    ProtoString* ProtoString::splitLast(ProtoContext* context, int count) { return nullptr; }
+    ProtoString* ProtoString::removeFirst(ProtoContext* context, int count) { return nullptr; }
+    ProtoString* ProtoString::removeLast(ProtoContext* context, int count) { return nullptr; }
+    ProtoString* ProtoString::removeAt(ProtoContext* context, int index) { return nullptr; }
+    ProtoString* ProtoString::removeSlice(ProtoContext* context, int from, int to) { return nullptr; }
+    ProtoObject* ProtoString::asObject(ProtoContext* context) { return PROTO_NONE; }
+    ProtoList* ProtoString::asList(ProtoContext* context) { return nullptr; }
+    unsigned long ProtoString::getHash(ProtoContext* context) { return 0; }
+    ProtoStringIterator* ProtoString::getIterator(ProtoContext* context) { return nullptr; }
+
+    // --- Stubs para ProtoSparseListIterator ---
+    int ProtoSparseListIterator::hasNext(ProtoContext* context) { return 0; }
+    unsigned long ProtoSparseListIterator::nextKey(ProtoContext* context) { return 0; }
+    ProtoObject* ProtoSparseListIterator::nextValue(ProtoContext* context) { return PROTO_NONE; }
+    ProtoSparseListIterator* ProtoSparseListIterator::advance(ProtoContext* context) { return nullptr; }
+    ProtoObject* ProtoSparseListIterator::asObject(ProtoContext* context) { return PROTO_NONE; }
+    void ProtoSparseListIterator::finalize(ProtoContext* context) {}
+
+    // --- Stubs para ProtoSparseList ---
+    bool ProtoSparseList::has(ProtoContext* context, unsigned long index) { return false; }
+    ProtoObject* ProtoSparseList::getAt(ProtoContext* context, unsigned long index) { return PROTO_NONE; }
+    ProtoSparseList* ProtoSparseList::setAt(ProtoContext* context, unsigned long index, ProtoObject* value) { return nullptr; }
+    ProtoSparseList* ProtoSparseList::removeAt(ProtoContext* context, unsigned long index) { return nullptr; }
+    int ProtoSparseList::isEqual(ProtoContext* context, ProtoSparseList* otherDict) { return 0; }
+    ProtoObject* ProtoSparseList::getAtOffset(ProtoContext* context, int offset) { return PROTO_NONE; }
+    unsigned long ProtoSparseList::getSize(ProtoContext* context) { return 0; }
+    ProtoObject* ProtoSparseList::asObject(ProtoContext* context) { return PROTO_NONE; }
+    unsigned long ProtoSparseList::getHash(ProtoContext* context) { return 0; }
+    ProtoSparseListIterator* ProtoSparseList::getIterator(ProtoContext* context) { return nullptr; }
+    void ProtoSparseList::processElements(ProtoContext* context, void* self, void (*method)(ProtoContext* context, void* self, unsigned long index, ProtoObject* value)) {}
+    void ProtoSparseList::processValues(ProtoContext* context, void* self, void (*method)(ProtoContext* context, void* self, ProtoObject* value)) {}
+
+    // --- Stubs para ProtoByteBuffer ---
+    unsigned long ProtoByteBuffer::getSize(ProtoContext* context) { return 0; }
+    char* ProtoByteBuffer::getBuffer(ProtoContext* context) { return nullptr; }
+    char ProtoByteBuffer::getAt(ProtoContext* context, int index) { return 0; }
+    void ProtoByteBuffer::setAt(ProtoContext* context, int index, char value) {}
+    ProtoObject* ProtoByteBuffer::asObject(ProtoContext* context) { return PROTO_NONE; }
+    unsigned long ProtoByteBuffer::getHash(ProtoContext* context) { return 0; }
+
+    // --- Stubs para ProtoExternalPointer ---
+    void* ProtoExternalPointer::getPointer(ProtoContext* context) { return nullptr; }
+    ProtoObject* ProtoExternalPointer::asObject(ProtoContext* context) { return PROTO_NONE; }
+    unsigned long ProtoExternalPointer::getHash(ProtoContext* context) { return 0; }
+
+    // --- Stubs para ProtoMethodCell ---
+    ProtoObject* ProtoMethodCell::getSelf(ProtoContext* context) { return PROTO_NONE; }
+    ProtoMethod ProtoMethodCell::getMethod(ProtoContext* context) { return nullptr; }
+    ProtoObject* ProtoMethodCell::asObject(ProtoContext* context) { return PROTO_NONE; }
+    unsigned long ProtoMethodCell::getHash(ProtoContext* context) { return 0; }
+
+    // --- Stubs para ProtoObjectCell ---
+    ProtoObjectCell* ProtoObjectCell::addParent(ProtoContext* context, ProtoObjectCell* object) { return nullptr; }
+
+    // --- Stubs para ProtoThread ---
+    ProtoThread* ProtoThread::getCurrentThread(ProtoContext* context) { return nullptr; }
+    void ProtoThread::detach(ProtoContext* context) {}
+    void ProtoThread::join(ProtoContext* context) {}
+    void ProtoThread::exit(ProtoContext* context) {}
+    ProtoObject* ProtoThread::getName(ProtoContext* context) { return PROTO_NONE; }
+    ProtoObject* ProtoThread::asObject(ProtoContext* context) { return PROTO_NONE; }
+    unsigned long ProtoThread::getHash(ProtoContext* context) { return 0; }
+    void ProtoThread::setCurrentContext(ProtoContext* context) {}
+    void ProtoThread::setManaged() {}
+    void ProtoThread::setUnmanaged() {}
+    void ProtoThread::synchToGC() {}
 
 }
 

@@ -81,6 +81,11 @@ namespace proto
         }
     }
 
+    unsigned long ProtoListIteratorImplementation::getHash(ProtoContext* context)
+    {
+        return Cell::getHash(context);
+    }
+
 
     // --- ProtoListImplementation ---
 
@@ -286,6 +291,12 @@ namespace proto
             );
         }
         return rebalance(context, newNode);
+    }
+
+    ProtoListImplementation* ProtoListImplementation::removeLast(ProtoContext* context)
+    {
+        // STUB implementation, la lógica real es más compleja.
+        return this->removeAt(context, -1);
     }
 
     // ... Implementación del resto de los métodos (setAt, insertAt, etc.) ...

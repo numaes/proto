@@ -566,17 +566,17 @@ namespace proto
     }
 
     // CORRECCIÓN: La creación de tuplas debe ser robusta y gestionar la memoria correctamente.
-    ProtoObject* ProtoTupleImplementation::tupleFromList(ProtoContext* context, ProtoList* list)
+    ProtoTupleImplementation* ProtoTupleImplementation::tupleFromList(ProtoContext* context, ProtoList* list)
     {
         if (!list)
         {
-            return (new(context) ProtoTupleImplementation(context, 0, static_cast<ProtoObject**>(nullptr)))->asObject(context);
+            return new(context) ProtoTupleImplementation(context, 0, static_cast<ProtoObject**>(nullptr));
         }
 
         const unsigned long size = list->getSize(context);
         if (size == 0)
         {
-            return (new(context) ProtoTupleImplementation(context, 0, static_cast<ProtoObject**>(nullptr)))->asObject(context);
+            return new(context) ProtoTupleImplementation(context, 0, static_cast<ProtoObject**>(nullptr));
         }
 
         // El array 'data' en sí no es una 'Cell', por lo que se asigna con new[].
@@ -588,7 +588,7 @@ namespace proto
         }
 
         // Crear la tupla con los elementos copiados.
-        return (new(context) ProtoTupleImplementation(context, size, elements))->asObject(context);
+        return new(context) ProtoTupleImplementation(context, size, elements);
     }
 
     // CORRECCIÓN: El acceso a elementos debe ser seguro y manejar índices fuera de rango.
@@ -699,7 +699,7 @@ namespace proto
     }
 
     ProtoObject* ProtoTupleImplementation::getSlice(ProtoContext* context, int from, int to) { return PROTO_NONE; }
-    BOOLEAN ProtoTupleImplementation::has(ProtoContext* context, ProtoObject* value) { return 0; }
+    bool ProtoTupleImplementation::has(ProtoContext* context, ProtoObject* value) { return 0; }
     ProtoObject* ProtoTupleImplementation::insertAt(ProtoContext* context, int index, ProtoObject* value) { return PROTO_NONE; }
     ProtoObject* ProtoTupleImplementation::appendFirst(ProtoContext* context, ProtoTuple* otherTuple) { return PROTO_NONE; }
     ProtoObject* ProtoTupleImplementation::appendLast(ProtoContext* context, ProtoTuple* otherTuple) { return PROTO_NONE; }

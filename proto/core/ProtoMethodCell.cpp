@@ -108,11 +108,11 @@ namespace proto
         // Esta celda no contiene referencias a otras celdas, por lo que el cuerpo está vacío.
     };
 
-    ProtoObject* ProtoMethodCell::getSelf(ProtoContext* context) {
+    ProtoObject* ProtoMethodCellImplementation::getSelf(ProtoContext* context) {
         return nullptr;
     }
 
-    ProtoMethod ProtoMethodCell::getMethod(ProtoContext* context) {
+    ProtoMethod ProtoMethodCellImplementation::getMethod(ProtoContext* context) {
         return nullptr;
     }
 } // namespace proto

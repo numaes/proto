@@ -150,7 +150,11 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
             Cell * currentCell = currentContext->lastAllocatedCell;
             while (currentCell) {
                 if (! cellSet->has(context, currentCell->getHash(context))) {
-                    cellSet = cellSet->setAt(context, currentCell->getHash(context), PROTO_NONE);
+                    cellSet = cellSet->setAt(
+						context,
+						currentCell->getHash(context),
+						currentCell->asObject(context)
+					);
                 }
 
                 currentCell = currentCell->nextCell;
@@ -163,7 +167,11 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
                      n > 0;
                      n--) {
                     if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
-                            cellSet = cellSet->setAt(context, p.asHash.hash, PROTO_NONE);
+                        cellSet = cellSet->setAt(
+							context,
+							p.asHash.hash,
+							p.cell.cell->asObject(context)
+						);
                     }
                 }
             }
@@ -252,7 +260,7 @@ ProtoSpace::ProtoSpace(
 ) {
     this->state = SPACE_STATE_RUNNING;
 
-    auto *creationContext = new ProtoContext(
+    ProtoContext *creationContext = new ProtoContext(
         nullptr,
         nullptr,
         0,
@@ -260,7 +268,7 @@ ProtoSpace::ProtoSpace(
         this
     );
     this->threads = creationContext->newSparseList();
-    this->tupleRoot = new(creationContext) TupleDictionary(creationContext);
+    this->tupleRoot = new(creationContext) TupleDictionary(creationContext, nullptr, nullptr, nullptr);
 
     ProtoList *mainParameters = creationContext->newList();
     mainParameters = mainParameters->appendLast(
@@ -306,13 +314,13 @@ ProtoSpace::ProtoSpace(
         this->gcCV.wait_for(lk, 100ms);
     }
 
-    ProtoThreadImplementation* mainThread = new(creationContext) ProtoThreadImplementation(
+    ProtoThread *mainThread = new(creationContext) ProtoThreadImplementation(
         creationContext,
         creationContext->fromUTF8String("Main thread"),
         this,
         mainFunction,
         mainParameters,
-        nullptr
+		nullptr
     );
 
     // Wait till main thread and gcThread end
@@ -360,7 +368,11 @@ void ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread) {
     )) std::this_thread::yield();
 
     if (this->threads)
-        this->threads = this->threads->setAt(context, thread->getName(context)->getHash(context), thread->asObject(context));
+        this->threads = this->threads->setAt(
+							context,
+							thread->getName(context)->getHash(context),
+							thread->asObject(context)
+						);
 
     this->threadsLock.store(false);
 };
