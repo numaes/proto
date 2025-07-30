@@ -64,7 +64,7 @@ namespace proto
 
     ProtoObject* ParentLinkImplementation::asObject(ProtoContext* context)
     {
-        return this->object->asObject(context);
+        return this->object->implAsObject(context);
     }
 
     unsigned long ParentLinkImplementation::getHash(ProtoContext* context)

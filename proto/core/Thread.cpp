@@ -23,12 +23,12 @@ namespace proto
         ProtoList* args,
         ProtoSparseList* kwargs
     ) : Cell(context),
+        state(THREAD_STATE_MANAGED),
         name(name),
         space(space),
         osThread(nullptr),
         freeCells(nullptr),
         currentContext(nullptr),
-        state(THREAD_STATE_MANAGED),
         unmanagedCount(0)
     {
         // Registrar el hilo en el espacio de memoria.
@@ -48,7 +48,7 @@ namespace proto
                     // Ejecutar el código del hilo.
                     targetCode(
                         &baseContext,
-                        self->asObject(&baseContext),
+                        self->implAsObject(&baseContext),
                         nullptr,
                         args,
                         kwargs
@@ -87,13 +87,13 @@ namespace proto
 
     // --- Métodos de la Interfaz Pública ---
 
-    void ProtoThreadImplementation::setUnmanaged()
+    void ProtoThreadImplementation::implSetUnmanaged()
     {
         this->unmanagedCount++;
         this->state = THREAD_STATE_UNMANAGED;
     }
 
-    void ProtoThreadImplementation::setManaged()
+    void ProtoThreadImplementation::implSetManaged()
     {
         if (this->unmanagedCount > 0)
         {
@@ -105,7 +105,7 @@ namespace proto
         }
     }
 
-    void ProtoThreadImplementation::detach(ProtoContext* context)
+    void ProtoThreadImplementation::implDetach(ProtoContext* context)
     {
         if (this->osThread && this->osThread->joinable())
         {
@@ -113,7 +113,7 @@ namespace proto
         }
     }
 
-    void ProtoThreadImplementation::join(ProtoContext* context)
+    void ProtoThreadImplementation::implJoin(ProtoContext* context)
     {
         if (this->osThread && this->osThread->joinable())
         {
@@ -121,7 +121,7 @@ namespace proto
         }
     }
 
-    void ProtoThreadImplementation::exit(ProtoContext* context)
+    void ProtoThreadImplementation::implExit(ProtoContext* context)
     {
         // CORRECCIÓN: Añadido un chequeo para evitar un fallo si osThread es nulo (hilo principal).
         if (this->osThread && this->osThread->get_id() == std::this_thread::get_id())
@@ -135,7 +135,7 @@ namespace proto
 
     // --- Sincronización con el Recolector de Basura (GC) ---
 
-    void ProtoThreadImplementation::synchToGC()
+    void ProtoThreadImplementation::implSynchToGC()
     {
         // CORRECCIÓN CRÍTICA: La lógica de estado estaba rota.
         // Se debe comprobar el estado del 'space', no el del 'thread'.
@@ -167,13 +167,13 @@ namespace proto
         }
     }
 
-    Cell* ProtoThreadImplementation::allocCell()
+    Cell* ProtoThreadImplementation::implAllocCell()
     {
         if (!this->freeCells)
         {
             // Si nos quedamos sin celdas locales, sincronizamos con el GC
             // y pedimos un nuevo bloque de celdas al espacio.
-            this->synchToGC();
+            this->implSynchToGC();
             this->freeCells = static_cast<BigCell*>(this->space->getFreeCells(reinterpret_cast<ProtoThread*>(this)));
         }
 
@@ -234,7 +234,7 @@ namespace proto
         }
     }
 
-    ProtoObject* ProtoThreadImplementation::asObject(ProtoContext* context)
+    ProtoObject* ProtoThreadImplementation::implAsObject(ProtoContext* context)
     {
         ProtoObjectPointer p;
         p.oid.oid = (ProtoObject*)this;
@@ -243,12 +243,12 @@ namespace proto
         return p.oid.oid;
     }
 
-    void ProtoThreadImplementation::setCurrentContext(ProtoContext* context)
+    void ProtoThreadImplementation::implSetCurrentContext(ProtoContext* context)
     {
         this->currentContext = context;
     }
 
-    ProtoContext* ProtoThreadImplementation::getCurrentContext()
+    ProtoContext* ProtoThreadImplementation::implGetCurrentContext()
     {
         return this->currentContext;
     }
@@ -263,6 +263,9 @@ namespace proto
         return p.asHash.hash;
     }
 
-    
+    ProtoThread* ProtoThreadImplementation::implGetCurrentThread(ProtoContext* context)
+    {
+        return context->thread;
+    }
 
 } // namespace proto

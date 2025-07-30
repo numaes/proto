@@ -24,17 +24,17 @@ namespace proto
     // Destructor por defecto.
     ProtoStringIteratorImplementation::~ProtoStringIteratorImplementation() = default;
 
-    int ProtoStringIteratorImplementation::hasNext(ProtoContext* context)
+    int ProtoStringIteratorImplementation::implHasNext(ProtoContext* context)
     {
         // Es más seguro comprobar si la base no es nula.
         if (!this->base)
         {
             return false;
         }
-        return this->currentIndex < this->base->getSize(context);
+        return this->currentIndex < this->base->implGetSize(context);
     }
 
-    ProtoObject* ProtoStringIteratorImplementation::next(ProtoContext* context)
+    ProtoObject* ProtoStringIteratorImplementation::implNext(ProtoContext* context)
     {
         if (!this->base)
         {
@@ -42,17 +42,17 @@ namespace proto
         }
         // Devuelve el elemento actual, pero no avanza el iterador.
         // El avance se hace explícitamente con advance().
-        return this->base->getAt(context, this->currentIndex);
+        return this->base->implGetAt(context, this->currentIndex);
     }
 
-    ProtoStringIteratorImplementation* ProtoStringIteratorImplementation::advance(ProtoContext* context)
+    ProtoStringIteratorImplementation* ProtoStringIteratorImplementation::implAdvance(ProtoContext* context)
     {
         // CORRECCIÓN CRÍTICA: El iterador debe avanzar al siguiente índice.
         // La versión anterior creaba un iterador en la misma posición.
         return new(context) ProtoStringIteratorImplementation(context, this->base, this->currentIndex + 1);
     }
 
-    ProtoObject* ProtoStringIteratorImplementation::asObject(ProtoContext* context)
+    ProtoObject* ProtoStringIteratorImplementation::implAsObject(ProtoContext* context)
     {
         ProtoObjectPointer p;
         p.oid.oid = (ProtoObject*)this;
@@ -95,16 +95,16 @@ namespace proto
 
     // --- Métodos de Acceso y Utilidad ---
 
-    ProtoObject* ProtoStringImplementation::getAt(ProtoContext* context, int index)
+    ProtoObject* ProtoStringImplementation::implGetAt(ProtoContext* context, int index)
     {
         // Delega directamente a la tupla base.
-        return this->baseTuple->getAt(context, index);
+        return this->baseTuple->implGetAt(context, index);
     }
 
-    unsigned long ProtoStringImplementation::getSize(ProtoContext* context)
+    unsigned long ProtoStringImplementation::implGetSize(ProtoContext* context)
     {
         // Delega directamente a la tupla base.
-        return this->baseTuple->getSize(context);
+        return this->baseTuple->implGetSize(context);
     }
 
     // Función auxiliar para normalizar los índices de un slice.
@@ -123,9 +123,9 @@ namespace proto
         }
     }
 
-    ProtoStringImplementation* ProtoStringImplementation::getSlice(ProtoContext* context, int from, int to)
+    ProtoStringImplementation* ProtoStringImplementation::implGetSlice(ProtoContext* context, int from, int to)
     {
-        int thisSize = this->baseTuple->getSize(context);
+        int thisSize = this->baseTuple->implGetSize(context);
         normalizeSliceIndices(from, to, thisSize);
 
         if (from >= to)
@@ -138,25 +138,25 @@ namespace proto
         ProtoListImplementation* sourceList = (ProtoListImplementation *) context->newList();
         for (int i = from; i < to; i++)
         {
-            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+            sourceList = sourceList->implAppendLast(context, this->implGetAt(context, i));
         }
 
         return new(context) ProtoStringImplementation(
             context,
-            ProtoTupleImplementation::tupleFromList(context, sourceList)
+            ProtoTupleImplementation::implTupleFromList(context, sourceList)
         );
     }
 
     // --- Métodos de Modificación (Inmutables) ---
 
-    ProtoStringImplementation* ProtoStringImplementation::setAt(ProtoContext* context, int index, ProtoObject* value)
+    ProtoStringImplementation* ProtoStringImplementation::implSetAt(ProtoContext* context, int index, ProtoObject* value)
     {
         if (!value)
         {
             return this; // Devolver la string original si el valor es nulo.
         }
 
-        int thisSize = this->baseTuple->getSize(context);
+        int thisSize = this->baseTuple->implGetSize(context);
         if (index < 0)
         {
             index += thisSize;
@@ -172,28 +172,28 @@ namespace proto
         {
             if (i == index)
             {
-                sourceList = sourceList->appendLast(context, value);
+                sourceList = (ProtoList*) sourceList->appendLast(context, value);
             }
             else
             {
-                sourceList = sourceList->appendLast(context, this->getAt(context, i));
+                sourceList = (ProtoList*) sourceList->appendLast(context, this->implGetAt(context, i));
             }
         }
 
         return new(context) ProtoStringImplementation(
             context,
-            ProtoTupleImplementation::tupleFromList(context, sourceList)
+            ProtoTupleImplementation::implTupleFromList(context, sourceList)
         );
     }
 
-    ProtoStringImplementation* ProtoStringImplementation::insertAt(ProtoContext* context, int index, ProtoObject* value)
+    ProtoStringImplementation* ProtoStringImplementation::implInsertAt(ProtoContext* context, int index, ProtoObject* value)
     {
         if (!value)
         {
             return this;
         }
 
-        int thisSize = this->baseTuple->getSize(context);
+        int thisSize = this->baseTuple->implGetSize(context);
         if (index < 0)
         {
             index += thisSize;
@@ -205,21 +205,21 @@ namespace proto
         ProtoList* sourceList = context->newList();
         for (int i = 0; i < index; i++)
         {
-            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+            sourceList = (ProtoList*) sourceList->appendLast(context, this->implGetAt(context, i));
         }
-        sourceList = sourceList->appendLast(context, value);
+        sourceList = (ProtoList*) sourceList->appendLast(context, value);
         for (int i = index; i < thisSize; i++)
         {
-            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+            sourceList = (ProtoList*) sourceList->appendLast(context, this->implGetAt(context, i));
         }
 
         return new(context) ProtoStringImplementation(
             context,
-            ProtoTupleImplementation::tupleFromList(context, sourceList)
+            ProtoTupleImplementation::implTupleFromList(context, sourceList)
         );
     }
 
-    ProtoStringImplementation* ProtoStringImplementation::appendLast(ProtoContext* context, ProtoString* otherString)
+    ProtoStringImplementation* ProtoStringImplementation::implAppendLast(ProtoContext* context, ProtoString* otherString)
     {
         if (!otherString)
         {
@@ -230,16 +230,16 @@ namespace proto
         unsigned long otherSize = otherString->getSize(context);
         for (unsigned long i = 0; i < otherSize; i++)
         {
-            sourceList = sourceList->appendLast(context, otherString->getAt(context, i));
+            sourceList = (ProtoList*) sourceList->appendLast(context, otherString->getAt(context, i));
         }
 
         return new(context) ProtoStringImplementation(
             context,
-            ProtoTupleImplementation::tupleFromList(context, sourceList)
+            ProtoTupleImplementation::implTupleFromList(context, sourceList)
         );
     }
 
-    ProtoStringImplementation* ProtoStringImplementation::appendFirst(ProtoContext* context, ProtoString* otherString)
+    ProtoStringImplementation* ProtoStringImplementation::implAppendFirst(ProtoContext* context, ProtoString* otherString)
     {
         // CORRECCIÓN CRÍTICA: La lógica original era incorrecta.
         if (!otherString)
@@ -248,22 +248,22 @@ namespace proto
         }
 
         ProtoList* sourceList = otherString->asList(context);
-        unsigned long thisSize = this->getSize(context);
+        unsigned long thisSize = this->implGetSize(context);
         for (unsigned long i = 0; i < thisSize; i++)
         {
-            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+            sourceList = (ProtoList*) sourceList->appendLast(context, this->implGetAt(context, i));
         }
 
         return new(context) ProtoStringImplementation(
             context,
-            ProtoTupleImplementation::tupleFromList(context, sourceList)
+            ProtoTupleImplementation::implTupleFromList(context, sourceList)
         );
     }
 
-    ProtoStringImplementation* ProtoStringImplementation::removeSlice(ProtoContext* context, int from, int to)
+    ProtoStringImplementation* ProtoStringImplementation::implRemoveSlice(ProtoContext* context, int from, int to)
     {
         // CORRECCIÓN: La lógica original creaba un slice, no eliminaba uno.
-        int thisSize = this->baseTuple->getSize(context);
+        int thisSize = this->baseTuple->implGetSize(context);
         normalizeSliceIndices(from, to, thisSize);
 
         if (from >= to)
@@ -275,30 +275,30 @@ namespace proto
         // Parte antes del slice
         for (int i = 0; i < from; i++)
         {
-            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+            sourceList = (ProtoList*) sourceList->appendLast(context, this->implGetAt(context, i));
         }
         // Parte después del slice
         for (int i = to; i < thisSize; i++)
         {
-            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+            sourceList = (ProtoList*) sourceList->appendLast(context, this->implGetAt(context, i));
         }
 
         return new(context) ProtoStringImplementation(
             context,
-            ProtoTupleImplementation::tupleFromList(context, sourceList)
+            ProtoTupleImplementation::implTupleFromList(context, sourceList)
         );
     }
 
     // --- Métodos de Conversión y GC ---
 
-    ProtoListImplementation* ProtoStringImplementation::asList(ProtoContext* context)
+    ProtoListImplementation* ProtoStringImplementation::implAsList(ProtoContext* context)
     {
         // AJUSTADO: Se eliminó la sintaxis de plantillas.
         auto* result = reinterpret_cast<ProtoListImplementation*>(context->newList());
-        unsigned long thisSize = this->getSize(context);
+        unsigned long thisSize = this->implGetSize(context);
         for (unsigned long i = 0; i < thisSize; i++)
         {
-            result = result->appendLast(context, this->getAt(context, i));
+            result = result->implAppendLast(context, this->implGetAt(context, i));
         }
         return result;
     }
@@ -320,7 +320,7 @@ namespace proto
         }
     }
 
-    ProtoObject* ProtoStringImplementation::asObject(ProtoContext* context)
+    ProtoObject* ProtoStringImplementation::implAsObject(ProtoContext* context)
     {
         ProtoObjectPointer p;
         p.oid.oid = (ProtoObject*)this;
@@ -335,7 +335,7 @@ namespace proto
         return this->baseTuple ? this->baseTuple->getHash(context) : 0;
     }
 
-    ProtoStringIteratorImplementation* ProtoStringImplementation::getIterator(ProtoContext* context)
+    ProtoStringIteratorImplementation* ProtoStringImplementation::implGetIterator(ProtoContext* context)
     {
         // AJUSTADO: Se eliminó la sintaxis de plantillas.
         return new(context) ProtoStringIteratorImplementation(context, this, 0);
@@ -344,5 +344,14 @@ namespace proto
     unsigned long ProtoStringIteratorImplementation::getHash(ProtoContext* context) {
         return Cell::getHash(context);
     }
+
+    int ProtoStringImplementation::implCmpToString(ProtoContext* context, ProtoString* otherString) { return 0; }
+    ProtoStringImplementation* ProtoStringImplementation::implSetAtString(ProtoContext* context, int index, ProtoString* otherString) { return nullptr; }
+    ProtoStringImplementation* ProtoStringImplementation::implInsertAtString(ProtoContext* context, int index, ProtoString* otherString) { return nullptr; }
+    ProtoStringImplementation* ProtoStringImplementation::implSplitFirst(ProtoContext* context, int count) { return nullptr; }
+    ProtoStringImplementation* ProtoStringImplementation::implSplitLast(ProtoContext* context, int count) { return nullptr; }
+    ProtoStringImplementation* ProtoStringImplementation::implRemoveFirst(ProtoContext* context, int count) { return nullptr; }
+    ProtoStringImplementation* ProtoStringImplementation::implRemoveLast(ProtoContext* context, int count) { return nullptr; }
+    ProtoStringImplementation* ProtoStringImplementation::implRemoveAt(ProtoContext* context, int index) { return nullptr; }
 
 } // namespace proto

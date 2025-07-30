@@ -70,14 +70,14 @@ ProtoObject *ProtoObject::clone(ProtoContext *context, bool isMutable) {
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
+        auto *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
 
         ProtoObject *newObject = (new(context) ProtoObjectCellImplementation(
             context,
             oc->parent,
             0,
             oc->attributes
-        ))->asObject(context);
+        ))->implAsObject(context);
 
         if (isMutable) {
             ProtoSparseList *currentRoot;
@@ -94,7 +94,7 @@ ProtoObject *ProtoObject::clone(ProtoContext *context, bool isMutable) {
 
             } while (!context->space->mutableRoot.compare_exchange_strong(
                 currentRoot,
-                currentRoot->setAt(
+                (ProtoSparseList*) currentRoot->setAt(
                     context,
                     randomId,
                     newObject
@@ -114,7 +114,7 @@ ProtoObject *ProtoObject::newChild(ProtoContext *context, bool isMutable) {
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
+        auto *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
 
         ProtoObject *newObject = (new(context) ProtoObjectCellImplementation(
             context,
@@ -125,7 +125,7 @@ ProtoObject *ProtoObject::newChild(ProtoContext *context, bool isMutable) {
             ),
             0,
             oc->attributes
-        ))->asObject(context);
+        ))->implAsObject(context);
 
         if (isMutable) {
             ProtoSparseList *currentRoot;
@@ -143,7 +143,7 @@ ProtoObject *ProtoObject::newChild(ProtoContext *context, bool isMutable) {
 
             } while (!context->space->mutableRoot.compare_exchange_strong(
                 currentRoot,
-                currentRoot->setAt(
+                (ProtoSparseList*) currentRoot->setAt(
                     context,
                     randomId,
                     newObject
@@ -163,7 +163,7 @@ ProtoObject *ProtoObject::getAttribute(ProtoContext *context, ProtoString *name)
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
+        auto *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
         if (oc->mutable_ref)
             oc = (ProtoObjectCellImplementation *)
                 context->space->mutableRoot.load()->getAt(context, oc->mutable_ref);
@@ -187,7 +187,7 @@ ProtoObject *ProtoObject::getAttribute(ProtoContext *context, ProtoString *name)
             nullptr,
             context->space->literalGetAttribute,
             this,
-            parameters->appendFirst(context, name->asObject(context))
+            (ProtoList*) parameters->appendFirst(context, name->asObject(context))
         );
     }
 
@@ -200,7 +200,7 @@ ProtoObject *ProtoObject::hasAttribute(ProtoContext *context, ProtoString *name)
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
+        auto *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
         if (oc->mutable_ref) {
             oc = (ProtoObjectCellImplementation *)
                 context->space->mutableRoot.load()->getAt(context, oc->mutable_ref);
@@ -238,13 +238,13 @@ ProtoObject *ProtoObject::setAttribute(ProtoContext *context, ProtoString *name,
                 context,
                 oc->parent,
                 0,
-                oc->attributes->setAt(context, hash, value)
-            ))->asObject(context);
+                (ProtoSparseListImplementation*) oc->attributes->setAt(context, hash, value)
+            ))->implAsObject(context);
 
         if (inmutableBase) {
             do {
                 currentRoot = context->space->mutableRoot.load();
-                newRoot = currentRoot->setAt(
+                newRoot = (ProtoSparseList*) currentRoot->setAt(
                     context, inmutableBase->mutable_ref, newObject);
             } while (context->space->mutableRoot.compare_exchange_strong(
                 currentRoot,
@@ -257,8 +257,8 @@ ProtoObject *ProtoObject::setAttribute(ProtoContext *context, ProtoString *name,
                 context,
                 oc->parent,
                 0,
-                oc->attributes->setAt(context, hash, value)
-            ))->asObject(context);
+                (ProtoSparseListImplementation*) oc->attributes->setAt(context, hash, value)
+            ))->implAsObject(context);
         }
     }
     return this;
@@ -270,7 +270,7 @@ ProtoObject *ProtoObject::hasOwnAttribute(ProtoContext *context, ProtoString *na
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
+        auto *oc = (ProtoObjectCell *) pa.oid.oid;
         ProtoSparseList *currentRoot;
         if (oc->mutable_ref) {
             currentRoot = context->space->mutableRoot.load();
@@ -289,7 +289,7 @@ ProtoSparseList *ProtoObject::getAttributes(ProtoContext *context) {
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
+        auto *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
         ProtoSparseList *currentRoot = nullptr;
         if (oc->mutable_ref) {
             currentRoot = context->space->mutableRoot.load();
@@ -299,18 +299,18 @@ ProtoSparseList *ProtoObject::getAttributes(ProtoContext *context) {
         ProtoSparseList *attributes = context->newSparseList();
 
         while (oc) {
-            ProtoSparseListIterator *ai;
+            ProtoListIterator *ai;
 
-            ai = oc->attributes->getIterator(context);
+            ai = (ProtoListIterator*) oc->attributes->getIterator(context);
             while (ai->hasNext(context)) {
-				unsigned long attributeKey = ai->nextKey(context);
+				unsigned long attributeKey = ((ProtoSparseListIterator*)ai)->nextKey(context);
                 ProtoObject* attributeValue = oc->attributes->getAt(context, attributeKey);
-                attributes = attributes->setAt(
+                attributes = (ProtoSparseList*) attributes->setAt(
                     context,
 					attributeKey,
 					attributeValue
                 );
-                ai = ai->advance(context);
+                ai = (ProtoListIterator*) ((ProtoSparseListIterator*)ai)->advance(context);
             }
             if (oc->parent) {
                 oc = oc->parent->object;
@@ -331,10 +331,10 @@ ProtoSparseList *ProtoObject::getOwnAttributes(ProtoContext *context) {
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCell *oc = (ProtoObjectCell *) pa.oid.oid;
+        auto *oc = (ProtoObjectCell *) pa.oid.oid;
 
         if (oc->mutable_ref) {
-            ProtoObjectCell *mutableCurrentObject = (ProtoObjectCell *)
+            auto *mutableCurrentObject = (ProtoObjectCell *)
                 context->space->mutableRoot.load()->getAt(context, oc->mutable_ref);
             return mutableCurrentObject->attributes;
         }
@@ -352,10 +352,10 @@ ProtoList *ProtoObject::getParents(ProtoContext *context) {
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
         ProtoList *parents = new(context) ProtoListImplementation(context);
 
-        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
-        ParentLinkImplementation *parent = (ParentLinkImplementation *) oc->parent;
+        auto *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
+        auto *parent = (ParentLinkImplementation *) oc->parent;
         while (parent) {
-            parents = parents->appendLast(context, parent->object->asObject(context));
+            parents = (ProtoList*) parents->appendLast(context, parent->object->asObject(context));
         }
 
         return parents;
@@ -377,7 +377,7 @@ void processTail(ProtoContext *context,
                             *newParentLink,
                             currentParent->object
         );
-        (*existingParents) = (*existingParents)->setAt(
+        (*existingParents) = (ProtoSparseList*) (*existingParents)->setAt(
 			context,
 			currentParent->object->getHash(context),
 			(*newParentLink)->asObject(context)
@@ -393,12 +393,12 @@ ProtoObject *ProtoObject::addParent(ProtoContext *context, ProtoObjectCell *newP
     ProtoSparseList *existingParents = context->newSparseList();
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        ProtoObjectCellImplementation *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
+        auto *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
 
         // Collect existing parents
         ParentLinkImplementation *currentParent = oc->parent;
         while (currentParent) {
-            existingParents = existingParents->setAt(
+            existingParents = (ProtoSparseList*) existingParents->setAt(
                 context,
                 currentParent->object->getHash(context),
                 nullptr
@@ -413,7 +413,7 @@ ProtoObject *ProtoObject::addParent(ProtoContext *context, ProtoObjectCell *newP
             newParentLink,
             oc->mutable_ref,
             oc->attributes
-        ))->asObject(context);
+        ))->implAsObject(context);
     }
     else
         return this;
@@ -507,7 +507,7 @@ ProtoObject* ProtoObject::call(ProtoContext* c,
 }
 
 Cell* ProtoObject::asCell(ProtoContext* context) {
-    ProtoObjectPointer p;
+    ProtoObjectPointer p{};
     p.oid.oid = this;
     return p.cell.cell;
 }
@@ -536,103 +536,103 @@ void ProtoObject::processReferences(ProtoContext* context,
 // ------------------- ParentLink -------------------
 
 ProtoObject* ParentLink::getObject(ProtoContext* context) {
-    return toImpl<ParentLinkImplementation>(this)->getObject(context);
+    return toImpl<ParentLinkImplementation>(this)->asObject(context);
 }
 
 ParentLink* ParentLink::getParent(ProtoContext* context) {
-    return toImpl<ParentLinkImplementation>(this)->getParent(context);
+    return toImpl<ParentLinkImplementation>(this)->parent;
 }
 
 // ------------------- ProtoListIterator -------------------
 
 int ProtoListIterator::hasNext(ProtoContext* context) {
-    return toImpl<ProtoListIteratorImplementation>(this)->hasNext(context);
+    return toImpl<ProtoListIteratorImplementation>(this)->implHasNext(context);
 }
 
 ProtoObject* ProtoListIterator::next(ProtoContext* context) {
-    return toImpl<ProtoListIteratorImplementation>(this)->next(context);
+    return toImpl<ProtoListIteratorImplementation>(this)->implNext(context);
 }
 
 ProtoListIterator* ProtoListIterator::advance(ProtoContext* context) {
-    return toImpl<ProtoListIteratorImplementation>(this)->advance(context);
+    return toImpl<ProtoListIteratorImplementation>(this)->implAdvance(context);
 }
 
 ProtoObject* ProtoListIterator::asObject(ProtoContext* context) {
-    return toImpl<ProtoListIteratorImplementation>(this)->asObject(context);
+    return toImpl<ProtoListIteratorImplementation>(this)->implAsObject(context);
 }
 
 // ------------------- ProtoList -------------------
 
 ProtoObject* ProtoList::getAt(ProtoContext* context, int index) {
-    return toImpl<ProtoListImplementation>(this)->getAt(context, index);
+    return toImpl<ProtoListImplementation>(this)->implGetAt(context, index);
 }
 
 ProtoObject* ProtoList::getFirst(ProtoContext* context) {
-    return toImpl<ProtoListImplementation>(this)->getFirst(context);
+    return toImpl<ProtoListImplementation>(this)->implGetFirst(context);
 }
 
 ProtoObject* ProtoList::getLast(ProtoContext* context) {
-    return toImpl<ProtoListImplementation>(this)->getLast(context);
+    return toImpl<ProtoListImplementation>(this)->implGetLast(context);
 }
 
 ProtoList* ProtoList::getSlice(ProtoContext* context, int from, int to) {
-    return toImpl<ProtoListImplementation>(this)->getSlice(context, from, to);
+    return toImpl<ProtoListImplementation>(this)->implGetSlice(context, from, to);
 }
 
 unsigned long ProtoList::getSize(ProtoContext* context) {
-    return toImpl<ProtoListImplementation>(this)->getSize(context);
+    return toImpl<ProtoListImplementation>(this)->implGetSize(context);
 }
 
 bool ProtoList::has(ProtoContext* context, ProtoObject* value) {
-    return toImpl<ProtoListImplementation>(this)->has(context, value);
+    return toImpl<ProtoListImplementation>(this)->implHas(context, value);
 }
 
 ProtoList* ProtoList::setAt(ProtoContext* context, int index, ProtoObject* value) {
-    return toImpl<ProtoListImplementation>(this)->setAt(context, index, value);
+    return toImpl<ProtoListImplementation>(this)->implSetAt(context, index, value);
 }
 
 ProtoList* ProtoList::insertAt(ProtoContext* context, int index, ProtoObject* value) {
-    return toImpl<ProtoListImplementation>(this)->insertAt(context, index, value);
+    return toImpl<ProtoListImplementation>(this)->implInsertAt(context, index, value);
 }
 
 ProtoList* ProtoList::appendFirst(ProtoContext* context, ProtoObject* value) {
-    return toImpl<ProtoListImplementation>(this)->appendFirst(context, value);
+    return toImpl<ProtoListImplementation>(this)->implAppendFirst(context, value);
 }
 
 ProtoList* ProtoList::appendLast(ProtoContext* context, ProtoObject* value) {
-    return toImpl<ProtoListImplementation>(this)->appendLast(context, value);
+    return toImpl<ProtoListImplementation>(this)->implAppendLast(context, value);
 }
 
 ProtoList* ProtoList::extend(ProtoContext* context, ProtoList* other) {
-    return toImpl<ProtoListImplementation>(this)->extend(context, other);
+    return toImpl<ProtoListImplementation>(this)->implExtend(context, other);
 }
 
 ProtoList* ProtoList::splitFirst(ProtoContext* context, int index) {
-    return toImpl<ProtoListImplementation>(this)->splitFirst(context, index);
+    return toImpl<ProtoListImplementation>(this)->implSplitFirst(context, index);
 }
 
 ProtoList* ProtoList::splitLast(ProtoContext* context, int index) {
-    return toImpl<ProtoListImplementation>(this)->splitLast(context, index);
+    return toImpl<ProtoListImplementation>(this)->implSplitLast(context, index);
 }
 
 ProtoList* ProtoList::removeFirst(ProtoContext* context) {
-    return toImpl<ProtoListImplementation>(this)->removeFirst(context);
+    return toImpl<ProtoListImplementation>(this)->implRemoveFirst(context);
 }
 
 ProtoList* ProtoList::removeLast(ProtoContext* context) {
-    return toImpl<ProtoListImplementation>(this)->removeLast(context);
+    return toImpl<ProtoListImplementation>(this)->implRemoveLast(context);
 }
 
 ProtoList* ProtoList::removeAt(ProtoContext* context, int index) {
-    return toImpl<ProtoListImplementation>(this)->removeAt(context, index);
+    return toImpl<ProtoListImplementation>(this)->implRemoveAt(context, index);
 }
 
 ProtoList* ProtoList::removeSlice(ProtoContext* context, int from, int to) {
-    return toImpl<ProtoListImplementation>(this)->removeSlice(context, from, to);
+    return toImpl<ProtoListImplementation>(this)->implRemoveSlice(context, from, to);
 }
 
 ProtoObject* ProtoList::asObject(ProtoContext* context) {
-    return toImpl<ProtoListImplementation>(this)->asObject(context);
+    return toImpl<ProtoListImplementation>(this)->implAsObject(context);
 }
 
 unsigned long ProtoList::getHash(ProtoContext* context) {
@@ -640,99 +640,99 @@ unsigned long ProtoList::getHash(ProtoContext* context) {
 }
 
 ProtoListIterator* ProtoList::getIterator(ProtoContext* context) {
-    return toImpl<ProtoListImplementation>(this)->getIterator(context);
+    return toImpl<ProtoListImplementation>(this)->implGetIterator(context);
 }
 
 // ------------------- ProtoTupleIterator -------------------
 
 int ProtoTupleIterator::hasNext(ProtoContext* context) {
-    return toImpl<ProtoTupleIteratorImplementation>(this)->hasNext(context);
+    return toImpl<ProtoTupleIteratorImplementation>(this)->implHasNext(context);
 }
 
 ProtoObject* ProtoTupleIterator::next(ProtoContext* context) {
-    return toImpl<ProtoTupleIteratorImplementation>(this)->next(context);
+    return toImpl<ProtoTupleIteratorImplementation>(this)->implNext(context);
 }
 
 ProtoTupleIterator* ProtoTupleIterator::advance(ProtoContext* context) {
-    return toImpl<ProtoTupleIteratorImplementation>(this)->advance(context);
+    return toImpl<ProtoTupleIteratorImplementation>(this)->implAdvance(context);
 }
 
 ProtoObject* ProtoTupleIterator::asObject(ProtoContext* context) {
-    return toImpl<ProtoTupleIteratorImplementation>(this)->asObject(context);
+    return toImpl<ProtoTupleIteratorImplementation>(this)->implAsObject(context);
 }
 
 // ------------------- ProtoTuple -------------------
 
 ProtoObject* ProtoTuple::getAt(ProtoContext* context, int index) {
-    return toImpl<ProtoTupleImplementation>(this)->getAt(context, index);
+    return toImpl<ProtoTupleImplementation>(this)->implGetAt(context, index);
 }
 
 ProtoObject* ProtoTuple::getFirst(ProtoContext* context) {
-    return toImpl<ProtoTupleImplementation>(this)->getFirst(context);
+    return toImpl<ProtoTupleImplementation>(this)->implGetFirst(context);
 }
 
 ProtoObject* ProtoTuple::getLast(ProtoContext* context) {
-    return toImpl<ProtoTupleImplementation>(this)->getLast(context);
+    return toImpl<ProtoTupleImplementation>(this)->implGetLast(context);
 }
 
 ProtoObject* ProtoTuple::getSlice(ProtoContext* context, int from, int to) {
-    return toImpl<ProtoTupleImplementation>(this)->getSlice(context, from, to);
+    return toImpl<ProtoTupleImplementation>(this)->implGetSlice(context, from, to);
 }
 
 unsigned long ProtoTuple::getSize(ProtoContext* context) {
-    return toImpl<ProtoTupleImplementation>(this)->getSize(context);
+    return toImpl<ProtoTupleImplementation>(this)->implGetSize(context);
 }
 
 bool ProtoTuple::has(ProtoContext* context, ProtoObject* value) {
-    return toImpl<ProtoTupleImplementation>(this)->has(context, value);
+    return toImpl<ProtoTupleImplementation>(this)->implHas(context, value);
 }
 
 ProtoObject* ProtoTuple::setAt(ProtoContext* context, int index, ProtoObject* value) {
-    return toImpl<ProtoTupleImplementation>(this)->setAt(context, index, value);
+    return toImpl<ProtoTupleImplementation>(this)->implSetAt(context, index, value);
 }
 
 ProtoObject* ProtoTuple::insertAt(ProtoContext* context, int index, ProtoObject* value) {
-    return toImpl<ProtoTupleImplementation>(this)->insertAt(context, index, value);
+    return toImpl<ProtoTupleImplementation>(this)->implInsertAt(context, index, value);
 }
 
 ProtoObject* ProtoTuple::appendFirst(ProtoContext* context, ProtoTuple* otherTuple) {
-    return toImpl<ProtoTupleImplementation>(this)->appendFirst(context, otherTuple);
+    return toImpl<ProtoTupleImplementation>(this)->implAppendFirst(context, otherTuple);
 }
 
 ProtoObject* ProtoTuple::appendLast(ProtoContext* context, ProtoTuple* otherTuple) {
-    return toImpl<ProtoTupleImplementation>(this)->appendLast(context, otherTuple);
+    return toImpl<ProtoTupleImplementation>(this)->implAppendLast(context, otherTuple);
 }
 
 ProtoObject* ProtoTuple::splitFirst(ProtoContext* context, int count) {
-    return toImpl<ProtoTupleImplementation>(this)->splitFirst(context, count);
+    return toImpl<ProtoTupleImplementation>(this)->implSplitFirst(context, count);
 }
 
 ProtoObject* ProtoTuple::splitLast(ProtoContext* context, int count) {
-    return toImpl<ProtoTupleImplementation>(this)->splitLast(context, count);
+    return toImpl<ProtoTupleImplementation>(this)->implSplitLast(context, count);
 }
 
 ProtoObject* ProtoTuple::removeFirst(ProtoContext* context, int count) {
-    return toImpl<ProtoTupleImplementation>(this)->removeFirst(context, count);
+    return toImpl<ProtoTupleImplementation>(this)->implRemoveFirst(context, count);
 }
 
 ProtoObject* ProtoTuple::removeLast(ProtoContext* context, int count) {
-    return toImpl<ProtoTupleImplementation>(this)->removeLast(context, count);
+    return toImpl<ProtoTupleImplementation>(this)->implRemoveLast(context, count);
 }
 
 ProtoObject* ProtoTuple::removeAt(ProtoContext* context, int index) {
-    return toImpl<ProtoTupleImplementation>(this)->removeAt(context, index);
+    return toImpl<ProtoTupleImplementation>(this)->implRemoveAt(context, index);
 }
 
 ProtoObject* ProtoTuple::removeSlice(ProtoContext* context, int from, int to) {
-    return toImpl<ProtoTupleImplementation>(this)->removeSlice(context, from, to);
+    return toImpl<ProtoTupleImplementation>(this)->implRemoveSlice(context, from, to);
 }
 
 ProtoList* ProtoTuple::asList(ProtoContext* context) {
-    return toImpl<ProtoTupleImplementation>(this)->asList(context);
+    return toImpl<ProtoTupleImplementation>(this)->implAsList(context);
 }
 
 ProtoObject* ProtoTuple::asObject(ProtoContext* context) {
-    return toImpl<ProtoTupleImplementation>(this)->asObject(context);
+    return toImpl<ProtoTupleImplementation>(this)->implAsObject(context);
 }
 
 unsigned long ProtoTuple::getHash(ProtoContext* context) {
@@ -740,99 +740,99 @@ unsigned long ProtoTuple::getHash(ProtoContext* context) {
 }
 
 ProtoTupleIterator* ProtoTuple::getIterator(ProtoContext* context) {
-    return toImpl<ProtoTupleImplementation>(this)->getIterator(context);
+    return toImpl<ProtoTupleImplementation>(this)->implGetIterator(context);
 }
 
 // ------------------- ProtoStringIterator -------------------
 
 int ProtoStringIterator::hasNext(ProtoContext* context) {
-    return toImpl<ProtoStringIteratorImplementation>(this)->hasNext(context);
+    return toImpl<ProtoStringIteratorImplementation>(this)->implHasNext(context);
 }
 
 ProtoObject* ProtoStringIterator::next(ProtoContext* context) {
-    return toImpl<ProtoStringIteratorImplementation>(this)->next(context);
+    return toImpl<ProtoStringIteratorImplementation>(this)->implNext(context);
 }
 
 ProtoStringIterator* ProtoStringIterator::advance(ProtoContext* context) {
-    return toImpl<ProtoStringIteratorImplementation>(this)->advance(context);
+    return toImpl<ProtoStringIteratorImplementation>(this)->implAdvance(context);
 }
 
 ProtoObject* ProtoStringIterator::asObject(ProtoContext* context) {
-    return toImpl<ProtoStringIteratorImplementation>(this)->asObject(context);
+    return toImpl<ProtoStringIteratorImplementation>(this)->implAsObject(context);
 }
 
 // ------------------- ProtoString -------------------
 
 int ProtoString::cmp_to_string(ProtoContext* context, ProtoString* otherString) {
-    return toImpl<ProtoStringImplementation>(this)->cmp_to_string(context, otherString);
+    return toImpl<ProtoStringImplementation>(this)->implCmpToString(context, otherString);
 }
 
 ProtoObject* ProtoString::getAt(ProtoContext* context, int index) {
-    return toImpl<ProtoStringImplementation>(this)->getAt(context, index);
+    return toImpl<ProtoStringImplementation>(this)->implGetAt(context, index);
 }
 
 ProtoString* ProtoString::setAt(ProtoContext* context, int index, ProtoObject* character) {
-    return toImpl<ProtoStringImplementation>(this)->setAt(context, index, character);
+    return toImpl<ProtoStringImplementation>(this)->implSetAt(context, index, character);
 }
 
 ProtoString* ProtoString::insertAt(ProtoContext* context, int index, ProtoObject* character) {
-    return toImpl<ProtoStringImplementation>(this)->insertAt(context, index, character);
+    return toImpl<ProtoStringImplementation>(this)->implInsertAt(context, index, character);
 }
 
 unsigned long ProtoString::getSize(ProtoContext* context) {
-    return toImpl<ProtoStringImplementation>(this)->getSize(context);
+    return toImpl<ProtoStringImplementation>(this)->implGetSize(context);
 }
 
 ProtoString* ProtoString::getSlice(ProtoContext* context, int from, int to) {
-    return toImpl<ProtoStringImplementation>(this)->getSlice(context, from, to);
+    return toImpl<ProtoStringImplementation>(this)->implGetSlice(context, from, to);
 }
 
 ProtoString* ProtoString::setAtString(ProtoContext* context, int index, ProtoString* otherString) {
-    return toImpl<ProtoStringImplementation>(this)->setAtString(context, index, otherString);
+    return toImpl<ProtoStringImplementation>(this)->implSetAtString(context, index, otherString);
 }
 
 ProtoString* ProtoString::insertAtString(ProtoContext* context, int index, ProtoString* otherString) {
-    return toImpl<ProtoStringImplementation>(this)->insertAtString(context, index, otherString);
+    return toImpl<ProtoStringImplementation>(this)->implInsertAtString(context, index, otherString);
 }
 
 ProtoString* ProtoString::appendFirst(ProtoContext* context, ProtoString* otherString) {
-    return toImpl<ProtoStringImplementation>(this)->appendFirst(context, otherString);
+    return toImpl<ProtoStringImplementation>(this)->implAppendFirst(context, otherString);
 }
 
 ProtoString* ProtoString::appendLast(ProtoContext* context, ProtoString* otherString) {
-    return toImpl<ProtoStringImplementation>(this)->appendLast(context, otherString);
+    return toImpl<ProtoStringImplementation>(this)->implAppendLast(context, otherString);
 }
 
 ProtoString* ProtoString::splitFirst(ProtoContext* context, int count) {
-    return toImpl<ProtoStringImplementation>(this)->splitFirst(context, count);
+    return toImpl<ProtoStringImplementation>(this)->implSplitFirst(context, count);
 }
 
 ProtoString* ProtoString::splitLast(ProtoContext* context, int count) {
-    return toImpl<ProtoStringImplementation>(this)->splitLast(context, count);
+    return toImpl<ProtoStringImplementation>(this)->implSplitLast(context, count);
 }
 
 ProtoString* ProtoString::removeFirst(ProtoContext* context, int count) {
-    return toImpl<ProtoStringImplementation>(this)->removeFirst(context, count);
+    return toImpl<ProtoStringImplementation>(this)->implRemoveFirst(context, count);
 }
 
 ProtoString* ProtoString::removeLast(ProtoContext* context, int count) {
-    return toImpl<ProtoStringImplementation>(this)->removeLast(context, count);
+    return toImpl<ProtoStringImplementation>(this)->implRemoveLast(context, count);
 }
 
 ProtoString* ProtoString::removeAt(ProtoContext* context, int index) {
-    return toImpl<ProtoStringImplementation>(this)->removeAt(context, index);
+    return toImpl<ProtoStringImplementation>(this)->implRemoveAt(context, index);
 }
 
 ProtoString* ProtoString::removeSlice(ProtoContext* context, int from, int to) {
-    return toImpl<ProtoStringImplementation>(this)->removeSlice(context, from, to);
+    return toImpl<ProtoStringImplementation>(this)->implRemoveSlice(context, from, to);
 }
 
 ProtoObject* ProtoString::asObject(ProtoContext* context) {
-    return toImpl<ProtoStringImplementation>(this)->asObject(context);
+    return toImpl<ProtoStringImplementation>(this)->implAsObject(context);
 }
 
 ProtoList* ProtoString::asList(ProtoContext* context) {
-    return toImpl<ProtoStringImplementation>(this)->asList(context);
+    return toImpl<ProtoStringImplementation>(this)->implAsList(context);
 }
 
 unsigned long ProtoString::getHash(ProtoContext* context) {
@@ -840,29 +840,29 @@ unsigned long ProtoString::getHash(ProtoContext* context) {
 }
 
 ProtoStringIterator* ProtoString::getIterator(ProtoContext* context) {
-    return toImpl<ProtoStringImplementation>(this)->getIterator(context);
+    return toImpl<ProtoStringImplementation>(this)->implGetIterator(context);
 }
 
 // ------------------- ProtoSparseListIterator -------------------
 
 int ProtoSparseListIterator::hasNext(ProtoContext* context) {
-    return toImpl<ProtoSparseListIteratorImplementation>(this)->hasNext(context);
+    return toImpl<ProtoSparseListIteratorImplementation>(this)->implHasNext(context);
 }
 
 unsigned long ProtoSparseListIterator::nextKey(ProtoContext* context) {
-    return toImpl<ProtoSparseListIteratorImplementation>(this)->nextKey(context);
+    return toImpl<ProtoSparseListIteratorImplementation>(this)->implNextKey(context);
 }
 
 ProtoObject* ProtoSparseListIterator::nextValue(ProtoContext* context) {
-    return toImpl<ProtoSparseListIteratorImplementation>(this)->nextValue(context);
+    return toImpl<ProtoSparseListIteratorImplementation>(this)->implNextValue(context);
 }
 
 ProtoSparseListIterator* ProtoSparseListIterator::advance(ProtoContext* context) {
-    return toImpl<ProtoSparseListIteratorImplementation>(this)->advance(context);
+    return toImpl<ProtoSparseListIteratorImplementation>(this)->implAdvance(context);
 }
 
 ProtoObject* ProtoSparseListIterator::asObject(ProtoContext* context) {
-    return toImpl<ProtoSparseListIteratorImplementation>(this)->asObject(context);
+    return toImpl<ProtoSparseListIteratorImplementation>(this)->implAsObject(context);
 }
 
 void ProtoSparseListIterator::finalize(ProtoContext* context) {
@@ -872,27 +872,27 @@ void ProtoSparseListIterator::finalize(ProtoContext* context) {
 // ------------------- ProtoSparseList -------------------
 
 bool ProtoSparseList::has(ProtoContext* context, unsigned long index) {
-    return toImpl<ProtoSparseListImplementation>(this)->has(context, index);
+    return toImpl<ProtoSparseListImplementation>(this)->implHas(context, index);
 }
 
 ProtoObject* ProtoSparseList::getAt(ProtoContext* context, unsigned long index) {
-    return toImpl<ProtoSparseListImplementation>(this)->getAt(context, index);
+    return toImpl<ProtoSparseListImplementation>(this)->implGetAt(context, index);
 }
 
 ProtoSparseList* ProtoSparseList::setAt(ProtoContext* context, unsigned long index, ProtoObject* value) {
-    return toImpl<ProtoSparseListImplementation>(this)->setAt(context, index, value);
+    return toImpl<ProtoSparseListImplementation>(this)->implSetAt(context, index, value);
 }
 
 ProtoSparseList* ProtoSparseList::removeAt(ProtoContext* context, unsigned long index) {
-    return toImpl<ProtoSparseListImplementation>(this)->removeAt(context, index);
+    return toImpl<ProtoSparseListImplementation>(this)->implRemoveAt(context, index);
 }
 
 unsigned long ProtoSparseList::getSize(ProtoContext* context) {
-    return toImpl<ProtoSparseListImplementation>(this)->getSize(context);
+    return toImpl<ProtoSparseListImplementation>(this)->implGetSize(context);
 }
 
 ProtoObject* ProtoSparseList::asObject(ProtoContext* context) {
-    return toImpl<ProtoSparseListImplementation>(this)->asObject(context);
+    return toImpl<ProtoSparseListImplementation>(this)->implAsObject(context);
 }
 
 unsigned long ProtoSparseList::getHash(ProtoContext* context) {
@@ -900,40 +900,40 @@ unsigned long ProtoSparseList::getHash(ProtoContext* context) {
 }
 
 ProtoSparseListIterator* ProtoSparseList::getIterator(ProtoContext* context) {
-    return toImpl<ProtoSparseListImplementation>(this)->getIterator(context);
+    return toImpl<ProtoSparseListImplementation>(this)->implGetIterator(context);
 }
 
 void ProtoSparseList::processElements(ProtoContext* context, void* self,
                                       void (*method)(ProtoContext* context, void* self, unsigned long index,
                                                      ProtoObject* value)) {
-    toImpl<ProtoSparseListImplementation>(this)->processElements(context, self, method);
+    toImpl<ProtoSparseListImplementation>(this)->implProcessElements(context, self, method);
 }
 
 void ProtoSparseList::processValues(ProtoContext* context, void* self,
                                     void (*method)(ProtoContext* context, void* self, ProtoObject* value)) {
-    toImpl<ProtoSparseListImplementation>(this)->processValues(context, self, method);
+    toImpl<ProtoSparseListImplementation>(this)->implProcessValues(context, self, method);
 }
 
 // ------------------- ProtoByteBuffer -------------------
 
 unsigned long ProtoByteBuffer::getSize(ProtoContext* context) {
-    return toImpl<ProtoByteBufferImplementation>(this)->getSize(context);
+    return toImpl<ProtoByteBufferImplementation>(this)->implGetSize(context);
 }
 
 char* ProtoByteBuffer::getBuffer(ProtoContext* context) {
-    return toImpl<ProtoByteBufferImplementation>(this)->getBuffer(context);
+    return toImpl<ProtoByteBufferImplementation>(this)->implGetBuffer(context);
 }
 
 char ProtoByteBuffer::getAt(ProtoContext* context, int index) {
-    return toImpl<ProtoByteBufferImplementation>(this)->getAt(context, index);
+    return toImpl<ProtoByteBufferImplementation>(this)->implGetAt(context, index);
 }
 
 void ProtoByteBuffer::setAt(ProtoContext* context, int index, char value) {
-    toImpl<ProtoByteBufferImplementation>(this)->setAt(context, index, value);
+    toImpl<ProtoByteBufferImplementation>(this)->implSetAt(context, index, value);
 }
 
 ProtoObject* ProtoByteBuffer::asObject(ProtoContext* context) {
-    return toImpl<ProtoByteBufferImplementation>(this)->asObject(context);
+    return toImpl<ProtoByteBufferImplementation>(this)->implAsObject(context);
 }
 
 unsigned long ProtoByteBuffer::getHash(ProtoContext* context) {
@@ -943,11 +943,11 @@ unsigned long ProtoByteBuffer::getHash(ProtoContext* context) {
 // ------------------- ProtoExternalPointer -------------------
 
 void* ProtoExternalPointer::getPointer(ProtoContext* context) {
-    return toImpl<ProtoExternalPointerImplementation>(this)->getPointer(context);
+    return toImpl<ProtoExternalPointerImplementation>(this)->implGetPointer(context);
 }
 
 ProtoObject* ProtoExternalPointer::asObject(ProtoContext* context) {
-    return toImpl<ProtoExternalPointerImplementation>(this)->asObject(context);
+    return toImpl<ProtoExternalPointerImplementation>(this)->implAsObject(context);
 }
 
 unsigned long ProtoExternalPointer::getHash(ProtoContext* context) {
@@ -957,15 +957,15 @@ unsigned long ProtoExternalPointer::getHash(ProtoContext* context) {
 // ------------------- ProtoMethodCell -------------------
 
 ProtoObject* ProtoMethodCell::getSelf(ProtoContext* context) {
-    return toImpl<ProtoMethodCellImplementation>(this)->getSelf(context);
+    return toImpl<ProtoMethodCellImplementation>(this)->implGetSelf(context);
 }
 
 ProtoMethod ProtoMethodCell::getMethod(ProtoContext* context) {
-    return toImpl<ProtoMethodCellImplementation>(this)->getMethod(context);
+    return toImpl<ProtoMethodCellImplementation>(this)->implGetMethod(context);
 }
 
 ProtoObject* ProtoMethodCell::asObject(ProtoContext* context) {
-    return toImpl<ProtoMethodCellImplementation>(this)->asObject(context);
+    return toImpl<ProtoMethodCellImplementation>(this)->implAsObject(context);
 }
 
 unsigned long ProtoMethodCell::getHash(ProtoContext* context) {
@@ -975,33 +975,33 @@ unsigned long ProtoMethodCell::getHash(ProtoContext* context) {
 // ------------------- ProtoObjectCell -------------------
 
 ProtoObjectCell* ProtoObjectCell::addParent(ProtoContext* context, ProtoObjectCell* object) {
-    return toImpl<ProtoObjectCellImplementation>(this)->addParent(context, object);
+    return toImpl<ProtoObjectCellImplementation>(this)->implAddParent(context, object);
 }
 
 // ------------------- ProtoThread -------------------
 
 ProtoThread* ProtoThread::getCurrentThread(ProtoContext* context) {
-    return ProtoThreadImplementation::getCurrentThread(context);
+    return ProtoThreadImplementation::implGetCurrentThread(context);
 }
 
 void ProtoThread::detach(ProtoContext* context) {
-    toImpl<ProtoThreadImplementation>(this)->detach(context);
+    toImpl<ProtoThreadImplementation>(this)->implDetach(context);
 }
 
 void ProtoThread::join(ProtoContext* context) {
-    toImpl<ProtoThreadImplementation>(this)->join(context);
+    toImpl<ProtoThreadImplementation>(this)->implJoin(context);
 }
 
 void ProtoThread::exit(ProtoContext* context) {
-    toImpl<ProtoThreadImplementation>(this)->exit(context);
+    toImpl<ProtoThreadImplementation>(this)->implExit(context);
 }
 
 ProtoObject* ProtoThread::getName(ProtoContext* context) {
-    return toImpl<ProtoThreadImplementation>(this)->getName(context);
+    return (ProtoObject*) toImpl<ProtoThreadImplementation>(this)->name;
 }
 
 ProtoObject* ProtoThread::asObject(ProtoContext* context) {
-    return toImpl<ProtoThreadImplementation>(this)->asObject(context);
+    return toImpl<ProtoThreadImplementation>(this)->implAsObject(context);
 }
 
 unsigned long ProtoThread::getHash(ProtoContext* context) {
@@ -1009,19 +1009,19 @@ unsigned long ProtoThread::getHash(ProtoContext* context) {
 }
 
 void ProtoThread::setCurrentContext(ProtoContext* context) {
-    toImpl<ProtoThreadImplementation>(this)->setCurrentContext(context);
+    toImpl<ProtoThreadImplementation>(this)->implSetCurrentContext(context);
 }
 
 void ProtoThread::setManaged() {
-    toImpl<ProtoThreadImplementation>(this)->setManaged();
+    toImpl<ProtoThreadImplementation>(this)->implSetManaged();
 }
 
 void ProtoThread::setUnmanaged() {
-    toImpl<ProtoThreadImplementation>(this)->setUnmanaged();
+    toImpl<ProtoThreadImplementation>(this)->implSetUnmanaged();
 }
 
 void ProtoThread::synchToGC() {
-    toImpl<ProtoThreadImplementation>(this)->synchToGC();
+    toImpl<ProtoThreadImplementation>(this)->implSynchToGC();
 }
 
 } // namespace proto

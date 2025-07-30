@@ -40,8 +40,8 @@ void gcCollectCells(ProtoContext *context, void *self, Cell *value) {
     // Go further in the scanning only if it is a cell and the cell belongs to current context!
     if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
         // It is an object pointer with references
-        if (! cellSet->has(context, p.asHash.hash)) {
-            cellSet = cellSet->setAt(context, p.asHash.hash, PROTO_NONE);
+        if (! cellSet->implHas(context, p.asHash.hash)) {
+            cellSet = cellSet->implSetAt(context, p.asHash.hash, PROTO_NONE);
             p.cell.cell->processReferences(context, (void *) cellSet, gcCollectCells);
         }
     }
@@ -56,8 +56,8 @@ void gcCollectObjects(ProtoContext *context, void *self, ProtoObject *value) {
     // Go further in the scanning only if it is a cell and the cell belongs to current context!
     if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
         // It is an object pointer with references
-        if (! cellSet->has(context, p.asHash.hash)) {
-            cellSet = cellSet->setAt(context, p.asHash.hash, PROTO_NONE);
+        if (! cellSet->implHas(context, p.asHash.hash)) {
+            cellSet = cellSet->implSetAt(context, p.asHash.hash, PROTO_NONE);
             p.cell.cell->processReferences(context, (void *) cellSet, gcCollectCells);
         }
     }
@@ -149,8 +149,8 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
         while (currentContext) {
             Cell * currentCell = currentContext->lastAllocatedCell;
             while (currentCell) {
-                if (! cellSet->has(context, currentCell->getHash(context))) {
-                    cellSet = cellSet->setAt(
+                if (! cellSet->implHas(context, currentCell->getHash(context))) {
+                    cellSet = cellSet->implSetAt(
 						context,
 						currentCell->getHash(context),
 						currentCell->asObject(context)
@@ -167,7 +167,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
                      n > 0;
                      n--) {
                     if (p.op.pointer_tag != POINTER_TAG_EMBEDEDVALUE) {
-                        cellSet = cellSet->setAt(
+                        cellSet = cellSet->implSetAt(
 							context,
 							p.asHash.hash,
 							p.cell.cell->asObject(context)
@@ -185,7 +185,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
     space->restartTheWorldCV.notify_all();
 
     // Deep Scan all indirect roots. Deep traversal of cellSet
-    cellSet->processValues(context, cellSet, gcCollectObjects);
+    cellSet->implProcessValues(context, cellSet, gcCollectObjects);
 
     // Scan all blocks to analyze and if they are not referenced, free them
 
@@ -198,7 +198,7 @@ void gcScan(ProtoContext *context, ProtoSpace *space) {
         while (block) {
             Cell *nextCell = block->nextCell;
 
-            if (!cellSet->has(&gcContext, block->getHash(context))) {
+            if (!cellSet->implHas(&gcContext, block->getHash(context))) {
                 block->~Cell();
 
                 void **p = (void **) block;
@@ -271,19 +271,19 @@ ProtoSpace::ProtoSpace(
     this->tupleRoot = new(creationContext) TupleDictionary(creationContext, nullptr, nullptr, nullptr);
 
     ProtoList *mainParameters = creationContext->newList();
-    mainParameters = mainParameters->appendLast(
+    mainParameters = (ProtoList*) mainParameters->appendLast(
         creationContext,
         creationContext->fromInteger(argc)
     );
     ProtoList *argvList = creationContext->newList();
     if (argc && argv) {
         for (int i = 0; i < argc; i++)
-            argvList = argvList->appendLast(
+            argvList = (ProtoList*) argvList->appendLast(
                 creationContext,
                 creationContext->fromUTF8String(argv[i])->asObject(creationContext)
             );
     }
-    mainParameters = mainParameters->appendLast(
+    mainParameters = (ProtoList*) mainParameters->appendLast(
         creationContext, argvList->asObject(creationContext)
     );
 
@@ -333,7 +333,7 @@ ProtoSpace::ProtoSpace(
 void scanThreads(ProtoContext *context, void *self, ProtoObject *value) {
     ProtoList **threadList = (ProtoList **) self;
 
-    *threadList = (*threadList)->appendLast(context, value);
+    *threadList = (ProtoList*) (*threadList)->appendLast(context, value);
 }
 
 ProtoSpace::~ProtoSpace() {
@@ -369,7 +369,7 @@ void ProtoSpace::allocThread(ProtoContext *context, ProtoThread *thread) {
     )) std::this_thread::yield();
 
     if (this->threads)
-        this->threads = this->threads->setAt(
+        this->threads = (ProtoSparseList*) this->threads->setAt(
 							context,
 							thread->getName(context)->getHash(context),
 							thread->asObject(context)
@@ -389,7 +389,7 @@ void ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *thread) {
     while (threadCount--) {
         ProtoThread * t = (ProtoThread *) this->threads->getAt(context, threadCount);
         if (t == thread) {
-            this->threads = this->threads->removeAt(context, threadCount);
+            this->threads = (ProtoSparseList*) this->threads->removeAt(context, threadCount);
             break;
         }
     }

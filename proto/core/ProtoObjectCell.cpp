@@ -31,7 +31,7 @@ namespace proto
 
     // --- Métodos de la Interfaz ---
 
-    ProtoObjectCell* ProtoObjectCellImplementation::addParent(ProtoContext* context, ProtoObjectCell* newParent) {
+    ProtoObjectCell* ProtoObjectCellImplementation::implAddParent(ProtoContext* context, ProtoObjectCell* newParent) {
         // Crea un nuevo eslabón en la cadena de herencia.
         ParentLinkImplementation* newParentLink = new(context) ParentLinkImplementation(
             context,
@@ -51,7 +51,7 @@ namespace proto
 		);
     }
 
-    ProtoObject* ProtoObjectCellImplementation::asObject(ProtoContext* context)
+    ProtoObject* ProtoObjectCellImplementation::implAsObject(ProtoContext* context)
     {
         ProtoObjectPointer p;
         p.oid.oid = (ProtoObject*)this;

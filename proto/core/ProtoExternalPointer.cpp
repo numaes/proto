@@ -26,12 +26,12 @@ namespace proto
 
     // --- Métodos de la Interfaz ---
 
-    void* ProtoExternalPointerImplementation::getPointer(ProtoContext* context)
+    void* ProtoExternalPointerImplementation::implGetPointer(ProtoContext* context)
     {
         return this->pointer;
     }
 
-    ProtoObject* ProtoExternalPointerImplementation::asObject(ProtoContext* context)
+    ProtoObject* ProtoExternalPointerImplementation::implAsObject(ProtoContext* context)
     {
         ProtoObjectPointer p;
         p.oid.oid = (ProtoObject*)this;

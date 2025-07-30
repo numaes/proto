@@ -75,7 +75,7 @@ namespace proto
         return true;
     }
 
-    char ProtoByteBufferImplementation::getAt(ProtoContext* context, int index)
+    char ProtoByteBufferImplementation::implGetAt(ProtoContext* context, int index)
     {
         // Usamos la función auxiliar para validar y normalizar el índice.
         if (normalizeIndex(index))
@@ -86,7 +86,7 @@ namespace proto
         return 0;
     }
 
-    void ProtoByteBufferImplementation::setAt(ProtoContext* context, int index, char value)
+    void ProtoByteBufferImplementation::implSetAt(ProtoContext* context, int index, char value)
     {
         // Solo escribimos si el índice es válido.
         if (normalizeIndex(index))
@@ -121,7 +121,7 @@ namespace proto
 
     // --- Métodos de Interfaz ---
 
-    ProtoObject* ProtoByteBufferImplementation::asObject(ProtoContext* context)
+    ProtoObject* ProtoByteBufferImplementation::implAsObject(ProtoContext* context)
     {
         ProtoObjectPointer p;
         p.oid.oid = (ProtoObject*)this;
@@ -139,12 +139,12 @@ namespace proto
         return p.asHash.hash;
     }
 
-    unsigned long ProtoByteBufferImplementation::getSize(ProtoContext* context)
+    unsigned long ProtoByteBufferImplementation::implGetSize(ProtoContext* context)
     {
         return this->size;
     }
 
-    char* ProtoByteBufferImplementation::getBuffer(ProtoContext* context)
+    char* ProtoByteBufferImplementation::implGetBuffer(ProtoContext* context)
     {
         return this->buffer;
     }

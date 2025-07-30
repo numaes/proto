@@ -49,14 +49,14 @@ namespace proto
 
     int TupleDictionary::compareList(ProtoContext* context, ProtoList* list)
     {
-        int thisSize = this->key->getSize(context);
+        int thisSize = this->key->implGetSize(context);
         int listSize = list->getSize(context);
 
         int cmpSize = (thisSize < listSize) ? thisSize : listSize;
         int i;
         for (i = 0; i <= cmpSize; i++)
         {
-            int thisElementHash = this->key->getAt(context, i)->getHash(context);
+            int thisElementHash = this->key->implGetAt(context, i)->getHash(context);
             int tupleElementHash = list->getAt(context, i)->getHash(context);
             if (thisElementHash > tupleElementHash)
                 return 1;
@@ -145,7 +145,7 @@ namespace proto
         if (!this->key)
             return new(context) TupleDictionary(
                 context,
-                key = tuple
+                tuple
             );
 
         cmp = this->compareTuple(context, tuple);
@@ -155,20 +155,20 @@ namespace proto
             {
                 newNode = new(context) TupleDictionary(
                     context,
-                    key = this->key,
-                    previous = this->previous,
-                    next = this->next->set(context, tuple)
+                    this->key,
+                    this->previous,
+                    this->next->set(context, tuple)
                 );
             }
             else
             {
                 newNode = new(context) TupleDictionary(
                     context,
-                    key = this->key,
-                    previous = this->previous,
-                    next = new(context) TupleDictionary(
+                    this->key,
+                    this->previous,
+                    new(context) TupleDictionary(
                         context,
-                        key = this->key
+                        tuple
                     )
                 );
             }
@@ -179,21 +179,21 @@ namespace proto
             {
                 newNode = new(context) TupleDictionary(
                     context,
-                    key = this->key,
-                    previous = this->previous->set(context, tuple),
-                    next = this->next
+                    this->key,
+                    this->previous->set(context, tuple),
+                    this->next
                 );
             }
             else
             {
                 newNode = new(context) TupleDictionary(
                     context,
-                    key = this->key,
-                    previous = new(context) TupleDictionary(
+                    this->key,
+                    new(context) TupleDictionary(
                         context,
-                        key = this->key
+                        tuple
                     ),
-                    next = this->next
+                    this->next
                 );
             }
         }
@@ -311,14 +311,14 @@ namespace proto
 
     int TupleDictionary::compareTuple(ProtoContext* context, ProtoTuple* tuple)
     {
-        int thisSize = this->key->getSize(context);
+        int thisSize = this->key->implGetSize(context);
         int tupleSize = tuple->getSize(context);
 
         int cmpSize = (thisSize < tupleSize) ? thisSize : tupleSize;
         int i;
         for (i = 0; i < cmpSize; i++)
         {
-            int thisElementHash = this->key->getAt(context, i)->getHash(context);
+            int thisElementHash = this->key->implGetAt(context, i)->getHash(context);
             int tupleElementHash = tuple->getAt(context, i)->getHash(context);
             if (thisElementHash > tupleElementHash)
                 return 1;
@@ -471,34 +471,34 @@ namespace proto
     // Destructor por defecto.
     ProtoTupleIteratorImplementation::~ProtoTupleIteratorImplementation() = default;
 
-    int ProtoTupleIteratorImplementation::hasNext(ProtoContext* context)
+    int ProtoTupleIteratorImplementation::implHasNext(ProtoContext* context)
     {
         // Es más seguro comprobar si la base no es nula.
         if (!this->base)
         {
             return false;
         }
-        return this->currentIndex < this->base->getSize(context);
+        return this->currentIndex < this->base->implGetSize(context);
     }
 
-    ProtoObject* ProtoTupleIteratorImplementation::next(ProtoContext* context)
+    ProtoObject* ProtoTupleIteratorImplementation::implNext(ProtoContext* context)
     {
         // Usar hasNext para una comprobación robusta.
-        if (!hasNext(context))
+        if (!implHasNext(context))
         {
             return PROTO_NONE;
         }
         // Devuelve el elemento actual. El avance se gestiona por separado.
-        return this->base->getAt(context, this->currentIndex);
+        return this->base->implGetAt(context, this->currentIndex);
     }
 
     // CORRECCIÓN CRÍTICA: El iterador debe avanzar creando uno nuevo en la siguiente posición.
-    ProtoTupleIteratorImplementation* ProtoTupleIteratorImplementation::advance(ProtoContext* context)
+    ProtoTupleIteratorImplementation* ProtoTupleIteratorImplementation::implAdvance(ProtoContext* context)
     {
         return new(context) ProtoTupleIteratorImplementation(context, this->base, this->currentIndex + 1);
     }
 
-    ProtoObject* ProtoTupleIteratorImplementation::asObject(ProtoContext* context)
+    ProtoObject* ProtoTupleIteratorImplementation::implAsObject(ProtoContext* context)
     {
         ProtoObjectPointer p;
         p.oid.oid = (ProtoObject*)this;
@@ -566,7 +566,7 @@ namespace proto
     }
 
     // CORRECCIÓN: La creación de tuplas debe ser robusta y gestionar la memoria correctamente.
-    ProtoTupleImplementation* ProtoTupleImplementation::tupleFromList(ProtoContext* context, ProtoList* list)
+    ProtoTupleImplementation* ProtoTupleImplementation::implTupleFromList(ProtoContext* context, ProtoList* list)
     {
         if (!list)
         {
@@ -592,7 +592,7 @@ namespace proto
     }
 
     // CORRECCIÓN: El acceso a elementos debe ser seguro y manejar índices fuera de rango.
-    ProtoObject* ProtoTupleImplementation::getAt(ProtoContext* context, int index)
+    ProtoObject* ProtoTupleImplementation::implGetAt(ProtoContext* context, int index)
     {
         if (index < 0)
         {
@@ -641,7 +641,7 @@ namespace proto
         // El destructor ya se encarga de liberar el array 'data'.
     }
 
-    ProtoObject* ProtoTupleImplementation::asObject(ProtoContext* context)
+    ProtoObject* ProtoTupleImplementation::implAsObject(ProtoContext* context)
     {
         ProtoObjectPointer p{};
         p.oid.oid = reinterpret_cast<ProtoObject*>(this);
@@ -655,14 +655,14 @@ namespace proto
         return Cell::getHash(context);
     }
 
-    ProtoTupleIteratorImplementation* ProtoTupleImplementation::getIterator(ProtoContext* context)
+    ProtoTupleIteratorImplementation* ProtoTupleImplementation::implGetIterator(ProtoContext* context)
     {
         // CORRECCIÓN: El iterador debe apuntar a 'this', no a 'nullptr'.
         return new(context) ProtoTupleIteratorImplementation(context, this, 0);
     }
 
     // Para tuplas inmutables, 'setAt' devuelve una *nueva* tupla con el cambio.
-    ProtoObject* ProtoTupleImplementation::setAt(ProtoContext* context, int index, ProtoObject* value)
+    ProtoObject* ProtoTupleImplementation::implSetAt(ProtoContext* context, int index, ProtoObject* value)
     {
         if (index < 0)
         {
@@ -671,7 +671,7 @@ namespace proto
 
         if (index < 0 || (unsigned long)index >= this->elementCount)
         {
-            return this->asObject(context); // Devolver la tupla original si el índice es inválido.
+            return this->implAsObject(context); // Devolver la tupla original si el índice es inválido.
         }
 
         // Crear una copia de los datos.
@@ -685,30 +685,30 @@ namespace proto
         newData[index] = value;
 
         // Crear y devolver una nueva tupla con los datos modificados.
-        return (new(context) ProtoTupleImplementation(context, this->elementCount, newData))->asObject(context);
+        return (new(context) ProtoTupleImplementation(context, this->elementCount, newData))->implAsObject(context);
     }
 
-    ProtoObject* ProtoTupleImplementation::getFirst(ProtoContext* context) { return getAt(context, 0); }
-    ProtoObject* ProtoTupleImplementation::getLast(ProtoContext* context) { return getAt(context, getSize(context) - 1); }
-    ProtoListImplementation* ProtoTupleImplementation::asList(ProtoContext* context) {
+    ProtoObject* ProtoTupleImplementation::implGetFirst(ProtoContext* context) { return implGetAt(context, 0); }
+    ProtoObject* ProtoTupleImplementation::implGetLast(ProtoContext* context) { return implGetAt(context, implGetSize(context) - 1); }
+    ProtoListImplementation* ProtoTupleImplementation::implAsList(ProtoContext* context) {
         ProtoList* list = context->newList();
         for (unsigned long i = 0; i < this->elementCount; ++i) {
-            list = list->appendLast(context, this->data[i]);
+            list = (ProtoList*) list->appendLast(context, this->data[i]);
         }
         return (ProtoListImplementation*) list;
     }
 
-    ProtoObject* ProtoTupleImplementation::getSlice(ProtoContext* context, int from, int to) { return PROTO_NONE; }
-    bool ProtoTupleImplementation::has(ProtoContext* context, ProtoObject* value) { return 0; }
-    ProtoObject* ProtoTupleImplementation::insertAt(ProtoContext* context, int index, ProtoObject* value) { return PROTO_NONE; }
-    ProtoObject* ProtoTupleImplementation::appendFirst(ProtoContext* context, ProtoTuple* otherTuple) { return PROTO_NONE; }
-    ProtoObject* ProtoTupleImplementation::appendLast(ProtoContext* context, ProtoTuple* otherTuple) { return PROTO_NONE; }
-    ProtoObject* ProtoTupleImplementation::splitFirst(ProtoContext* context, int count) { return PROTO_NONE; }
-    ProtoObject* ProtoTupleImplementation::splitLast(ProtoContext* context, int count) { return PROTO_NONE; }
-    ProtoObject* ProtoTupleImplementation::removeFirst(ProtoContext* context, int count) { return PROTO_NONE; }
-    ProtoObject* ProtoTupleImplementation::removeLast(ProtoContext* context, int count) { return PROTO_NONE; }
-    ProtoObject* ProtoTupleImplementation::removeAt(ProtoContext* context, int index) { return PROTO_NONE; }
-    ProtoObject* ProtoTupleImplementation::removeSlice(ProtoContext* context, int from, int to) { return PROTO_NONE; }
+    ProtoObject* ProtoTupleImplementation::implGetSlice(ProtoContext* context, int from, int to) { return PROTO_NONE; }
+    bool ProtoTupleImplementation::implHas(ProtoContext* context, ProtoObject* value) { return 0; }
+    ProtoObject* ProtoTupleImplementation::implInsertAt(ProtoContext* context, int index, ProtoObject* value) { return PROTO_NONE; }
+    ProtoObject* ProtoTupleImplementation::implAppendFirst(ProtoContext* context, ProtoTuple* otherTuple) { return PROTO_NONE; }
+    ProtoObject* ProtoTupleImplementation::implAppendLast(ProtoContext* context, ProtoTuple* otherTuple) { return PROTO_NONE; }
+    ProtoObject* ProtoTupleImplementation::implSplitFirst(ProtoContext* context, int count) { return PROTO_NONE; }
+    ProtoObject* ProtoTupleImplementation::implSplitLast(ProtoContext* context, int count) { return PROTO_NONE; }
+    ProtoObject* ProtoTupleImplementation::implRemoveFirst(ProtoContext* context, int count) { return PROTO_NONE; }
+    ProtoObject* ProtoTupleImplementation::implRemoveLast(ProtoContext* context, int count) { return PROTO_NONE; }
+    ProtoObject* ProtoTupleImplementation::implRemoveAt(ProtoContext* context, int index) { return PROTO_NONE; }
+    ProtoObject* ProtoTupleImplementation::implRemoveSlice(ProtoContext* context, int from, int to) { return PROTO_NONE; }
 
     unsigned long ProtoTupleIteratorImplementation::getHash(ProtoContext* context) {
         return Cell::getHash(context);

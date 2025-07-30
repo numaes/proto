@@ -101,7 +101,7 @@ namespace proto
         Cell* newCell;
         if (this->thread)
         {
-            newCell = ((ProtoThreadImplementation*)(this->thread))->allocCell();
+            newCell = ((ProtoThreadImplementation*)(this->thread))->implAllocCell();
             ::new (newCell) Cell(this);
             newCell = static_cast<Cell*>(newCell);
             this->allocatedCellsCount++;
@@ -204,7 +204,7 @@ namespace proto
 
         while (*currentChar)
         {
-            charList = charList->appendLast(this, this->fromUTF8Char(currentChar));
+            charList = (ProtoList*) charList->appendLast(this, this->fromUTF8Char(currentChar));
 
             // Avanzar el puntero según el número de bytes del carácter UTF-8
             if ((*currentChar & 0x80) == 0) currentChar += 1;
@@ -217,7 +217,7 @@ namespace proto
         // La creación de una cadena implica convertir la lista de caracteres en una tupla.
         return new(this) ProtoStringImplementation(
             this,
-            ProtoTupleImplementation::tupleFromList(this, charList)
+            ProtoTupleImplementation::implTupleFromList(this, charList)
         );
     }
 

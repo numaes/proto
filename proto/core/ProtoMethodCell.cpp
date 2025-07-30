@@ -29,7 +29,7 @@ namespace proto
      * @param kwargs Una lista dispersa de argumentos por palabra clave.
      * @return El ProtoObject resultante de la ejecución del método nativo.
      */
-    ProtoObject* ProtoMethodCellImplementation::invoke(
+    ProtoObject* ProtoMethodCellImplementation::implInvoke(
         ProtoContext* context,
         ProtoList* args,
         ProtoSparseList* kwargs
@@ -37,7 +37,7 @@ namespace proto
     {
         // La lógica principal es simplemente llamar al puntero de función almacenado.
         // Se asume que this->method no es nulo, lo cual debería garantizarse en el constructor.
-        return this->method(context, this->asObject(context), static_cast<ParentLink*>(nullptr), args, kwargs);
+        return this->method(context, this->implAsObject(context), static_cast<ParentLink*>(nullptr), args, kwargs);
     }
 
     /**
@@ -50,7 +50,7 @@ namespace proto
      * @param context El contexto de ejecución actual.
      * @return Un ProtoObject que representa esta celda de método.
      */
-    ProtoObject* ProtoMethodCellImplementation::asObject(ProtoContext* context)
+    ProtoObject* ProtoMethodCellImplementation::implAsObject(ProtoContext* context)
     {
         ProtoObjectPointer p;
         p.oid.oid = (ProtoObject*)this;
@@ -108,11 +108,11 @@ namespace proto
         // Esta celda no contiene referencias a otras celdas, por lo que el cuerpo está vacío.
     };
 
-    ProtoObject* ProtoMethodCellImplementation::getSelf(ProtoContext* context) {
+    ProtoObject* ProtoMethodCellImplementation::implGetSelf(ProtoContext* context) {
         return nullptr;
     }
 
-    ProtoMethod ProtoMethodCellImplementation::getMethod(ProtoContext* context) {
+    ProtoMethod ProtoMethodCellImplementation::implGetMethod(ProtoContext* context) {
         return nullptr;
     }
 } // namespace proto

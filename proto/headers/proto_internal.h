@@ -311,7 +311,7 @@ namespace proto
          * @param newParentToAdd El objeto padre que se va a añadir.
          * @return Una *nueva* ProtoObjectCellImplementation con la cadena de herencia actualizada.
          */
-        ProtoObjectCell* addParent(
+        ProtoObjectCell* implAddParent(
             ProtoContext* context,
             ProtoObjectCell* newParentToAdd
         );
@@ -321,7 +321,7 @@ namespace proto
          * @param context El contexto de ejecución actual.
          * @return Un ProtoObject que representa este objeto.
          */
-        ProtoObject* asObject(ProtoContext* context);
+        ProtoObject* implAsObject(ProtoContext* context);
 
         /**
          * @brief Finalizador para el recolector de basura.
@@ -361,11 +361,11 @@ namespace proto
         );
         ~ProtoListIteratorImplementation();
 
-        int hasNext(ProtoContext* context);
-        ProtoObject* next(ProtoContext* context);
-        ProtoListIteratorImplementation* advance(ProtoContext* context);
+        int implHasNext(ProtoContext* context);
+        ProtoObject* implNext(ProtoContext* context);
+        ProtoListIteratorImplementation* implAdvance(ProtoContext* context);
 
-        ProtoObject* asObject(ProtoContext* context);
+        ProtoObject* implAsObject(ProtoContext* context);
         unsigned long getHash(ProtoContext* context);
 
         void finalize(ProtoContext* context);
@@ -398,32 +398,32 @@ namespace proto
         );
         ~ProtoListImplementation();
 
-        ProtoObject* getAt(ProtoContext* context, int index);
-        ProtoObject* getFirst(ProtoContext* context);
-        ProtoObject* getLast(ProtoContext* context);
-        ProtoListImplementation* getSlice(ProtoContext* context, int from, int to);
-        unsigned long getSize(ProtoContext* context);
+        ProtoObject* implGetAt(ProtoContext* context, int index);
+        ProtoObject* implGetFirst(ProtoContext* context);
+        ProtoObject* implGetLast(ProtoContext* context);
+        ProtoListImplementation* implGetSlice(ProtoContext* context, int from, int to);
+        unsigned long implGetSize(ProtoContext* context);
 
-        bool has(ProtoContext* context, ProtoObject* value);
-        ProtoListImplementation* setAt(ProtoContext* context, int index, ProtoObject* value = PROTO_NONE);
-        ProtoListImplementation* insertAt(ProtoContext* context, int index, ProtoObject* value);
+        bool implHas(ProtoContext* context, ProtoObject* value);
+        ProtoListImplementation* implSetAt(ProtoContext* context, int index, ProtoObject* value = PROTO_NONE);
+        ProtoListImplementation* implInsertAt(ProtoContext* context, int index, ProtoObject* value);
 
-        ProtoListImplementation* appendFirst(ProtoContext* context, ProtoObject* value);
-        ProtoListImplementation* appendLast(ProtoContext* context, ProtoObject* value);
+        ProtoListImplementation* implAppendFirst(ProtoContext* context, ProtoObject* value);
+        ProtoListImplementation* implAppendLast(ProtoContext* context, ProtoObject* value);
 
-        ProtoListImplementation* extend(ProtoContext* context, ProtoList* other);
+        ProtoListImplementation* implExtend(ProtoContext* context, ProtoList* other);
 
-        ProtoListImplementation* splitFirst(ProtoContext* context, int index);
-        ProtoListImplementation* splitLast(ProtoContext* context, int index);
+        ProtoListImplementation* implSplitFirst(ProtoContext* context, int index);
+        ProtoListImplementation* implSplitLast(ProtoContext* context, int index);
 
-        ProtoListImplementation* removeFirst(ProtoContext* context);
-        ProtoListImplementation* removeLast(ProtoContext* context);
-        ProtoListImplementation* removeAt(ProtoContext* context, int index);
-        ProtoListImplementation* removeSlice(ProtoContext* context, int from, int to);
+        ProtoListImplementation* implRemoveFirst(ProtoContext* context);
+        ProtoListImplementation* implRemoveLast(ProtoContext* context);
+        ProtoListImplementation* implRemoveAt(ProtoContext* context, int index);
+        ProtoListImplementation* implRemoveSlice(ProtoContext* context, int from, int to);
 
-        ProtoObject* asObject(ProtoContext* context);
+        ProtoObject* implAsObject(ProtoContext* context);
         unsigned long getHash(ProtoContext* context);
-        ProtoListIteratorImplementation* getIterator(ProtoContext* context);
+        ProtoListIteratorImplementation* implGetIterator(ProtoContext* context);
 
         void finalize(ProtoContext* context);
         void processReferences(
@@ -460,12 +460,12 @@ namespace proto
         );
         ~ProtoSparseListIteratorImplementation();
 
-        int hasNext(ProtoContext* context);
-        unsigned long nextKey(ProtoContext* context);
-        ProtoObject* nextValue(ProtoContext* context);
+        int implHasNext(ProtoContext* context);
+        unsigned long implNextKey(ProtoContext* context);
+        ProtoObject* implNextValue(ProtoContext* context);
 
-        ProtoSparseListIteratorImplementation* advance(ProtoContext* context);
-        ProtoObject* asObject(ProtoContext* context);
+        ProtoSparseListIteratorImplementation* implAdvance(ProtoContext* context);
+        ProtoObject* implAsObject(ProtoContext* context);
         unsigned long getHash(ProtoContext* context);
 
         void finalize(ProtoContext* context);
@@ -497,19 +497,19 @@ namespace proto
         );
         ~ProtoSparseListImplementation();
 
-        bool has(ProtoContext* context, unsigned long index);
-        ProtoObject* getAt(ProtoContext* context, unsigned long index);
-        ProtoSparseListImplementation* setAt(ProtoContext* context, unsigned long index, ProtoObject* value);
-        ProtoSparseListImplementation* removeAt(ProtoContext* context, unsigned long index);
-        int isEqual(ProtoContext* context, ProtoSparseList* otherDict);
-        ProtoObject* getAtOffset(ProtoContext* context, int offset);
+        bool implHas(ProtoContext* context, unsigned long index);
+        ProtoObject* implGetAt(ProtoContext* context, unsigned long index);
+        ProtoSparseListImplementation* implSetAt(ProtoContext* context, unsigned long index, ProtoObject* value);
+        ProtoSparseListImplementation* implRemoveAt(ProtoContext* context, unsigned long index);
+        int implIsEqual(ProtoContext* context, ProtoSparseList* otherDict);
+        ProtoObject* implGetAtOffset(ProtoContext* context, int offset);
 
-        unsigned long getSize(ProtoContext* context);
-        ProtoObject* asObject(ProtoContext* context);
+        unsigned long implGetSize(ProtoContext* context);
+        ProtoObject* implAsObject(ProtoContext* context);
         unsigned long getHash(ProtoContext* context);
-        virtual ProtoSparseListIteratorImplementation* getIterator(ProtoContext* context);
+        virtual ProtoSparseListIteratorImplementation* implGetIterator(ProtoContext* context);
 
-        void processElements(
+        void implProcessElements(
             ProtoContext* context,
             void* self,
             void (*method)(
@@ -520,7 +520,7 @@ namespace proto
             )
         );
 
-        void processValues(
+        void implProcessValues(
             ProtoContext* context,
             void* self,
             void (*method)(
@@ -569,12 +569,12 @@ namespace proto
         ~ProtoTupleIteratorImplementation();
 
         // --- Métodos de la interfaz ProtoTupleIterator ---
-        int hasNext(ProtoContext* context);
-        ProtoObject* next(ProtoContext* context);
-        ProtoTupleIteratorImplementation* advance(ProtoContext* context);
+        int implHasNext(ProtoContext* context);
+        ProtoObject* implNext(ProtoContext* context);
+        ProtoTupleIteratorImplementation* implAdvance(ProtoContext* context);
 
         // --- Métodos de la interfaz Cell ---
-        ProtoObject* asObject(ProtoContext* context);
+        ProtoObject* implAsObject(ProtoContext* context);
         unsigned long getHash(ProtoContext* context);
         void finalize(ProtoContext* context);
         void processReferences(
@@ -610,28 +610,28 @@ namespace proto
         ~ProtoTupleImplementation();
 
         // --- Métodos de la interfaz ProtoTuple ---
-        ProtoObject* getAt(ProtoContext* context, int index);
-        ProtoObject* getFirst(ProtoContext* context);
-        ProtoObject* getLast(ProtoContext* context);
-        ProtoObject* getSlice(ProtoContext* context, int from, int to);
-        unsigned long getSize(ProtoContext* context) { return elementCount; }
-        ProtoListImplementation* asList(ProtoContext* context);
-        static ProtoTupleImplementation* tupleFromList(ProtoContext* context, ProtoList* list);
-        ProtoTupleIteratorImplementation* getIterator(ProtoContext* context);
-        ProtoObject* setAt(ProtoContext* context, int index, ProtoObject* value);
-        bool has(ProtoContext* context, ProtoObject* value);
-        ProtoObject* insertAt(ProtoContext* context, int index, ProtoObject* value);
-        ProtoObject* appendFirst(ProtoContext* context, ProtoTuple* otherTuple);
-        ProtoObject* appendLast(ProtoContext* context, ProtoTuple* otherTuple);
-        ProtoObject* splitFirst(ProtoContext* context, int count);
-        ProtoObject* splitLast(ProtoContext* context, int count);
-        ProtoObject* removeFirst(ProtoContext* context, int count);
-        ProtoObject* removeLast(ProtoContext* context, int count);
-        ProtoObject* removeAt(ProtoContext* context, int index);
-        ProtoObject* removeSlice(ProtoContext* context, int from, int to);
+        ProtoObject* implGetAt(ProtoContext* context, int index);
+        ProtoObject* implGetFirst(ProtoContext* context);
+        ProtoObject* implGetLast(ProtoContext* context);
+        ProtoObject* implGetSlice(ProtoContext* context, int from, int to);
+        unsigned long implGetSize(ProtoContext* context) { return elementCount; }
+        ProtoListImplementation* implAsList(ProtoContext* context);
+        static ProtoTupleImplementation* implTupleFromList(ProtoContext* context, ProtoList* list);
+        ProtoTupleIteratorImplementation* implGetIterator(ProtoContext* context);
+        ProtoObject* implSetAt(ProtoContext* context, int index, ProtoObject* value);
+        bool implHas(ProtoContext* context, ProtoObject* value);
+        ProtoObject* implInsertAt(ProtoContext* context, int index, ProtoObject* value);
+        ProtoObject* implAppendFirst(ProtoContext* context, ProtoTuple* otherTuple);
+        ProtoObject* implAppendLast(ProtoContext* context, ProtoTuple* otherTuple);
+        ProtoObject* implSplitFirst(ProtoContext* context, int count);
+        ProtoObject* implSplitLast(ProtoContext* context, int count);
+        ProtoObject* implRemoveFirst(ProtoContext* context, int count);
+        ProtoObject* implRemoveLast(ProtoContext* context, int count);
+        ProtoObject* implRemoveAt(ProtoContext* context, int index);
+        ProtoObject* implRemoveSlice(ProtoContext* context, int from, int to);
 
         // --- Métodos de la interfaz Cell ---
-        ProtoObject* asObject(ProtoContext* context);
+        ProtoObject* implAsObject(ProtoContext* context);
         unsigned long getHash(ProtoContext* context);
         void finalize(ProtoContext* context);
         void processReferences(
@@ -667,12 +667,12 @@ namespace proto
         ~ProtoStringIteratorImplementation();
 
         // --- Métodos de la interfaz ProtoStringIterator ---
-        int hasNext(ProtoContext* context);
-        ProtoObject* next(ProtoContext* context);
-        ProtoStringIteratorImplementation* advance(ProtoContext* context);
+        int implHasNext(ProtoContext* context);
+        ProtoObject* implNext(ProtoContext* context);
+        ProtoStringIteratorImplementation* implAdvance(ProtoContext* context);
 
         // --- Métodos de la interfaz Cell ---
-        ProtoObject* asObject(ProtoContext* context);
+        ProtoObject* implAsObject(ProtoContext* context);
         unsigned long getHash(ProtoContext* context); // Heredado de Cell, importante para la consistencia.
         void finalize(ProtoContext* context);
         void processReferences(
@@ -701,20 +701,27 @@ namespace proto
         ~ProtoStringImplementation();
 
         // --- Métodos de la interfaz ProtoString ---
-        ProtoObject* getAt(ProtoContext* context, int index);
-        unsigned long getSize(ProtoContext* context);
-        ProtoStringImplementation* getSlice(ProtoContext* context, int from, int to);
-        ProtoStringImplementation* setAt(ProtoContext* context, int index, ProtoObject* value);
-        ProtoStringImplementation* insertAt(ProtoContext* context, int index, ProtoObject* value);
-        ProtoStringImplementation* appendLast(ProtoContext* context, ProtoString* otherString);
-        ProtoStringImplementation* appendFirst(ProtoContext* context, ProtoString* otherString);
-        ProtoStringImplementation* removeSlice(ProtoContext* context, int from, int to);
-        ProtoListImplementation* asList(ProtoContext* context);
-        ProtoStringIteratorImplementation* getIterator(ProtoContext* context);
-
+        int implCmpToString(ProtoContext* context, ProtoString* otherString);
+        ProtoObject* implGetAt(ProtoContext* context, int index);
+        unsigned long implGetSize(ProtoContext* context);
+        ProtoStringImplementation* implGetSlice(ProtoContext* context, int from, int to);
+        ProtoStringImplementation* implSetAt(ProtoContext* context, int index, ProtoObject* value);
+        ProtoStringImplementation* implInsertAt(ProtoContext* context, int index, ProtoObject* value);
+        ProtoStringImplementation* implAppendLast(ProtoContext* context, ProtoString* otherString);
+        ProtoStringImplementation* implAppendFirst(ProtoContext* context, ProtoString* otherString);
+        ProtoStringImplementation* implRemoveSlice(ProtoContext* context, int from, int to);
+        ProtoListImplementation* implAsList(ProtoContext* context);
+        ProtoStringIteratorImplementation* implGetIterator(ProtoContext* context);
+        ProtoStringImplementation* implSetAtString(ProtoContext* context, int index, ProtoString* otherString);
+        ProtoStringImplementation* implInsertAtString(ProtoContext* context, int index, ProtoString* otherString);
+        ProtoStringImplementation* implSplitFirst(ProtoContext* context, int count);
+        ProtoStringImplementation* implSplitLast(ProtoContext* context, int count);
+        ProtoStringImplementation* implRemoveFirst(ProtoContext* context, int count);
+        ProtoStringImplementation* implRemoveLast(ProtoContext* context, int count);
+        ProtoStringImplementation* implRemoveAt(ProtoContext* context, int index);
 
         // --- Métodos de la interfaz Cell ---
-        ProtoObject* asObject(ProtoContext* context);
+        ProtoObject* implAsObject(ProtoContext* context);
         unsigned long getHash(ProtoContext* context);
         void finalize(ProtoContext* context);
         void processReferences(
@@ -746,10 +753,10 @@ namespace proto
         ~ProtoByteBufferImplementation();
 
         // --- Métodos de la interfaz ProtoByteBuffer ---
-        char getAt(ProtoContext* context, int index);
-        void setAt(ProtoContext* context, int index, char value);
-        unsigned long getSize(ProtoContext* context);
-        char* getBuffer(ProtoContext* context);
+        char implGetAt(ProtoContext* context, int index);
+        void implSetAt(ProtoContext* context, int index, char value);
+        unsigned long implGetSize(ProtoContext* context);
+        char* implGetBuffer(ProtoContext* context);
 
         // --- Métodos de la interfaz Cell ---
         void processReferences(
@@ -758,7 +765,7 @@ namespace proto
             void (*method)(ProtoContext*, void*, Cell*)
         );
         void finalize(ProtoContext* context);
-        ProtoObject* asObject(ProtoContext* context);
+        ProtoObject* implAsObject(ProtoContext* context);
         unsigned long getHash(ProtoContext* context);
 
     private:
@@ -777,14 +784,14 @@ namespace proto
     public:
         ProtoMethodCellImplementation(ProtoContext* context, ProtoMethod method);
 
-        ProtoObject* invoke(ProtoContext* context, ProtoList* args, ProtoSparseList* kwargs);
-        ProtoObject* asObject(ProtoContext* context);
+        ProtoObject* implInvoke(ProtoContext* context, ProtoList* args, ProtoSparseList* kwargs);
+        ProtoObject* implAsObject(ProtoContext* context);
         unsigned long getHash(ProtoContext* context);
         void finalize(ProtoContext* context);
         void processReferences(ProtoContext* context, void* self,
                                void (*method)(ProtoContext* context, void* self, Cell* cell));
-        ProtoObject* getSelf(ProtoContext* context);
-        ProtoMethod getMethod(ProtoContext* context);
+        ProtoObject* implGetSelf(ProtoContext* context);
+        ProtoMethod implGetMethod(ProtoContext* context);
 
     private:
         ProtoMethod method{};
@@ -818,14 +825,14 @@ namespace proto
          * @param context El contexto de ejecución actual.
          * @return El puntero (void*) almacenado.
          */
-        void* getPointer(ProtoContext* context);
+        void* implGetPointer(ProtoContext* context);
 
         /**
          * @brief Devuelve la representación de esta celda como un ProtoObject.
          * @param context El contexto de ejecución actual.
          * @return Un ProtoObject que representa este puntero externo.
          */
-        ProtoObject* asObject(ProtoContext* context);
+        ProtoObject* implAsObject(ProtoContext* context);
 
         /**
          * @brief Finalizador para el recolector de basura.
@@ -877,38 +884,38 @@ namespace proto
         // --- Control de Gestión del GC ---
 
         // Marca el hilo como "no gestionado" para que el GC no lo detenga.
-        void setUnmanaged();
+        void implSetUnmanaged();
 
         // Devuelve el hilo al estado "gestionado" por el GC.
-        void setManaged();
+        void implSetManaged();
 
         // --- Control del Ciclo de Vida del Hilo ---
 
         // Desvincula el hilo del objeto, permitiendo que se ejecute de forma independiente.
-        void detach(ProtoContext* context);
+        void implDetach(ProtoContext* context);
 
         // Bloquea el hilo actual hasta que este hilo termine su ejecución.
-        void join(ProtoContext* context);
+        void implJoin(ProtoContext* context);
 
         // Solicita la finalización del hilo.
-        void exit(ProtoContext* context);
+        void implExit(ProtoContext* context);
 
         // --- Asignación de Memoria y Sincronización ---
 
         // Asigna una nueva celda de memoria para el hilo.
-        Cell* allocCell();
+        Cell* implAllocCell();
 
         // Sincroniza el hilo con el recolector de basura.
-        void synchToGC();
+        void implSynchToGC();
 
         // --- Interfaz con el Sistema de Tipos ---
 
         // Establece el contexto de ejecución actual para el hilo.
-        void setCurrentContext(ProtoContext* context);
-        ProtoContext* getCurrentContext();
+        void implSetCurrentContext(ProtoContext* context);
+        ProtoContext* implGetCurrentContext();
 
         // Convierte la implementación a un ProtoObject* genérico.
-        ProtoObject* asObject(ProtoContext* context);
+        ProtoObject* implAsObject(ProtoContext* context);
 
         // --- Métodos para el Recolector de Basura (Heredados de Cell) ---
 
@@ -920,6 +927,8 @@ namespace proto
             ProtoContext* context,
             void* self,
             void (*method)(ProtoContext* context, void* self, Cell* cell));
+
+        static ProtoThread* implGetCurrentThread(ProtoContext* context);
 
         // --- Datos Miembro ---
         int state; // Estado actual del hilo respecto al GC.
