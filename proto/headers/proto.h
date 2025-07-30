@@ -498,6 +498,7 @@ namespace proto
 
 		ProtoList* newList();
 		ProtoTuple* newTuple();
+		ProtoTuple* newTupleFromList(ProtoList* sourceList);
 		ProtoSparseList* newSparseList();
 
 		Cell* allocCell();

@@ -676,7 +676,7 @@ ProtoObject* ProtoTuple::getLast(ProtoContext* context) {
 }
 
 ProtoObject* ProtoTuple::getSlice(ProtoContext* context, int from, int to) {
-    return toImpl<ProtoTupleImplementation>(this)->implGetSlice(context, from, to);
+    return toImpl<ProtoTupleImplementation>(this)->implGetSlice(context, from, to)->implAsObject(context);
 }
 
 unsigned long ProtoTuple::getSize(ProtoContext* context) {
@@ -688,43 +688,43 @@ bool ProtoTuple::has(ProtoContext* context, ProtoObject* value) {
 }
 
 ProtoObject* ProtoTuple::setAt(ProtoContext* context, int index, ProtoObject* value) {
-    return toImpl<ProtoTupleImplementation>(this)->implSetAt(context, index, value);
+    return toImpl<ProtoTupleImplementation>(this)->implSetAt(context, index, value)->implAsObject(context);
 }
 
 ProtoObject* ProtoTuple::insertAt(ProtoContext* context, int index, ProtoObject* value) {
-    return toImpl<ProtoTupleImplementation>(this)->implInsertAt(context, index, value);
+    return toImpl<ProtoTupleImplementation>(this)->implInsertAt(context, index, value)->implAsObject(context);
 }
 
 ProtoObject* ProtoTuple::appendFirst(ProtoContext* context, ProtoTuple* otherTuple) {
-    return toImpl<ProtoTupleImplementation>(this)->implAppendFirst(context, otherTuple);
+    return toImpl<ProtoTupleImplementation>(this)->implAppendFirst(context, otherTuple)->implAsObject(context);
 }
 
 ProtoObject* ProtoTuple::appendLast(ProtoContext* context, ProtoTuple* otherTuple) {
-    return toImpl<ProtoTupleImplementation>(this)->implAppendLast(context, otherTuple);
+    return toImpl<ProtoTupleImplementation>(this)->implAppendLast(context, otherTuple)->implAsObject(context);
 }
 
 ProtoObject* ProtoTuple::splitFirst(ProtoContext* context, int count) {
-    return toImpl<ProtoTupleImplementation>(this)->implSplitFirst(context, count);
+    return toImpl<ProtoTupleImplementation>(this)->implSplitFirst(context, count)->implAsObject(context);
 }
 
 ProtoObject* ProtoTuple::splitLast(ProtoContext* context, int count) {
-    return toImpl<ProtoTupleImplementation>(this)->implSplitLast(context, count);
+    return toImpl<ProtoTupleImplementation>(this)->implSplitLast(context, count)->implAsObject(context);
 }
 
 ProtoObject* ProtoTuple::removeFirst(ProtoContext* context, int count) {
-    return toImpl<ProtoTupleImplementation>(this)->implRemoveFirst(context, count);
+    return toImpl<ProtoTupleImplementation>(this)->implRemoveFirst(context, count)->implAsObject(context);
 }
 
 ProtoObject* ProtoTuple::removeLast(ProtoContext* context, int count) {
-    return toImpl<ProtoTupleImplementation>(this)->implRemoveLast(context, count);
+    return toImpl<ProtoTupleImplementation>(this)->implRemoveLast(context, count)->implAsObject(context);
 }
 
 ProtoObject* ProtoTuple::removeAt(ProtoContext* context, int index) {
-    return toImpl<ProtoTupleImplementation>(this)->implRemoveAt(context, index);
+    return toImpl<ProtoTupleImplementation>(this)->implRemoveAt(context, index)->implAsObject(context);
 }
 
 ProtoObject* ProtoTuple::removeSlice(ProtoContext* context, int from, int to) {
-    return toImpl<ProtoTupleImplementation>(this)->implRemoveSlice(context, from, to);
+    return toImpl<ProtoTupleImplementation>(this)->implRemoveSlice(context, from, to)->implAsObject(context);
 }
 
 ProtoList* ProtoTuple::asList(ProtoContext* context) {

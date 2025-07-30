@@ -143,7 +143,7 @@ namespace proto
 
         return new(context) ProtoStringImplementation(
             context,
-            ProtoTupleImplementation::implTupleFromList(context, sourceList)
+            ProtoTupleImplementation::tupleFromList(context, sourceList)
         );
     }
 
@@ -182,7 +182,7 @@ namespace proto
 
         return new(context) ProtoStringImplementation(
             context,
-            ProtoTupleImplementation::implTupleFromList(context, sourceList)
+            ProtoTupleImplementation::tupleFromList(context, sourceList)
         );
     }
 
@@ -215,7 +215,7 @@ namespace proto
 
         return new(context) ProtoStringImplementation(
             context,
-            ProtoTupleImplementation::implTupleFromList(context, sourceList)
+            ProtoTupleImplementation::tupleFromList(context, sourceList)
         );
     }
 
@@ -235,7 +235,7 @@ namespace proto
 
         return new(context) ProtoStringImplementation(
             context,
-            ProtoTupleImplementation::implTupleFromList(context, sourceList)
+            ProtoTupleImplementation::tupleFromList(context, sourceList)
         );
     }
 
@@ -256,7 +256,7 @@ namespace proto
 
         return new(context) ProtoStringImplementation(
             context,
-            ProtoTupleImplementation::implTupleFromList(context, sourceList)
+            ProtoTupleImplementation::tupleFromList(context, sourceList)
         );
     }
 
@@ -285,7 +285,7 @@ namespace proto
 
         return new(context) ProtoStringImplementation(
             context,
-            ProtoTupleImplementation::implTupleFromList(context, sourceList)
+            ProtoTupleImplementation::tupleFromList(context, sourceList)
         );
     }
 

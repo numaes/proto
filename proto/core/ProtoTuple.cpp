@@ -10,6 +10,7 @@
 #include <algorithm> // Para std::max y otros algoritmos
 #include <vector>    // Útil para la creación de tuplas
 
+
 namespace proto
 {
     TupleDictionary::TupleDictionary(
@@ -203,112 +204,6 @@ namespace proto
         return newNode->rebalance(context);
     };
 
-    TupleDictionary* TupleDictionary::removeFirst(ProtoContext* context)
-    {
-        TupleDictionary* newNode;
-
-        if (this->previous)
-        {
-            if (this->previous->previous)
-                newNode = new(context) TupleDictionary(
-                    context,
-                    this->key,
-                    this->next,
-                    this->previous->removeFirst(context)
-                );
-            else if (this->previous->next)
-                newNode = new(context) TupleDictionary(
-                    context,
-                    this->key,
-                    this->next,
-                    this->previous->next
-                );
-            else
-                newNode = new(context) TupleDictionary(
-                    context,
-                    this->key,
-                    this->next,
-                    NULL
-                );
-        }
-        else
-        {
-            return this->next;
-        }
-
-        return newNode->rebalance(context);
-    };
-
-    ProtoTupleImplementation* TupleDictionary::getFirst(ProtoContext* context)
-    {
-        TupleDictionary* node = this;
-
-        while (node)
-        {
-            if (node->previous)
-                node = node->previous;
-            return node->key;
-        }
-        return NULL;
-    };
-
-    TupleDictionary* TupleDictionary::removeAt(ProtoContext* context, ProtoTupleImplementation* key)
-    {
-        TupleDictionary* newNode;
-
-        if (this->key == key)
-        {
-            if (this->previous && this->next)
-            {
-                if (!this->previous->previous && !this->previous->next)
-                    newNode = new(context) TupleDictionary(
-                        context,
-                        this->previous->key,
-                        this->next
-                    );
-                else
-                {
-                    ProtoTupleImplementation* first = this->next->getFirst(context);
-                    newNode = new(context) TupleDictionary(
-                        context,
-                        first,
-                        this->next->removeFirst(context),
-                        this->previous
-                    );
-                }
-            }
-            else if (this->previous)
-                newNode = this->previous;
-            else
-                newNode = this->next;
-        }
-        else
-        {
-            if (key->getHash(context) < this->key->getHash(context))
-            {
-                newNode = this->previous->removeAt(context, key);
-                newNode = new(context) TupleDictionary(
-                    context,
-                    this->key,
-                    newNode,
-                    this->next
-                );
-            }
-            else
-            {
-                newNode = this->next->removeAt(context, key);
-                newNode = new(context) TupleDictionary(
-                    context,
-                    this->key,
-                    this->previous,
-                    newNode
-                );
-            }
-        }
-
-        return newNode->rebalance(context);
-    };
-
     int TupleDictionary::compareTuple(ProtoContext* context, ProtoTuple* tuple)
     {
         int thisSize = this->key->implGetSize(context);
@@ -459,259 +354,549 @@ namespace proto
 
     // --- ProtoTupleIteratorImplementation ---
 
-    // Constructor modernizado con lista de inicialización.
     ProtoTupleIteratorImplementation::ProtoTupleIteratorImplementation(
         ProtoContext* context,
         ProtoTupleImplementation* base,
         unsigned long currentIndex
-    ) : Cell(context), base(base), currentIndex(currentIndex)
+    ) : Cell(context)
     {
-    }
+        this->base = base;
+        this->currentIndex = currentIndex;
+    };
 
-    // Destructor por defecto.
-    ProtoTupleIteratorImplementation::~ProtoTupleIteratorImplementation() = default;
+    ProtoTupleIteratorImplementation::~ProtoTupleIteratorImplementation()
+    {
+    };
 
     int ProtoTupleIteratorImplementation::implHasNext(ProtoContext* context)
     {
-        // Es más seguro comprobar si la base no es nula.
-        if (!this->base)
-        {
+        if (this->currentIndex >= this->base->getSize(context))
             return false;
-        }
-        return this->currentIndex < this->base->implGetSize(context);
-    }
+        else
+            return true;
+    };
 
     ProtoObject* ProtoTupleIteratorImplementation::implNext(ProtoContext* context)
     {
-        // Usar hasNext para una comprobación robusta.
-        if (!implHasNext(context))
-        {
-            return PROTO_NONE;
-        }
-        // Devuelve el elemento actual. El avance se gestiona por separado.
-        return this->base->implGetAt(context, this->currentIndex);
-    }
+        return this->base->getAt(context, this->currentIndex);
+    };
 
-    // CORRECCIÓN CRÍTICA: El iterador debe avanzar creando uno nuevo en la siguiente posición.
     ProtoTupleIteratorImplementation* ProtoTupleIteratorImplementation::implAdvance(ProtoContext* context)
     {
-        return new(context) ProtoTupleIteratorImplementation(context, this->base, this->currentIndex + 1);
-    }
+        return new(context) ProtoTupleIteratorImplementation(context, this->base, this->currentIndex);
+    };
 
     ProtoObject* ProtoTupleIteratorImplementation::implAsObject(ProtoContext* context)
     {
         ProtoObjectPointer p;
         p.oid.oid = (ProtoObject*)this;
-        p.op.pointer_tag = POINTER_TAG_TUPLE_ITERATOR; // Asegurar el tag correcto.
+        p.op.pointer_tag = POINTER_TAG_LIST_ITERATOR;
+
         return p.oid.oid;
-    }
+    };
 
     void ProtoTupleIteratorImplementation::finalize(ProtoContext* context)
     {
-        // No se requiere limpieza especial.
-    }
+    };
 
-    // El GC debe conocer la tupla base para evitar que sea recolectada.
+    unsigned long ProtoTupleIteratorImplementation::getHash(ProtoContext* context)
+    {
+        return Cell::getHash(context);
+    };
+
     void ProtoTupleIteratorImplementation::processReferences(
         ProtoContext* context,
         void* self,
-        void (*method)(ProtoContext* context, void* self, Cell* cell)
+        void (*method)(
+            ProtoContext* context,
+            void* self,
+            Cell* cell
+        )
     )
     {
-        if (this->base)
-        {
-            method(context, self, this->base);
-        }
-    }
+        // TODO
+    };
 
-
-    // --- ProtoTupleImplementation ---
-
-    // AJUSTE: La implementación se basa en una estructura de "cuerda" (rope) o árbol-B
-    // para un manejo eficiente de la memoria y operaciones de slicing/concatenación.
-    // Esta versión se centra en un nodo hoja para simplificar.
-
-    // Constructor para un nuevo nodo hoja.
     ProtoTupleImplementation::ProtoTupleImplementation(
         ProtoContext* context,
-        const unsigned long elementCount,
+        unsigned long elementCount,
+        unsigned long height,
         ProtoObject** data
-    ) : Cell(context),
-        elementCount(elementCount),
-        height(0), // Los nodos hoja tienen altura 0.
-        data(data)
+    ) : Cell(context)
     {
-        // El hash se hereda de la clase base Cell, que usa la dirección de memoria.
-    }
+        this->elementCount = elementCount;
+        this->height = height;
+        for (int i = 0; i < TUPLE_SIZE; i++)
+            this->pointers.data[i] = data[i];
+    };
 
-    // Constructor para un nuevo nodo indirecto
     ProtoTupleImplementation::ProtoTupleImplementation(
         ProtoContext* context,
-        const unsigned long elementCount,
+        unsigned long elementCount,
+        unsigned long height,
         ProtoTupleImplementation** indirect
-    ) : Cell(context),
-        elementCount(elementCount),
-        height(0), // Los nodos hoja tienen altura 0.
-        indirect(indirect)
+    ) : Cell(context)
     {
-        // El hash se hereda de la clase base Cell, que usa la dirección de memoria.
-    }
+        this->elementCount = elementCount;
+        this->height = height;
+        for (int i = 0; i < TUPLE_SIZE; i++)
+            this->pointers.indirect[i] = indirect[i];
+    };
 
-    // El destructor libera la memoria del array de datos.
-    // NOTA: Se asume que el array 'data' fue asignado con 'new[]'.
     ProtoTupleImplementation::~ProtoTupleImplementation()
     {
-        delete[] data;
-        data = nullptr;
-    }
+    };
 
-    // CORRECCIÓN: La creación de tuplas debe ser robusta y gestionar la memoria correctamente.
-    ProtoTupleImplementation* ProtoTupleImplementation::implTupleFromList(ProtoContext* context, ProtoList* list)
+    ProtoTupleImplementation* ProtoTupleImplementation::tupleFromList(ProtoContext* context, ProtoList* list)
     {
-        if (!list)
+        unsigned long size = list->getSize(context);
+        ProtoTupleImplementation* newTuple = nullptr;
+        ProtoListImplementation *nextLevel, *lastLevel = nullptr;
+        ProtoTupleImplementation* indirectData[TUPLE_SIZE];
+        ProtoObject* data[TUPLE_SIZE];
+
+        ProtoListImplementation* indirectPointers = new(context) ProtoListImplementation(context);
+        unsigned long i, j;
+        for (i = 0, j = 0; i < size; i++)
         {
-            return new(context) ProtoTupleImplementation(context, 0, static_cast<ProtoObject**>(nullptr));
+            data[j++] = list->getAt(context, i);
+
+            if (j == TUPLE_SIZE)
+            {
+                newTuple = new(context) ProtoTupleImplementation(
+                    context,
+                    TUPLE_SIZE,
+                    0,
+                    data
+                );
+                indirectPointers = indirectPointers->implAppendLast(context, (ProtoObject*)newTuple);
+                j = 0;
+            }
         }
 
-        const unsigned long size = list->getSize(context);
-        if (size == 0)
+        if (j != 0)
         {
-            return new(context) ProtoTupleImplementation(context, 0, static_cast<ProtoObject**>(nullptr));
+            unsigned long lastSize = j;
+            for (; j < TUPLE_SIZE; j++)
+                data[j] = nullptr;
+            newTuple = new(context) ProtoTupleImplementation(
+                context,
+                lastSize,
+                0,
+                data
+            );
+            indirectPointers = indirectPointers->implAppendLast(context, (ProtoObject*)newTuple);
         }
 
-        // El array 'data' en sí no es una 'Cell', por lo que se asigna con new[].
-        ProtoObject** elements = new ProtoObject*[size];
-
-        for (unsigned long i = 0; i < size; ++i)
+        if (size > TUPLE_SIZE)
         {
-            elements[i] = list->getAt(context, i);
+            int indirectSize = 0;
+            int levelCount = 0;
+            while (indirectPointers->getSize(context) > TUPLE_SIZE)
+            {
+                nextLevel = new(context) ProtoListImplementation(context);
+                levelCount++;
+                indirectSize = 0;
+                for (i = 0, j = 0; i < indirectPointers->getSize(context); i++)
+                {
+                    indirectData[j] = (ProtoTupleImplementation*)indirectPointers->getAt(context, i);
+                    indirectSize += indirectData[j]->elementCount;
+                    j++;
+                    if (j == TUPLE_SIZE)
+                    {
+                        newTuple = new(context) ProtoTupleImplementation(
+                            context,
+                            indirectSize,
+                            levelCount,
+                            indirectData
+                        );
+                        indirectSize = 0;
+                        j = 0;
+                        nextLevel = nextLevel->implAppendLast(context, (ProtoObject*)newTuple);
+                    }
+                }
+                if (j != 0)
+                {
+                    for (; j < TUPLE_SIZE; j++)
+                        indirectData[j] = nullptr;
+                    newTuple = new(context) ProtoTupleImplementation(
+                        context,
+                        indirectSize,
+                        levelCount,
+                        indirectData
+                    );
+                    nextLevel = nextLevel->implAppendLast(context, (ProtoObject*)newTuple);
+                }
+
+                lastLevel = indirectPointers;
+                indirectPointers = nextLevel;
+            };
         }
 
-        // Crear la tupla con los elementos copiados.
-        return new(context) ProtoTupleImplementation(context, size, elements);
+        TupleDictionary *currentRoot, *newRoot;
+        currentRoot = context->space->tupleRoot.load();
+        do
+        {
+            if (currentRoot->has(context, newTuple))
+            {
+                newTuple = currentRoot->getAt(context, newTuple);
+                break;
+            }
+            else
+                newRoot = currentRoot->set(context, newTuple);
+        }
+        while (context->space->tupleRoot.compare_exchange_strong(
+            currentRoot,
+            newRoot
+        ));
+
+        return newTuple;
     }
 
-    // CORRECCIÓN: El acceso a elementos debe ser seguro y manejar índices fuera de rango.
+
     ProtoObject* ProtoTupleImplementation::implGetAt(ProtoContext* context, int index)
     {
         if (index < 0)
+            index = ((int)this->elementCount) + index;
+
+        if (index < 0)
+            index = 0;
+
+        int rest = index % TUPLE_SIZE;
+        ProtoTupleImplementation* node = this;
+        for (int i = this->height; i > 0; i--)
         {
-            index += this->elementCount;
+            index = index / TUPLE_SIZE;
+            node = node->pointers.indirect[index];
         }
 
-        if (index < 0 || (unsigned long)index >= this->elementCount)
-        {
-            return PROTO_NONE; // Índice fuera de rango.
-        }
+        return node->pointers.data[rest];
+    };
 
-        // Para una implementación de hoja, el acceso es directo.
-        if (this->data)
-        {
-            return this->data[index];
-        }
-
-        return PROTO_NONE; // Tupla mal formada.
-    }
-
-    // CORRECCIÓN CRÍTICA: La implementación de 'processReferences' es vital para el GC.
-    // Debe recorrer todos los objetos que la tupla mantiene vivos.
-    void ProtoTupleImplementation::processReferences(
-        ProtoContext* context,
-        void* self,
-        void (*method)(ProtoContext* context, void* self, Cell* cell)
-    )
+    ProtoObject* ProtoTupleImplementation::implGetFirst(ProtoContext* context)
     {
-        if (this->data)
+        return this->getAt(context, 0);
+    };
+
+    ProtoObject* ProtoTupleImplementation::implGetLast(ProtoContext* context)
+    {
+        if (this->elementCount > 0)
+            return this->getAt(context, this->elementCount - 1);
+
+        return PROTO_NONE;
+    };
+
+    ProtoTupleImplementation* ProtoTupleImplementation::implGetSlice(ProtoContext* context, int from, int to)
+    {
+        int thisSize = this->elementCount;
+        if (from < 0)
         {
-            // Si es un nodo hoja
-            for (unsigned long i = 0; i < this->elementCount; ++i)
-            {
-                ProtoObject* obj = this->data[i];
-                if (obj && obj->isCell(context))
-                {
-                    method(context, self, obj->asCell(context));
-                }
-            }
+            from = thisSize + from;
+            if (from < 0)
+                from = 0;
         }
-        // Una implementación completa de cuerda también procesaría nodos 'indirect'.
-    }
+
+        if (to < 0)
+        {
+            to = thisSize + to;
+            if (to < 0)
+                to = 0;
+        }
+
+        ProtoList* sourceList = context->newList();
+        for (int i = from; i <= to; i++)
+            if (i < thisSize)
+                sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+        return (ProtoTupleImplementation*)context->newTupleFromList(sourceList);
+    };
+
+    unsigned long ProtoTupleImplementation::implGetSize(ProtoContext* context)
+    {
+        return this->elementCount;
+    };
+
+    bool ProtoTupleImplementation::implHas(ProtoContext* context, ProtoObject* value)
+    {
+        for (unsigned long i = 0; i < this->elementCount; i++)
+            if (value == this->getAt(context, i))
+                return true;
+
+        return false;
+    };
+
+    ProtoTupleImplementation* ProtoTupleImplementation::implSetAt(ProtoContext* context, int index, ProtoObject* value)
+    {
+        if (!value)
+        {
+            return nullptr;
+        }
+
+        int thisSize = this->elementCount;
+
+        if (index < 0)
+        {
+            index = thisSize + index;
+            if (index < 0)
+                index = 0;
+        }
+
+        if (index >= thisSize)
+        {
+            return nullptr;
+        }
+
+        ProtoList* sourceList = context->newList();
+        for (int i = 0; i < index; i++)
+            if (i < thisSize)
+                sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+        sourceList = sourceList->appendLast(context, value);
+
+        for (int i = index + 1; i < thisSize; i++)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+
+        return ProtoTupleImplementation::tupleFromList(context, sourceList);
+    };
+
+    ProtoTupleImplementation* ProtoTupleImplementation::implInsertAt(ProtoContext* context, int index, ProtoObject* value)
+    {
+        if (!value)
+        {
+            return nullptr;
+        }
+
+        int thisSize = this->elementCount;
+
+        if (index < 0)
+        {
+            index = thisSize + index;
+            if (index < 0)
+                index = 0;
+        }
+
+        if (index >= thisSize)
+        {
+            return nullptr;
+        }
+
+        ProtoList* sourceList = context->newList();
+        for (int i = 0; i < index; i++)
+            if (i < thisSize)
+                sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+        sourceList = sourceList->appendLast(context, value);
+
+        for (int i = index; i < thisSize; i++)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+
+        return ProtoTupleImplementation::tupleFromList(context, sourceList);
+    };
+
+    ProtoTupleImplementation* ProtoTupleImplementation::implAppendFirst(ProtoContext* context, ProtoTuple* otherTuple)
+    {
+        if (!otherTuple)
+        {
+            return nullptr;
+        }
+
+        int thisSize = this->elementCount;
+
+        ProtoList* sourceList = context->newList();
+        int otherSize = otherTuple->getSize(context);
+        for (int i = 0; i < otherSize; i++)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+        for (int i = 0; i < thisSize; i++)
+            if (i < thisSize)
+                sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+        return ProtoTupleImplementation::tupleFromList(context, sourceList);
+    };
+
+    ProtoTupleImplementation* ProtoTupleImplementation::implAppendLast(ProtoContext* context, ProtoTuple* otherTuple)
+    {
+        if (!otherTuple)
+        {
+            return nullptr;
+        }
+
+        int thisSize = this->elementCount;
+
+        ProtoList* sourceList = context->newList();
+        for (int i = 0; i < thisSize; i++)
+            if (i < thisSize)
+                sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+        int otherSize = otherTuple->getSize(context);
+        for (int i = 0; i < otherSize; i++)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+        return ProtoTupleImplementation::tupleFromList(context, sourceList);
+    };
+
+    ProtoTupleImplementation* ProtoTupleImplementation::implSplitFirst(ProtoContext* context, int count)
+    {
+        int thisSize = this->elementCount;
+
+        ProtoList* sourceList = context->newList();
+        for (int i = 0; i < count; i++)
+            if (i < thisSize)
+                sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+        return ProtoTupleImplementation::tupleFromList(context, sourceList);
+    };
+
+    ProtoTupleImplementation* ProtoTupleImplementation::implSplitLast(ProtoContext* context, int count)
+    {
+        int thisSize = this->elementCount;
+        int first = thisSize - count;
+        if (first < 0)
+            first = 0;
+
+        ProtoList* sourceList = context->newList();
+        for (int i = first; i < thisSize; i++)
+            if (i < thisSize)
+                sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+        return ProtoTupleImplementation::tupleFromList(context, sourceList);
+    };
+
+    ProtoTupleImplementation* ProtoTupleImplementation::implRemoveFirst(ProtoContext* context, int count)
+    {
+        int thisSize = this->elementCount;
+
+        ProtoList* sourceList = context->newList();
+        for (int i = count; i < thisSize; i++)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+        return ProtoTupleImplementation::tupleFromList(context, sourceList);
+    };
+
+    ProtoTupleImplementation* ProtoTupleImplementation::implRemoveLast(ProtoContext* context, int count)
+    {
+        int thisSize = this->elementCount;
+
+        ProtoList* sourceList = context->newList();
+        for (int i = 0; i < thisSize - count; i++)
+            if (i < thisSize)
+                sourceList = sourceList->appendLast(context, this->getAt(context, i));
+            else
+                break;
+
+        return ProtoTupleImplementation::tupleFromList(context, sourceList);
+    };
+
+    ProtoTupleImplementation* ProtoTupleImplementation::implRemoveAt(ProtoContext* context, int index)
+    {
+        int thisSize = this->elementCount;
+
+        if (index < 0)
+        {
+            index = thisSize + index;
+            if (index < 0)
+                index = 0;
+        }
+
+        if (index >= thisSize)
+        {
+            return nullptr;
+        }
+
+        ProtoList* sourceList = context->newList();
+        for (int i = 0; i < index; i++)
+            if (i < thisSize)
+                sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+        for (int i = index + 1; i < thisSize; i++)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+        return ProtoTupleImplementation::tupleFromList(context, sourceList);
+    };
+
+    ProtoTupleImplementation* ProtoTupleImplementation::implRemoveSlice(ProtoContext* context, int from, int to)
+    {
+        int thisSize = this->elementCount;
+
+        if (from < 0)
+        {
+            from = thisSize + from;
+            if (from < 0)
+                from = 0;
+        }
+
+        if (to < 0)
+        {
+            to = thisSize + from;
+            if (to < 0)
+                to = 0;
+        }
+
+        ProtoList* sourceList = context->newList();
+        for (int i = from; i < to; i++)
+            if (i < thisSize)
+                sourceList = sourceList->appendLast(context, this->getAt(context, i));
+            else
+                break;
+
+        return ProtoTupleImplementation::tupleFromList(context, sourceList);
+    };
+
+    ProtoList* ProtoTupleImplementation::implAsList(ProtoContext* context)
+    {
+        ProtoList* sourceList = context->newList();
+        for (unsigned long i = 0; i < this->elementCount; i++)
+            sourceList = sourceList->appendLast(context, this->getAt(context, i));
+
+        return sourceList;
+    };
 
     void ProtoTupleImplementation::finalize(ProtoContext* context)
     {
-        // El destructor ya se encarga de liberar el array 'data'.
-    }
+    };
+
+    void ProtoTupleImplementation::processReferences(
+        ProtoContext* context,
+        void* self,
+        void (*method)(
+            ProtoContext* context,
+            void* self,
+            Cell* cell
+        )
+    )
+    {
+        int size = (this->elementCount > TUPLE_SIZE) ? TUPLE_SIZE : this->elementCount;
+        for (int i = 0; i < size; i++)
+            if (this->height > 0)
+                method(context, self, this->pointers.indirect[i]);
+            else
+            {
+                if (this->pointers.data[i]->isCell(context))
+                    method(context, self, this->pointers.data[i]->asCell(context));
+            }
+    };
 
     ProtoObject* ProtoTupleImplementation::implAsObject(ProtoContext* context)
     {
-        ProtoObjectPointer p{};
-        p.oid.oid = reinterpret_cast<ProtoObject*>(this);
-        p.op.pointer_tag = POINTER_TAG_TUPLE; // Usar el tag correcto.
+        ProtoObjectPointer p;
+        p.oid.oid = (ProtoObject*)this;
+        p.op.pointer_tag = POINTER_TAG_TUPLE;
+
         return p.oid.oid;
-    }
+    };
 
     unsigned long ProtoTupleImplementation::getHash(ProtoContext* context)
     {
-        // La implementación de la clase base es suficiente y eficiente.
-        return Cell::getHash(context);
-    }
+        ProtoObjectPointer p;
+        p.oid.oid = (ProtoObject*)this;
+
+        return p.asHash.hash;
+    };
 
     ProtoTupleIteratorImplementation* ProtoTupleImplementation::implGetIterator(ProtoContext* context)
     {
-        // CORRECCIÓN: El iterador debe apuntar a 'this', no a 'nullptr'.
         return new(context) ProtoTupleIteratorImplementation(context, this, 0);
-    }
-
-    // Para tuplas inmutables, 'setAt' devuelve una *nueva* tupla con el cambio.
-    ProtoObject* ProtoTupleImplementation::implSetAt(ProtoContext* context, int index, ProtoObject* value)
-    {
-        if (index < 0)
-        {
-            index += this->elementCount;
-        }
-
-        if (index < 0 || (unsigned long)index >= this->elementCount)
-        {
-            return this->implAsObject(context); // Devolver la tupla original si el índice es inválido.
-        }
-
-        // Crear una copia de los datos.
-        ProtoObject** newData = new ProtoObject*[this->elementCount];
-        for (unsigned long i = 0; i < this->elementCount; ++i)
-        {
-            newData[i] = this->data[i];
-        }
-
-        // Modificar el valor en la copia.
-        newData[index] = value;
-
-        // Crear y devolver una nueva tupla con los datos modificados.
-        return (new(context) ProtoTupleImplementation(context, this->elementCount, newData))->implAsObject(context);
-    }
-
-    ProtoObject* ProtoTupleImplementation::implGetFirst(ProtoContext* context) { return implGetAt(context, 0); }
-    ProtoObject* ProtoTupleImplementation::implGetLast(ProtoContext* context) { return implGetAt(context, implGetSize(context) - 1); }
-    ProtoListImplementation* ProtoTupleImplementation::implAsList(ProtoContext* context) {
-        ProtoList* list = context->newList();
-        for (unsigned long i = 0; i < this->elementCount; ++i) {
-            list = (ProtoList*) list->appendLast(context, this->data[i]);
-        }
-        return (ProtoListImplementation*) list;
-    }
-
-    ProtoObject* ProtoTupleImplementation::implGetSlice(ProtoContext* context, int from, int to) { return PROTO_NONE; }
-    bool ProtoTupleImplementation::implHas(ProtoContext* context, ProtoObject* value) { return 0; }
-    ProtoObject* ProtoTupleImplementation::implInsertAt(ProtoContext* context, int index, ProtoObject* value) { return PROTO_NONE; }
-    ProtoObject* ProtoTupleImplementation::implAppendFirst(ProtoContext* context, ProtoTuple* otherTuple) { return PROTO_NONE; }
-    ProtoObject* ProtoTupleImplementation::implAppendLast(ProtoContext* context, ProtoTuple* otherTuple) { return PROTO_NONE; }
-    ProtoObject* ProtoTupleImplementation::implSplitFirst(ProtoContext* context, int count) { return PROTO_NONE; }
-    ProtoObject* ProtoTupleImplementation::implSplitLast(ProtoContext* context, int count) { return PROTO_NONE; }
-    ProtoObject* ProtoTupleImplementation::implRemoveFirst(ProtoContext* context, int count) { return PROTO_NONE; }
-    ProtoObject* ProtoTupleImplementation::implRemoveLast(ProtoContext* context, int count) { return PROTO_NONE; }
-    ProtoObject* ProtoTupleImplementation::implRemoveAt(ProtoContext* context, int index) { return PROTO_NONE; }
-    ProtoObject* ProtoTupleImplementation::implRemoveSlice(ProtoContext* context, int from, int to) { return PROTO_NONE; }
-
-    unsigned long ProtoTupleIteratorImplementation::getHash(ProtoContext* context) {
-        return Cell::getHash(context);
-    }
-
+    };
 } // namespace proto

@@ -462,14 +462,14 @@ namespace proto
             if (((unsigned long)index) < thisIndex)
                 newNode = new(context) ProtoListImplementation(
                     context,
-                    value,
+                    this->value,
                     this->previous->implInsertAt(context, index, value),
                     this->next
                 );
             else
                 newNode = new(context) ProtoListImplementation(
                     context,
-                    value,
+                    this->value,
                     this->previous,
                     this->next->implInsertAt(context, index - thisIndex - 1, value)
                 );

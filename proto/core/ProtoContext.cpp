@@ -217,7 +217,7 @@ namespace proto
         // La creación de una cadena implica convertir la lista de caracteres en una tupla.
         return new(this) ProtoStringImplementation(
             this,
-            ProtoTupleImplementation::implTupleFromList(this, charList)
+            ProtoTupleImplementation::tupleFromList(this, charList)
         );
     }
 
@@ -231,7 +231,12 @@ namespace proto
 
     ProtoTuple* ProtoContext::newTuple()
     {
-        return new(this) ProtoTupleImplementation(this, 0, static_cast<ProtoObject**>(nullptr));
+        return new(this) ProtoTupleImplementation(this, 0, 0, static_cast<ProtoObject**>(nullptr));
+    }
+
+    ProtoTuple* ProtoContext::newTupleFromList(ProtoList* sourceList)
+    {
+        return ProtoTupleImplementation::tupleFromList(this, sourceList);
     }
 
     ProtoSparseList* ProtoContext::newSparseList()

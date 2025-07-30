@@ -554,6 +554,51 @@ namespace proto
     };
 
     // --- Iterador de Tuplas ---
+#define TUPLE_SIZE 5
+
+    class TupleDictionary : public Cell
+    {
+    private:
+        TupleDictionary* next;
+        TupleDictionary* previous;
+        ProtoTupleImplementation* key;
+        int count;
+        int height;
+
+        int compareTuple(ProtoContext* context, ProtoTuple* tuple);
+        TupleDictionary* rightRotate(ProtoContext* context);
+        TupleDictionary* leftRotate(ProtoContext* context);
+        TupleDictionary* rebalance(ProtoContext* context);
+
+    public:
+        TupleDictionary(
+            ProtoContext* context,
+            ProtoTupleImplementation* key = nullptr,
+            TupleDictionary* next = nullptr,
+            TupleDictionary* previous = nullptr
+        );
+
+        long unsigned int getHash(proto::ProtoContext*);
+        proto::ProtoObject* asObject(proto::ProtoContext*);
+        void finalize(ProtoContext* context);
+
+        void processReferences(
+            ProtoContext* context,
+            void* self,
+            void (*method)(
+                ProtoContext* context,
+                void* self,
+                Cell* cell
+            )
+        );
+
+        int compareList(ProtoContext* context, ProtoList* list);
+        bool hasList(ProtoContext* context, ProtoList* list);
+        bool has(ProtoContext* context, ProtoTuple* tuple);
+        ProtoTupleImplementation* getAt(ProtoContext* context, ProtoTupleImplementation* tuple);
+        TupleDictionary* set(ProtoContext* context, ProtoTupleImplementation* tuple);
+    };
+
     // Implementación concreta para ProtoTupleIterator
     class ProtoTupleIteratorImplementation : public Cell, public ProtoTupleIterator
     {
@@ -597,12 +642,14 @@ namespace proto
         ProtoTupleImplementation(
             ProtoContext* context,
             unsigned long elementCount,
+            unsigned long heigh,
             ProtoObject** data
         );
 
         ProtoTupleImplementation(
             ProtoContext* context,
             unsigned long elementCount,
+            unsigned long height,
             ProtoTupleImplementation** indirect
         );
 
@@ -613,22 +660,22 @@ namespace proto
         ProtoObject* implGetAt(ProtoContext* context, int index);
         ProtoObject* implGetFirst(ProtoContext* context);
         ProtoObject* implGetLast(ProtoContext* context);
-        ProtoObject* implGetSlice(ProtoContext* context, int from, int to);
-        unsigned long implGetSize(ProtoContext* context) { return elementCount; }
-        ProtoListImplementation* implAsList(ProtoContext* context);
-        static ProtoTupleImplementation* implTupleFromList(ProtoContext* context, ProtoList* list);
+        ProtoTupleImplementation* implGetSlice(ProtoContext* context, int from, int to);
+        unsigned long implGetSize(ProtoContext* context);
+        ProtoList* implAsList(ProtoContext* context);
+        static ProtoTupleImplementation* tupleFromList(ProtoContext* context, ProtoList* list);
         ProtoTupleIteratorImplementation* implGetIterator(ProtoContext* context);
-        ProtoObject* implSetAt(ProtoContext* context, int index, ProtoObject* value);
+        ProtoTupleImplementation* implSetAt(ProtoContext* context, int index, ProtoObject* value);
         bool implHas(ProtoContext* context, ProtoObject* value);
-        ProtoObject* implInsertAt(ProtoContext* context, int index, ProtoObject* value);
-        ProtoObject* implAppendFirst(ProtoContext* context, ProtoTuple* otherTuple);
-        ProtoObject* implAppendLast(ProtoContext* context, ProtoTuple* otherTuple);
-        ProtoObject* implSplitFirst(ProtoContext* context, int count);
-        ProtoObject* implSplitLast(ProtoContext* context, int count);
-        ProtoObject* implRemoveFirst(ProtoContext* context, int count);
-        ProtoObject* implRemoveLast(ProtoContext* context, int count);
-        ProtoObject* implRemoveAt(ProtoContext* context, int index);
-        ProtoObject* implRemoveSlice(ProtoContext* context, int from, int to);
+        ProtoTupleImplementation* implInsertAt(ProtoContext* context, int index, ProtoObject* value);
+        ProtoTupleImplementation* implAppendFirst(ProtoContext* context, ProtoTuple* otherTuple);
+        ProtoTupleImplementation* implAppendLast(ProtoContext* context, ProtoTuple* otherTuple);
+        ProtoTupleImplementation* implSplitFirst(ProtoContext* context, int count);
+        ProtoTupleImplementation* implSplitLast(ProtoContext* context, int count);
+        ProtoTupleImplementation* implRemoveFirst(ProtoContext* context, int count);
+        ProtoTupleImplementation* implRemoveLast(ProtoContext* context, int count);
+        ProtoTupleImplementation* implRemoveAt(ProtoContext* context, int index);
+        ProtoTupleImplementation* implRemoveSlice(ProtoContext* context, int from, int to);
 
         // --- Métodos de la interfaz Cell ---
         ProtoObject* implAsObject(ProtoContext* context);
@@ -641,14 +688,12 @@ namespace proto
         );
 
     private:
-        unsigned long elementCount{};
-        unsigned long height{}; // 0 para un nodo hoja, >0 para un nodo interno
-
-        union
-        {
-            ProtoObject** data{}; // Para nodos hoja
-            ProtoTupleImplementation** indirect; // Para nodos internos
-        };
+        unsigned long elementCount:56;
+        unsigned long height:8;
+        union {
+            ProtoObject   *data[TUPLE_SIZE];
+            ProtoTupleImplementation    *indirect[TUPLE_SIZE];
+        } pointers;
     };
 
     // --- ProtoStringIterator ---
@@ -940,51 +985,7 @@ namespace proto
         unsigned int unmanagedCount; // Contador para llamadas anidadas a setUnmanaged/setManaged.
     };
 
-    class TupleDictionary : public Cell
-    {
-    private:
-        TupleDictionary* next;
-        TupleDictionary* previous;
-        ProtoTupleImplementation* key;
-        int count;
-        int height;
 
-        int compareTuple(ProtoContext* context, ProtoTuple* tuple);
-        TupleDictionary* rightRotate(ProtoContext* context);
-        TupleDictionary* leftRotate(ProtoContext* context);
-        TupleDictionary* rebalance(ProtoContext* context);
-        TupleDictionary* removeFirst(ProtoContext* context);
-        ProtoTupleImplementation* getFirst(ProtoContext* context);
-
-    public:
-        TupleDictionary(
-            ProtoContext* context,
-            ProtoTupleImplementation* key = NULL,
-            TupleDictionary* next = NULL,
-            TupleDictionary* previous = NULL
-        );
-
-        virtual long unsigned int getHash(proto::ProtoContext*);
-        virtual proto::ProtoObject* asObject(proto::ProtoContext*);
-        virtual void finalize(ProtoContext* context);
-
-        virtual void processReferences(
-            ProtoContext* context,
-            void* self,
-            void (*method)(
-                ProtoContext* context,
-                void* self,
-                Cell* cell
-            )
-        );
-
-        int compareList(ProtoContext* context, ProtoList* list);
-        bool hasList(ProtoContext* context, ProtoList* list);
-        bool has(ProtoContext* context, ProtoTuple* tuple);
-        ProtoTupleImplementation* getAt(ProtoContext* context, ProtoTupleImplementation* tuple);
-        TupleDictionary* set(ProtoContext* context, ProtoTupleImplementation* tuple);
-        TupleDictionary* removeAt(ProtoContext* context, ProtoTupleImplementation* tuple);
-    };
 } // namespace proto
 
 #endif /* PROTO_INTERNAL_H */
