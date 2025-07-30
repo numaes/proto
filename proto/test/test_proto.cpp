@@ -173,19 +173,19 @@ void test_tuple_operations(proto::ProtoContext& c) {
 
     // Test creation from a list
     proto::ProtoList* list1 = c.newList()->appendLast(&c, c.fromInteger(1))->appendLast(&c, c.fromInteger(2));
-    proto::ProtoTuple* tuple1 = proto::ProtoTupleImplementation::tupleFromList(&c, list1);
+    proto::ProtoTuple* tuple1 = proto::ProtoTupleImplementation::implTupleFromList(&c, list1);
 
     ASSERT(tuple1->getSize(&c) == 2, "Tuple size");
     ASSERT(tuple1->getAt(&c, 1)->asInteger(&c) == 2, "getAt on tuple");
 
     // Test interning: creating a tuple with the same content should yield the same object
     proto::ProtoList* list2 = c.newList()->appendLast(&c, c.fromInteger(1))->appendLast(&c, c.fromInteger(2));
-    proto::ProtoTuple* tuple2 = proto::ProtoTupleImplementation::tupleFromList(&c, list2);
+    proto::ProtoTuple* tuple2 = proto::ProtoTupleImplementation::implTupleFromList(&c, list2);
     ASSERT(tuple1 == tuple2, "Interning: identical tuples should be the same object");
 
     // Test that different tuples are different objects
     proto::ProtoList* list3 = c.newList()->appendLast(&c, c.fromInteger(1))->appendLast(&c, c.fromInteger(3));
-    proto::ProtoTuple* tuple3 = proto::ProtoTupleImplementation::tupleFromList(&c, list3);
+    proto::ProtoTuple* tuple3 = proto::ProtoTupleImplementation::implTupleFromList(&c, list3);
     ASSERT(tuple1 != tuple3, "Interning: different tuples should be different objects");
 }
 

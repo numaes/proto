@@ -323,14 +323,13 @@ namespace proto
             if (!this->next) return this->previous;
 
             // Unir los dos subárboles
-            const ProtoListImplementation* rightmost_of_left = dynamic_cast<ProtoListImplementation*>(this->previous->
-                implGetLast(context)->asCell(context));
+            ProtoObject* rightmost_of_left = this->previous->implGetLast(context);
             auto* left_without_rightmost = static_cast<ProtoListImplementation*>(this->previous->
                 implRemoveLast(context));
 
             newNode = new(context) ProtoListImplementation(
                 context,
-                rightmost_of_left->value,
+                rightmost_of_left,
                 left_without_rightmost,
                 this->next
             );
@@ -451,7 +450,12 @@ namespace proto
                 context,
                 value,
                 this->previous,
-                this->next
+                new(context) ProtoListImplementation(
+                    context,
+                    this->value,
+                    nullptr,
+                    this->next
+                )
             );
         else
         {
