@@ -174,7 +174,7 @@ namespace proto
             // Si nos quedamos sin celdas locales, sincronizamos con el GC
             // y pedimos un nuevo bloque de celdas al espacio.
             this->synchToGC();
-            this->freeCells = dynamic_cast<BigCell*>(this->space->getFreeCells(reinterpret_cast<ProtoThread*>(this)));
+            this->freeCells = static_cast<BigCell*>(this->space->getFreeCells(reinterpret_cast<ProtoThread*>(this)));
         }
 
         // Tomar la primera celda de la lista local.

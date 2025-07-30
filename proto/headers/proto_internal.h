@@ -116,17 +116,19 @@ namespace proto
         } cell;
     };
 
-    class AllocatedSegment {
+    class AllocatedSegment
+    {
     public:
-        BigCell *memoryBlock;
-        int     cellsCount;
-        AllocatedSegment *nextBlock;
+        BigCell* memoryBlock;
+        int cellsCount;
+        AllocatedSegment* nextBlock;
     };
 
-    class DirtySegment {
+    class DirtySegment
+    {
     public:
-        BigCell	 *cellChain;
-        DirtySegment *nextSegment;
+        BigCell* cellChain;
+        DirtySegment* nextSegment;
     };
 
     // Pointer tags
@@ -176,6 +178,20 @@ namespace proto
 
 #define TYPE_SHIFT                          4
 
+    // Plantilla para convertir de puntero a la API pública a puntero a la implementación
+    template <typename Impl, typename Api>
+    inline Impl* toImpl(Api* ptr)
+    {
+        return reinterpret_cast<Impl*>(ptr);
+    }
+
+    // Plantilla para convertir de puntero a la API pública constante
+    template <typename Impl, typename Api>
+    inline const Impl* toImpl(const Api* ptr)
+    {
+        return reinterpret_cast<const Impl*>(ptr);
+    }
+
     class Cell
     {
     public:
@@ -184,7 +200,7 @@ namespace proto
         explicit Cell(ProtoContext* context);
         virtual ~Cell();
 
-        virtual void finalize(ProtoContext* context) = 0;
+        virtual void finalize(ProtoContext* context);
         virtual void processReferences(
             ProtoContext* context,
             void* self,
@@ -193,10 +209,10 @@ namespace proto
                 void* self,
                 Cell* cell
             )
-        ) = 0;
+        );
 
-        virtual unsigned long getHash(ProtoContext* context) = 0;
-        virtual ProtoObject* asObject(ProtoContext* context) = 0;
+        virtual unsigned long getHash(ProtoContext* context);
+        virtual ProtoObject* asObject(ProtoContext* context);
 
         Cell* nextCell;
     };
@@ -207,7 +223,11 @@ namespace proto
         BigCell(ProtoContext* context);
         ~BigCell();
 
-        void finalize(ProtoContext* context) { /* No special finalization needed for BigCell */ };
+        void finalize(ProtoContext* context)
+        {
+            /* No special finalization needed for BigCell */
+        };
+
         void processReferences(
             ProtoContext* context,
             void* self,
@@ -216,10 +236,14 @@ namespace proto
                 void* self,
                 Cell* cell
             )
-        ) { /* BigCell does not hold references to other Cells */ };
+        )
+        {
+            /* BigCell does not hold references to other Cells */
+        };
         unsigned long getHash(ProtoContext* context) { return Cell::getHash(context); };
         ProtoObject* asObject(ProtoContext* context) { return Cell::asObject(context); };
 
+        char undetermined[64];
     };
 
     class ParentLinkImplementation : public Cell, public ParentLink
@@ -828,7 +852,7 @@ namespace proto
         void* pointer; // El puntero opaco a los datos externos.
     };
 
-        // --- ProtoThreadImplementation ---
+    // --- ProtoThreadImplementation ---
     // La implementación interna de un hilo gestionado por el runtime de Proto.
     // Hereda de 'Cell' para ser gestionada por el recolector de basura.
     class ProtoThreadImplementation : public Cell, public ProtoThread
@@ -898,61 +922,60 @@ namespace proto
             void (*method)(ProtoContext* context, void* self, Cell* cell));
 
         // --- Datos Miembro ---
-        int state;     // Estado actual del hilo respecto al GC.
-        ProtoString* name;          // Nombre del hilo (para depuración).
-        ProtoSpace* space;          // El espacio de memoria al que pertenece el hilo.
-        std::thread* osThread;      // El hilo real del sistema operativo.
-        BigCell* freeCells;         // Lista de celdas de memoria libres locales al hilo.
+        int state; // Estado actual del hilo respecto al GC.
+        ProtoString* name; // Nombre del hilo (para depuración).
+        ProtoSpace* space; // El espacio de memoria al que pertenece el hilo.
+        std::thread* osThread; // El hilo real del sistema operativo.
+        BigCell* freeCells; // Lista de celdas de memoria libres locales al hilo.
         ProtoContext* currentContext; // Pila de llamadas actual del hilo.
         unsigned int unmanagedCount; // Contador para llamadas anidadas a setUnmanaged/setManaged.
     };
 
-    class TupleDictionary: public Cell {
+    class TupleDictionary : public Cell
+    {
     private:
-        TupleDictionary *next;
-        TupleDictionary *previous;
-        ProtoTupleImplementation *key;
+        TupleDictionary* next;
+        TupleDictionary* previous;
+        ProtoTupleImplementation* key;
         int count;
         int height;
 
-        int compareTuple(ProtoContext *context, ProtoTuple *tuple);
-        TupleDictionary *rightRotate(ProtoContext *context);
-        TupleDictionary *leftRotate(ProtoContext *context);
-        TupleDictionary *rebalance(ProtoContext *context);
-        TupleDictionary *removeFirst(ProtoContext *context);
-        ProtoTupleImplementation *getFirst(ProtoContext *context);
+        int compareTuple(ProtoContext* context, ProtoTuple* tuple);
+        TupleDictionary* rightRotate(ProtoContext* context);
+        TupleDictionary* leftRotate(ProtoContext* context);
+        TupleDictionary* rebalance(ProtoContext* context);
+        TupleDictionary* removeFirst(ProtoContext* context);
+        ProtoTupleImplementation* getFirst(ProtoContext* context);
 
     public:
         TupleDictionary(
-            ProtoContext *context,
-            ProtoTupleImplementation *key = NULL,
-            TupleDictionary *next = NULL,
-            TupleDictionary *previous = NULL
+            ProtoContext* context,
+            ProtoTupleImplementation* key = NULL,
+            TupleDictionary* next = NULL,
+            TupleDictionary* previous = NULL
         );
 
         virtual long unsigned int getHash(proto::ProtoContext*);
         virtual proto::ProtoObject* asObject(proto::ProtoContext*);
-        virtual void finalize(ProtoContext *context);
+        virtual void finalize(ProtoContext* context);
 
         virtual void processReferences(
-            ProtoContext *context,
-            void *self,
-            void (*method) (
-                ProtoContext *context,
-                void *self,
-                Cell *cell
+            ProtoContext* context,
+            void* self,
+            void (*method)(
+                ProtoContext* context,
+                void* self,
+                Cell* cell
             )
         );
 
-        int compareList(ProtoContext *context, ProtoList *list);
-        bool hasList(ProtoContext *context, ProtoList *list);
-        bool has(ProtoContext *context, ProtoTuple *tuple);
-        ProtoTupleImplementation *getAt(ProtoContext *context, ProtoTupleImplementation *tuple);
-        TupleDictionary *set(ProtoContext *context, ProtoTupleImplementation *tuple);
-        TupleDictionary *removeAt(ProtoContext *context, ProtoTupleImplementation *tuple);
-
+        int compareList(ProtoContext* context, ProtoList* list);
+        bool hasList(ProtoContext* context, ProtoList* list);
+        bool has(ProtoContext* context, ProtoTuple* tuple);
+        ProtoTupleImplementation* getAt(ProtoContext* context, ProtoTupleImplementation* tuple);
+        TupleDictionary* set(ProtoContext* context, ProtoTupleImplementation* tuple);
+        TupleDictionary* removeAt(ProtoContext* context, ProtoTupleImplementation* tuple);
     };
-
 } // namespace proto
 
 #endif /* PROTO_INTERNAL_H */

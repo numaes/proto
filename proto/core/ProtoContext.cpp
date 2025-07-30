@@ -102,6 +102,8 @@ namespace proto
         if (this->thread)
         {
             newCell = ((ProtoThreadImplementation*)(this->thread))->allocCell();
+            ::new (newCell) Cell(this);
+            newCell = static_cast<Cell*>(newCell);
             this->allocatedCellsCount++;
             this->checkCellsCount();
         }
@@ -110,7 +112,9 @@ namespace proto
             // ADVERTENCIA: Esta rama usa malloc directamente, lo que evita el GC.
             // Esto es probablemente un remanente de código antiguo y podría ser una fuente de fugas de memoria.
             // Todas las asignaciones de celdas deberían pasar por el gestor de memoria del espacio.
-            newCell = static_cast<Cell*>(std::malloc(sizeof(BigCell)));
+            void* newChunk = std::malloc(sizeof(BigCell));
+            ::new (newChunk) Cell(this);
+            newCell = static_cast<Cell*>(newChunk);
         }
 
         // Las celdas se encadenan en una lista simple para su seguimiento dentro del contexto.

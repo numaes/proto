@@ -69,9 +69,13 @@ namespace proto
 
     unsigned long ParentLinkImplementation::getHash(ProtoContext* context)
     {
-        ProtoObjectPointer p;
-        p.oid.oid = (ProtoObject*)this;
-
-        return p.asHash.hash;
+        // Deberíamos obtener el hash del objeto que este enlace representa,
+        // no el hash del enlace en sí.
+        if (this->object)
+        {
+            return this->object->getHash(context);
+        }
+        // Devolver 0 o algún otro valor por defecto si no hay objeto.
+        return 0;
     }
 };

@@ -302,6 +302,7 @@ ProtoSpace::ProtoSpace(
     this->maxHeapSize = MAX_HEAP_SIZE;
     this->blockOnNoMemory = false;
     this->gcStarted = false;
+    this->freeCells = nullptr;
 
     // Create GC thread and ensure it is working
     this->gcThread = new std::thread(
@@ -434,7 +435,7 @@ Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
                 }
             }
             else {
-                BigCell *newBlocks = (BigCell *) malloc(toAllocBytes);
+                BigCell *newBlocks = static_cast<BigCell *>(malloc(toAllocBytes));
                 if (!newBlocks) {
                     printf("\nPANIC ERROR: Not enough MEMORY! Exiting ...\n");
                     std::exit(1);
@@ -445,7 +446,7 @@ Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
                 int allocatedBlocks = toAllocBytes / sizeof(BigCell);
                 for (int n = 0; n < allocatedBlocks; n++) {
                     // Clear new allocated block
-                    void **p =(void **) newBlocks;
+                    void **p =(void **) currentBlock;
                     for (unsigned long count = 0;
                         count < sizeof(BigCell) / sizeof(void *);
                         count++)
