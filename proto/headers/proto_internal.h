@@ -561,7 +561,7 @@ namespace proto
 
     class TupleDictionary : public Cell
     {
-    private:
+    public:
         TupleDictionary* next;
         TupleDictionary* previous;
         ProtoTupleImplementation* key;
@@ -573,7 +573,6 @@ namespace proto
         TupleDictionary* leftRotate(ProtoContext* context);
         TupleDictionary* rebalance(ProtoContext* context);
 
-    public:
         TupleDictionary(
             ProtoContext* context,
             ProtoTupleImplementation* key = nullptr,

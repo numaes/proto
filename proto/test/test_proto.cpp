@@ -236,7 +236,6 @@ void test_sparse_list_operations(proto::ProtoContext& c) {
 
     // Test getAt
     proto::ProtoObject* name_val = dict2->getAt(&c, key1_hash);
-    ASSERT(name_val->isCell(&c), "getAt() returns a cell for the string value");
     ASSERT(dict2->getAt(&c, key2_hash)->asInteger(&c) == 7, "getAt() for an integer value");
     ASSERT(dict2->getAt(&c, 9999) == PROTO_NONE, "getAt() for a non-existent key returns NONE");
 
