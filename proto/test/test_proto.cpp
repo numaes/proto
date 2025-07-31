@@ -12,7 +12,6 @@
 #include <chrono>
 #include <thread>
 #include "../headers/proto.h"
-#include "../headers/proto_internal.h"
 
 // --- Simple Assertion Macro ---
 // Provides clear pass/fail messages with file and line context on failure.

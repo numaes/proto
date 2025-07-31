@@ -70,7 +70,7 @@ ProtoObject *ProtoObject::clone(ProtoContext *context, bool isMutable) {
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        auto *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
+        auto *oc = pa.oc.objectCell;
 
         ProtoObject *newObject = (new(context) ProtoObjectCellImplementation(
             context,
@@ -114,9 +114,9 @@ ProtoObject *ProtoObject::newChild(ProtoContext *context, bool isMutable) {
     pa.oid.oid = this;
 
     if (pa.op.pointer_tag == POINTER_TAG_OBJECT) {
-        auto *oc = (ProtoObjectCellImplementation *) pa.oid.oid;
+        auto *oc = pa.oc.objectCell;
 
-        ProtoObject *newObject = (new(context) ProtoObjectCellImplementation(
+        auto *newObject = new(context) ProtoObjectCellImplementation(
             context,
             new(context) ParentLinkImplementation(
                 context,
@@ -124,8 +124,8 @@ ProtoObject *ProtoObject::newChild(ProtoContext *context, bool isMutable) {
                 oc
             ),
             0,
-            oc->attributes
-        ))->implAsObject(context);
+            new(context) ProtoSparseListImplementation(context)
+        );
 
         if (isMutable) {
             ProtoSparseList *currentRoot;
@@ -177,18 +177,6 @@ ProtoObject *ProtoObject::getAttribute(ProtoContext *context, ProtoString *name)
             else
                 break;
         } while (oc);
-    }
-
-    if (this->hasAttribute(context, context->space->literalGetAttribute)) {
-        ProtoList *parameters = context->newList();
-
-        return this->call(
-            context,
-            nullptr,
-            context->space->literalGetAttribute,
-            this,
-            (ProtoList*) parameters->appendFirst(context, name->asObject(context))
-        );
     }
 
     return PROTO_NONE;
@@ -351,6 +339,7 @@ ProtoList *ProtoObject::getParents(ProtoContext *context) {
         auto *parent = (ParentLinkImplementation *) oc->parent;
         while (parent) {
             parents = (ProtoList*) parents->appendLast(context, parent->object->asObject(context));
+            parent = parent->parent;
         }
 
         return parents;

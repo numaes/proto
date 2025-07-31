@@ -39,7 +39,7 @@ namespace proto
     };
 
     ProtoObject* Cell::asObject(ProtoContext* context) {
-        return PROTO_NONE;
+        return reinterpret_cast<ProtoObject*>(this);
     }
 
     // Sobrecarga del operador 'new' para usar el asignador de memoria del contexto.
