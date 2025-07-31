@@ -38,7 +38,8 @@ namespace proto
         // No hace nada en la clase base.
     };
 
-    ProtoObject* Cell::asObject(ProtoContext* context) {
+    ProtoObject* Cell::asObject(ProtoContext* context)
+    {
         return reinterpret_cast<ProtoObject*>(this);
     }
 

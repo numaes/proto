@@ -225,7 +225,7 @@ void test_sparse_list_operations(proto::ProtoContext& c) {
     unsigned long key2_hash = key2->getHash(&c);
 
     // Test setAt
-    proto::ProtoSparseList* dict1 = dict->setAt(&c, key1_hash, (proto::ProtoObject*) c.fromUTF8String("proto"));
+    proto::ProtoSparseList* dict1 = dict->setAt(&c, key1_hash, c.fromUTF8String("proto")->asObject(&c));
     proto::ProtoSparseList* dict2 = dict1->setAt(&c, key2_hash, c.fromInteger(7));
 
     ASSERT(dict2->getSize(&c) == 2, "Dictionary size after two insertions");
@@ -274,8 +274,8 @@ void test_prototypes_and_inheritance(proto::ProtoContext& c) {
     ASSERT(child2->getAttribute(&c, version_attr)->asInteger(&c) == 2, "New child 'child2' returns its own value for 'version'");
 
     // 4. Multiple Inheritance
-    proto::ProtoObject* proto2 = base_proto->setAttribute(&c, name_attr, (proto::ProtoObject*) c.fromUTF8String("gamarino"));
-    proto::ProtoObject* child3 = child2->addParent(&c, (proto::ProtoObjectCell*) proto2);
+    proto::ProtoObject* proto2 = base_proto->setAttribute(&c, name_attr, c.fromUTF8String("gamarino")->asObject(&c));
+    proto::ProtoObject* child3 = child2->addParent(&c, proto2);
 
     ASSERT(child3->getParents(&c)->getSize(&c) == 2, "Child 'child3' now has two parents");
     ASSERT(child3->getAttribute(&c, version_attr)->asInteger(&c) == 2, "Child 'child3' still accesses its own 'version' attribute");
@@ -296,7 +296,7 @@ void test_gc_stress(proto::ProtoContext& c) {
     for (int i = 0; i < iterations; ++i) {
         proto::ProtoList* tempList = c.newList();
         tempList = tempList->appendLast(&c, c.fromInteger(i));
-        tempList = tempList->appendLast(&c, (proto::ProtoObject*) c.fromUTF8String("temporary string data"));
+        tempList = tempList->appendLast(&c, c.fromUTF8String("temporary string data")->asObject(&c));
 
         // Every 'keep_every' iterations, add the list to our root list.
         if (i % keep_every == 0) {

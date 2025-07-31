@@ -73,7 +73,7 @@ namespace proto
 	class ProtoObject
 	{
 	public:
-		ProtoObject* getPrototype(ProtoContext* c);
+		ProtoObject* getPrototype(const ProtoContext* c);
 		ProtoObject* clone(ProtoContext* c, bool isMutable = false);
 		ProtoObject* newChild(ProtoContext* c, bool isMutable = false);
 
@@ -86,8 +86,8 @@ namespace proto
 		ProtoSparseList* getOwnAttributes(ProtoContext* c);
 		ProtoList* getParents(ProtoContext* c);
 
-		ProtoObject* addParent(ProtoContext* c, ProtoObjectCell* newParent);
-		ProtoObject* isInstanceOf(ProtoContext* c, ProtoObject* prototype);
+		ProtoObject* addParent(ProtoContext* c, ProtoObject* newParent);
+		ProtoObject* isInstanceOf(ProtoContext* c, const ProtoObject* prototype);
 
 		ProtoObject* call(ProtoContext* c,
 		                  ParentLink* nextParent,
@@ -298,7 +298,6 @@ namespace proto
 		ProtoSparseList* setAt(ProtoContext* context, unsigned long index, ProtoObject* value) ;
 		ProtoSparseList* removeAt(ProtoContext* context, unsigned long index) ;
 		int isEqual(ProtoContext* context, ProtoSparseList* otherDict) ;
-		ProtoObject* getAtOffset(ProtoContext* context, int offset) ;
 
 		unsigned long getSize(ProtoContext* context) ;
 		ProtoObject* asObject(ProtoContext* context) ;

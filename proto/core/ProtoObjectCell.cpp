@@ -19,7 +19,7 @@ namespace proto
         unsigned long mutable_ref,
         ProtoSparseListImplementation* attributes
     ) : Cell(context), parent(parent), mutable_ref(mutable_ref),
-        attributes(attributes ? attributes: new(context) ProtoSparseListImplementation(context))
+        attributes(attributes ? attributes : new(context) ProtoSparseListImplementation(context))
     {
         // El cuerpo del constructor ahora puede estar vacío.
     }
@@ -32,7 +32,8 @@ namespace proto
 
     // --- Métodos de la Interfaz ---
 
-    ProtoObjectCell* ProtoObjectCellImplementation::implAddParent(ProtoContext* context, ProtoObjectCell* newParent) {
+    ProtoObjectCell* ProtoObjectCellImplementation::implAddParent(ProtoContext* context, ProtoObjectCell* newParent)
+    {
         // Crea un nuevo eslabón en la cadena de herencia.
         ParentLinkImplementation* newParentLink = new(context) ParentLinkImplementation(
             context,
@@ -43,13 +44,13 @@ namespace proto
         // Devuelve una nueva ProtoObjectCell que es una copia de la actual,
         // pero con la cadena de herencia extendida.
         return reinterpret_cast<ProtoObjectCell*>(
-			new(context) ProtoObjectCellImplementation(
-	            context,
-    	        newParentLink,
-        	    this->mutable_ref, // Se conservan las demás propiedades.
-            	this->attributes
-        	)
-		);
+            new(context) ProtoObjectCellImplementation(
+                context,
+                newParentLink,
+                this->mutable_ref, // Se conservan las demás propiedades.
+                this->attributes
+            )
+        );
     }
 
     ProtoObject* ProtoObjectCellImplementation::implAsObject(ProtoContext* context)
@@ -102,13 +103,14 @@ namespace proto
         return p.asHash.hash;
     }
 
-    
 
-    ProtoObject* ProtoObjectCell::asObject(ProtoContext* context) {
+    ProtoObject* ProtoObjectCell::asObject(ProtoContext* context)
+    {
         return nullptr;
     }
 
-    unsigned long ProtoObjectCell::getHash(ProtoContext* context) {
+    unsigned long ProtoObjectCell::getHash(ProtoContext* context)
+    {
         return 0;
     }
 } // namespace proto

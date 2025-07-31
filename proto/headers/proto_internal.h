@@ -197,6 +197,8 @@ namespace proto
         return reinterpret_cast<const Impl*>(ptr);
     }
 
+    unsigned long generate_mutable_ref();
+
     class Cell
     {
     public:

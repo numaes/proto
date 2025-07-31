@@ -14,7 +14,8 @@
 
 namespace proto
 {
-    uint64_t generate_mutable_ref() {
+    uint64_t generate_mutable_ref()
+    {
         // 'thread_local' asegura que cada hilo tenga su propio generador de números,
         // lo que es crucial para la seguridad en entornos multihilo.
         // Se siembra con std::random_device para una aleatoriedad de alta calidad.
@@ -23,7 +24,8 @@ namespace proto
         uint64_t id = 0;
         // Nos aseguramos de que el ID generado nunca sea 0,
         // ya que 0 está reservado para los objetos inmutables.
-        while (id == 0) {
+        while (id == 0)
+        {
             id = generator();
         }
         return id;
@@ -118,7 +120,7 @@ namespace proto
         if (this->thread)
         {
             newCell = ((ProtoThreadImplementation*)(this->thread))->implAllocCell();
-            ::new (newCell) Cell(this);
+            ::new(newCell) Cell(this);
             newCell = static_cast<Cell*>(newCell);
             this->allocatedCellsCount++;
             this->checkCellsCount();
@@ -129,7 +131,7 @@ namespace proto
             // Esto es probablemente un remanente de código antiguo y podría ser una fuente de fugas de memoria.
             // Todas las asignaciones de celdas deberían pasar por el gestor de memoria del espacio.
             void* newChunk = std::malloc(sizeof(BigCell));
-            ::new (newChunk) Cell(this);
+            ::new(newChunk) Cell(this);
             newCell = static_cast<Cell*>(newChunk);
         }
 
@@ -220,7 +222,7 @@ namespace proto
 
         while (*currentChar)
         {
-            charList = (ProtoList*) charList->appendLast(this, this->fromUTF8Char(currentChar));
+            charList = (ProtoList*)charList->appendLast(this, this->fromUTF8Char(currentChar));
 
             // Avanzar el puntero según el número de bytes del carácter UTF-8
             if ((*currentChar & 0x80) == 0) currentChar += 1;

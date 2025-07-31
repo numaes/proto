@@ -267,5 +267,4 @@ namespace proto
     {
         return context->thread;
     }
-
 } // namespace proto

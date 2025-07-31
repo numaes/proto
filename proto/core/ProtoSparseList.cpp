@@ -78,7 +78,8 @@ namespace proto
             if (this->current && this->current->next)
             {
                 // Si hay un subárbol derecho, el siguiente es el primer elemento de ese subárbol.
-                return dynamic_cast<ProtoSparseListIteratorImplementation*>(this->current->next->implGetIterator(context));
+                return dynamic_cast<ProtoSparseListIteratorImplementation*>(this->current->next->
+                    implGetIterator(context));
             }
             if (this->queue)
             {
@@ -284,8 +285,9 @@ namespace proto
         return PROTO_NONE;
     }
 
-    ProtoSparseListImplementation* ProtoSparseListImplementation::implSetAt(ProtoContext* context, const unsigned long index,
-                                                          ProtoObject* value)
+    ProtoSparseListImplementation* ProtoSparseListImplementation::implSetAt(
+        ProtoContext* context, const unsigned long index,
+        ProtoObject* value)
     {
         ProtoSparseListImplementation* newNode;
 
@@ -298,7 +300,8 @@ namespace proto
         if (index < this->index)
         {
             ProtoSparseListImplementation* new_prev = this->previous
-                                                          ? dynamic_cast<ProtoSparseListImplementation*>(this->previous->
+                                                          ? dynamic_cast<ProtoSparseListImplementation*>(this->previous
+                                                              ->
                                                               implSetAt(context, index, value))
                                                           : new(context) ProtoSparseListImplementation(
                                                               context, index, value);
@@ -328,7 +331,8 @@ namespace proto
         return rebalance(context, newNode);
     }
 
-    ProtoSparseListImplementation* ProtoSparseListImplementation::implRemoveAt(ProtoContext* context, const unsigned long index)
+    ProtoSparseListImplementation* ProtoSparseListImplementation::implRemoveAt(
+        ProtoContext* context, const unsigned long index)
     {
         if (this->value == PROTO_NONE && this->count == 0)
         {
