@@ -586,7 +586,7 @@ namespace proto
         );
 
         long unsigned int getHash(proto::ProtoContext*);
-        proto::ProtoObject* asObject(proto::ProtoContext*);
+        ProtoObject* asObject(proto::ProtoContext*);
         void finalize(ProtoContext* context);
 
         void processReferences(

@@ -14,6 +14,8 @@
 
 namespace proto
 {
+	class ProtoStringIterator;
+	class ProtoTupleIterator;
 
 	typedef int BOOLEAN;
 
@@ -126,6 +128,16 @@ namespace proto
 		bool isDate(ProtoContext *context);
 		bool isTimestamp(ProtoContext *context);
 		bool isTimeDelta(ProtoContext *context);
+
+		ProtoList * asList(ProtoContext *context);
+		ProtoListIterator * asListIterator(ProtoContext *context);
+		ProtoTuple * asTuple(ProtoContext *context);
+		ProtoTupleIterator * asTupleIterator(ProtoContext *context);
+		ProtoString * asString(ProtoContext *context);
+		ProtoStringIterator * asStringIterator(ProtoContext *context);
+		ProtoSparseList * asSparseList(ProtoContext *context);
+		ProtoSparseListIterator * asSparseListIterator(ProtoContext *context);
+
 	};
 
 

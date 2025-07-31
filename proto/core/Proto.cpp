@@ -471,6 +471,113 @@ char ProtoObject::asByte(ProtoContext* context) {
     return p.byteValue.byteData;
 }
 
+ProtoList* ProtoObject::asList(ProtoContext* context)
+{
+    ProtoObjectPointer p{};
+    p.oid.oid = (ProtoObject*)this;
+    if (p.op.pointer_tag == POINTER_TAG_LIST)
+    {
+        p.op.pointer_tag = POINTER_TAG_OBJECT;
+        return reinterpret_cast<ProtoList*>(p.oc.objectCell);
+    }
+
+    return nullptr;
+}
+
+    ProtoListIterator* ProtoObject::asListIterator(ProtoContext* context)
+{
+    ProtoObjectPointer p{};
+    p.oid.oid = (ProtoObject*)this;
+    if (p.op.pointer_tag == POINTER_TAG_LIST_ITERATOR)
+    {
+        p.op.pointer_tag = POINTER_TAG_OBJECT;
+        return reinterpret_cast<ProtoListIterator*>(p.oc.objectCell);
+    }
+
+    return nullptr;
+}
+
+    ProtoTuple* ProtoObject::asTuple(ProtoContext* context)
+{
+    ProtoObjectPointer p{};
+    p.oid.oid = (ProtoObject*)this;
+    if (p.op.pointer_tag == POINTER_TAG_TUPLE)
+    {
+        p.op.pointer_tag = POINTER_TAG_OBJECT;
+        return reinterpret_cast<ProtoTuple*>(p.oc.objectCell);
+    }
+
+    return nullptr;
+}
+
+    ProtoTupleIterator* ProtoObject::asTupleIterator(ProtoContext* context)
+{
+    ProtoObjectPointer p{};
+    p.oid.oid = (ProtoObject*)this;
+    if (p.op.pointer_tag == POINTER_TAG_TUPLE_ITERATOR)
+    {
+        p.op.pointer_tag = POINTER_TAG_OBJECT;
+        return reinterpret_cast<ProtoTupleIterator*>(p.oc.objectCell);
+    }
+
+    return nullptr;
+}
+
+    ProtoString* ProtoObject::asString(ProtoContext* context)
+{
+    ProtoObjectPointer p{};
+    p.oid.oid = (ProtoObject*)this;
+    if (p.op.pointer_tag == POINTER_TAG_STRING)
+    {
+        p.op.pointer_tag = POINTER_TAG_OBJECT;
+        return reinterpret_cast<ProtoString*>(p.oc.objectCell);
+    }
+
+    return nullptr;
+}
+
+    ProtoStringIterator* ProtoObject::asStringIterator(ProtoContext* context)
+{
+    ProtoObjectPointer p{};
+    p.oid.oid = (ProtoObject*)this;
+    if (p.op.pointer_tag == POINTER_TAG_STRING_ITERATOR)
+    {
+        p.op.pointer_tag = POINTER_TAG_OBJECT;
+        return reinterpret_cast<ProtoStringIterator*>(p.oc.objectCell);
+    }
+
+    return nullptr;
+}
+
+    ProtoSparseList* ProtoObject::asSparseList(ProtoContext* context)
+{
+    ProtoObjectPointer p{};
+    p.oid.oid = (ProtoObject*)this;
+    if (p.op.pointer_tag == POINTER_TAG_SPARSE_LIST)
+    {
+        p.op.pointer_tag = POINTER_TAG_OBJECT;
+        return reinterpret_cast<ProtoSparseList*>(p.oc.objectCell);
+    }
+
+    return nullptr;
+}
+
+    ProtoSparseListIterator* ProtoObject::asSparseListIterator(ProtoContext* context)
+{
+    ProtoObjectPointer p{};
+    p.oid.oid = (ProtoObject*)this;
+    if (p.op.pointer_tag == POINTER_TAG_SPARSE_LIST_ITERATOR)
+    {
+        p.op.pointer_tag = POINTER_TAG_OBJECT;
+        return reinterpret_cast<ProtoSparseListIterator*>(p.oc.objectCell);
+    }
+
+    return nullptr;
+}
+
+
+
+
 unsigned long ProtoObject::getHash(ProtoContext* context) {
     ProtoObjectPointer p;
     p.oid.oid = this;

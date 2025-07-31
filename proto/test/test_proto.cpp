@@ -312,10 +312,10 @@ void test_gc_stress(proto::ProtoContext& c) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     // Verify that the objects kept in the root list are still valid.
-    proto::ProtoList* first_kept = (proto::ProtoList*) root_list->getAt(&c, 0);
+    proto::ProtoList* first_kept = root_list->getAt(&c, 0)->asList(&c);
     ASSERT(first_kept->getAt(&c, 0)->asInteger(&c) == 0, "First persistent object is still valid after GC");
 
-    proto::ProtoList* last_kept = (proto::ProtoList*) root_list->getAt(&c, (iterations / keep_every) - 1);
+    proto::ProtoList* last_kept = root_list->getAt(&c, (iterations / keep_every) - 1)->asList(&c);
     ASSERT(last_kept->getAt(&c, 0)->asInteger(&c) == iterations - keep_every, "Last persistent object is still valid after GC");
 
     printf("   GC Stress Test completed without failures.\n");
