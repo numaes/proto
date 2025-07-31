@@ -500,6 +500,7 @@ namespace proto
 		ProtoTuple* newTuple();
 		ProtoTuple* newTupleFromList(ProtoList* sourceList);
 		ProtoSparseList* newSparseList();
+		ProtoObject* newObject(bool mutableObject = false);
 
 		Cell* allocCell();
 

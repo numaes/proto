@@ -251,7 +251,7 @@ void test_prototypes_and_inheritance(proto::ProtoContext& c) {
     printf("\n--- Testing ProtoObjectCell (Prototypes and Inheritance) ---\n");
 
     // 1. Base object and attributes
-    proto::ProtoObject* base_proto = (proto::ProtoObject*) new(&c) proto::ProtoObjectCellImplementation(&c, nullptr, 0, (proto::ProtoSparseListImplementation*) c.newSparseList());
+    proto::ProtoObject* base_proto = c.newObject();
     proto::ProtoString* version_attr = c.fromUTF8String("version");
     proto::ProtoString* name_attr = c.fromUTF8String("name");
 

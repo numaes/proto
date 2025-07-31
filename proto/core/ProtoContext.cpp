@@ -10,9 +10,25 @@
 #include <thread>
 #include <cstdlib>   // Para std::malloc
 #include <algorithm> // Para std::max
+#include <random>
 
 namespace proto
 {
+    uint64_t generate_mutable_ref() {
+        // 'thread_local' asegura que cada hilo tenga su propio generador de números,
+        // lo que es crucial para la seguridad en entornos multihilo.
+        // Se siembra con std::random_device para una aleatoriedad de alta calidad.
+        thread_local std::mt19937_64 generator(std::random_device{}());
+
+        uint64_t id = 0;
+        // Nos aseguramos de que el ID generado nunca sea 0,
+        // ya que 0 está reservado para los objetos inmutables.
+        while (id == 0) {
+            id = generator();
+        }
+        return id;
+    }
+
     // ADVERTENCIA: Estas variables globales pueden causar problemas en un entorno
     // multihilo y dificultan el razonamiento del estado. Considera encapsularlas
     // dentro de la clase ProtoSpace.
@@ -243,6 +259,17 @@ namespace proto
     {
         return new(this) ProtoSparseListImplementation(this);
     }
+
+    ProtoObject* ProtoContext::newObject(bool mutableObject)
+    {
+        return new(this) ProtoObjectCellImplementation(
+            this,
+            nullptr,
+            mutableObject ? generate_mutable_ref() : 0,
+            nullptr
+        );
+    }
+
 
     // --- Otros Constructores (from...) ---
 

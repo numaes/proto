@@ -18,7 +18,8 @@ namespace proto
         ParentLinkImplementation* parent,
         unsigned long mutable_ref,
         ProtoSparseListImplementation* attributes
-    ) : Cell(context), parent(parent), mutable_ref(mutable_ref), attributes(attributes)
+    ) : Cell(context), parent(parent), mutable_ref(mutable_ref),
+        attributes(attributes ? attributes: new(context) ProtoSparseListImplementation(context))
     {
         // El cuerpo del constructor ahora puede estar vacío.
     }

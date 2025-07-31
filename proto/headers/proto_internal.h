@@ -38,6 +38,11 @@ namespace proto
 
         struct
         {
+            ProtoObjectCellImplementation* objectCell;
+        } oc;
+
+        struct
+        {
             unsigned long pointer_tag : 4;
             unsigned long embedded_type : 4;
             unsigned long value : 56;
@@ -132,8 +137,8 @@ namespace proto
     };
 
     // Pointer tags
-#define POINTER_TAG_EMBEDEDVALUE            0
-#define POINTER_TAG_OBJECT                  1
+#define POINTER_TAG_OBJECT                  0
+#define POINTER_TAG_EMBEDEDVALUE            1
 #define POINTER_TAG_LIST                    2
 #define POINTER_TAG_LIST_ITERATOR           3
 #define POINTER_TAG_TUPLE                   4
