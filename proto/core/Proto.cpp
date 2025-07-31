@@ -390,7 +390,9 @@ ProtoObject *ProtoObject::addParent(ProtoContext *context, ProtoObjectCell *newP
             currentParent = currentParent->parent;
         };
 
-        ParentLinkImplementation *newParentLink = oc->parent;
+        ParentLinkImplementation *newParentLink = new(context) ParentLinkImplementation(
+            context, oc->parent, static_cast<ProtoObjectCellImplementation*>((ProtoObject *) newParent)
+        );
 
         return (new(context) ProtoObjectCellImplementation(
             context,
