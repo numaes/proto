@@ -218,7 +218,7 @@ namespace proto
             if (thisElementHash > tupleElementHash)
                 return 1;
             else if (thisElementHash < tupleElementHash)
-                return 1;
+                return -1;
         }
         if (i > thisSize)
             return -1;
