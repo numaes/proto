@@ -243,8 +243,11 @@ namespace proto
         unsigned long getHash(ProtoContext* context) { return Cell::getHash(context); };
         ProtoObject* asObject(ProtoContext* context) { return Cell::asObject(context); };
 
-        char undetermined[64];
+        void * undetermined[6];
     };
+
+    static_assert(sizeof(BigCell) == 64, "El tamaño de la clase BigCell debe ser exactamente 64 bytes.");
+
 
     class ParentLinkImplementation : public Cell, public ParentLink
     {

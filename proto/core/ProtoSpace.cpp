@@ -27,7 +27,7 @@ namespace proto {
 #define KB                              1024
 #define MB                              1024 * KB
 #define GB                              1024 * MB
-#define MAX_HEAP_SIZE                   256 * MB
+#define MAX_HEAP_SIZE                   512 * MB
 
 std::mutex		ProtoSpace::globalMutex;
 
@@ -324,7 +324,7 @@ ProtoSpace::ProtoSpace(
 		nullptr
     );
 
-    // Wait till main thread and gcThread end
+    // Wait till the main thread and gcThread end
 
     mainThread->join(creationContext);
     this->gcThread->join();
@@ -399,6 +399,7 @@ void ProtoSpace::deallocThread(ProtoContext *context, ProtoThread *thread) {
 
 Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
     Cell *newBlock = nullptr;
+    Cell *previousBlock = nullptr;
 
     bool oldValue = false;
     while (this->gcLock.compare_exchange_strong(
@@ -435,6 +436,11 @@ Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
                 }
             }
             else {
+                printf(
+                    "\nmalloc of %d bytes, from current %d already allocated\n",
+                    toAllocBytes,
+                    this->heapSize
+                );
                 BigCell *newBlocks = static_cast<BigCell *>(malloc(toAllocBytes));
                 if (!newBlocks) {
                     printf("\nPANIC ERROR: Not enough MEMORY! Exiting ...\n");
@@ -469,7 +475,8 @@ Cell *ProtoSpace::getFreeCells(ProtoThread * currentThread){
             this->freeCells = newBlock->nextCell;
 
             this->freeCellsCount -= 1;
-            newBlock->nextCell = nullptr;
+            newBlock->nextCell = previousBlock;
+            previousBlock = newBlock;
         }
     }
 
