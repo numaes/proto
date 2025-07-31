@@ -492,7 +492,7 @@ namespace proto
         {
             int indirectSize = 0;
             int levelCount = 0;
-            while (indirectPointers->getSize(context) > TUPLE_SIZE)
+            do
             {
                 nextLevel = new(context) ProtoListImplementation(context);
                 levelCount++;
@@ -530,7 +530,7 @@ namespace proto
 
                 lastLevel = indirectPointers;
                 indirectPointers = nextLevel;
-            };
+            } while (nextLevel->getSize(context) > 1);
         }
 
         TupleDictionary *currentRoot, *newRoot;
