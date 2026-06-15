@@ -56,6 +56,7 @@ It is designed for developers who need to script complex application behavior, c
 - ✅ **protoPython Runtime** - GIL-free Python 3.14 environment built on protoCore (Phase 6 Complete)
 - ✅ **protoST Runtime** - Actor-native Smalltalk-80 runtime built on protoCore (cooperative yield, DAP debugger)
 - ✅ **protoClojure Runtime** - Clojure-flavoured language on protoCore (160 conformance fixtures, 5 ms cold-start, actor primitives, ~5M msg/s upper bound)
+- ✅ **protoCpp Examples & Benchmarks** - protoCore driven directly from C++20, with a benchmark suite reproducing protoPython's: shows that protoCpp beats CPython on 5 of 6 benchmarks, separating the kernel cost from the language-layer cost
 
 ### Community & Open Review
 
@@ -64,9 +65,9 @@ Beyond formal audits, this project is officially **open for Community Review and
 We welcome architectural feedback, edge-case identification, and performance critiques. While the core vision is firm, the path to perfection is a collective effort of the "Swarm."
 ---
 
-## The protoCore Ecosystem: protoJS, protoPython, protoST & protoClojure
+## The protoCore Ecosystem: protoJS, protoPython, protoST, protoClojure & protoCpp
 
-protoCore serves as the robust foundation for several high-performance runtimes, demonstrating its versatility as a universal object system for the AI-augmented engineering era. Four runtimes are built on it today — a JavaScript engine, a GIL-free Python environment, an actor-native Smalltalk, and a Clojure-flavoured Lisp — so whichever one you arrive through, the same core powers all of them.
+protoCore serves as the robust foundation for several high-performance runtimes, demonstrating its versatility as a universal object system for the AI-augmented engineering era. Four language runtimes are built on it today — a JavaScript engine, a GIL-free Python environment, an actor-native Smalltalk, and a Clojure-flavoured Lisp — joined by a fifth project, protoCpp, that drives the kernel directly from C++ and publishes the resulting performance ceiling. Whichever one you arrive through, the same core powers all of them.
 
 ### 1. protoJS: Elite JavaScript Performance
 **protoJS** is a modern JavaScript runtime built entirely on protoCore. By replacing the standard QuickJS runtime with protoCore's immutability and concurrency primitives, it achieves industry-leading performance.
@@ -103,7 +104,16 @@ protoCore serves as the robust foundation for several high-performance runtimes,
 - ✅ **Atoms / futures / promises** — all backed by protoCore's `setAttributeIfEqual` CAS and `newThread` (no `std::thread` directly; full GC quorum participation)
 - ✅ **160 conformance fixtures** + dated benchmark vs Babashka 1.4 — within 25% on compute-bound recursion, ~3× faster on `loop`/`recur` tight arithmetic
 
-**Learn More:** See the [protoJS project](../protoJS/), [protoPython project](../protoPython/), [protoST project](../protoST/), and [protoClojure project](https://github.com/gamarino/protoClojure) for complete documentation.
+### 5. protoCpp: The Kernel Performance Ceiling
+**protoCpp** is the most direct way to drive protoCore: plain C++20 against the kernel's public header, with no language runtime, no bytecode interpreter, no symbol-table dispatch. It exists for two reasons: as a reference for embedders who want to call protoCore from a C++ application, and as a quantitative answer to "how much of the cost in the language runtimes is the kernel, and how much is the language layer?"
+
+**Highlights:**
+- ✅ **Beats CPython on 5 of 6 benchmarks** — on a Ryzen 5500U laptop, protoCpp runs `int_sum_loop`, `attr_lookup`, `list_append_loop`, `str_concat_loop`, and `multithread_cpu` 1.7-3.1× faster than CPython 3.x. (`call_recursion` is the lone CPython win on the public API; the embedder-side SmallInt fast-path closes it.)
+- ✅ **6 short examples** — atom CAS, structural sharing, OS threads with GC quorum, a hand-built actor system. ≤60 lines each.
+- ✅ **12 paired benchmarks** — every workload has a pure C++ floor (no protoCore link) and a protoCpp version doing the same work through the kernel. The ratio is the protoCore cost.
+- ✅ **Embedder-side SmallInt fast-path benches** — using the inline `proto::isSmallInt` / `proto::makeSmallInt` helpers, shrinking the kernel cost by ~44% on call-heavy workloads. The same pattern protoPython's INPLACE_ADD opcodes use, demonstrated in user C++.
+
+**Learn More:** See the [protoJS project](../protoJS/), [protoPython project](../protoPython/), [protoST project](../protoST/), [protoClojure project](https://github.com/gamarino/protoClojure), and [protoCpp project](https://github.com/gamarino/protoCpp) for complete documentation.
 
 
 ---
