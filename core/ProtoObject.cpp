@@ -1372,18 +1372,58 @@ namespace proto
         ProtoObjectPointer pa{}; pa.oid = this;
         if (pa.op.pointer_tag != POINTER_TAG_OBJECT) return nullptr;
         auto oc = toImpl<const ProtoObjectCell>(this);
+
+        // Resolve to the immutable snapshot. For immutable objects
+        // snapshot == this; for mutables it's the snapshot pointer
+        // currently published in mutableRoot. The per-thread
+        // AttributeCache keys on (snapshot, name) — see getAttribute()
+        // above — so once we have the snapshot we can short-circuit
+        // the AVL probe on repeat reads.
+        const ProtoObject* snapshot = this;
         const ProtoSparseListImplementation* attrs = oc->attributes;
         if (oc->mutable_ref > 0) {
             const ProtoObject* ss = resolveMutableSnapshot(context, oc->mutable_ref);
             if (ss != nullptr) {
+                snapshot = ss;
                 attrs = toImpl<const ProtoObjectCell>(ss)->attributes;
             }
         }
-        // Direct IMPL lookup. Preserves the nullptr-for-absent contract:
+
+        // AttributeCache lookup on (snapshot, name). Same hash / lookup /
+        // populate pattern as getAttribute(): result==nullptr is a
+        // legitimate cached fact (confirmed-missing), result!=nullptr
+        // is the cached own-attribute value. GC pinning is handled by
+        // ProtoThreadExtension::processReferences, which traces all
+        // three slots of every cache entry.
+        AttributeCacheEntry* cache = nullptr;
+        if (context->thread) {
+            auto* threadImpl = toImpl<ProtoThreadImplementation>(context->thread);
+            if (threadImpl->extension) {
+                cache = threadImpl->extension->attributeCache;
+            }
+        }
+
+        unsigned long hash_idx = 0;
+        if (cache) {
+            hash_idx = ((reinterpret_cast<uintptr_t>(snapshot) >> 6) ^
+                          (reinterpret_cast<uintptr_t>(name) >> 4)) % THREAD_CACHE_DEPTH;
+            if (cache[hash_idx].object == snapshot && cache[hash_idx].name == name) {
+                return cache[hash_idx].result;
+            }
+        }
+
+        // Miss — walk the AVL. Preserves the nullptr-for-absent contract:
         // an attribute legitimately set to PROTO_NONE (Python's
         // `x = None`) returns PROTO_NONE here, not nullptr — callers
         // that want existence semantics use hasOwnAttribute.
-        return attrs ? attrs->implGetAt(context, reinterpret_cast<uintptr_t>(name)) : nullptr;
+        const ProtoObject* result = attrs
+            ? attrs->implGetAt(context, reinterpret_cast<uintptr_t>(name))
+            : nullptr;
+
+        if (cache) {
+            cache[hash_idx] = {snapshot, result, name, nullptr};
+        }
+        return result;
     }
 
     unsigned long ProtoObject::getHash(ProtoContext* context) const {
