@@ -55,6 +55,7 @@ It is designed for developers who need to script complex application behavior, c
 - ✅ **protoJS Runtime** - Complete JavaScript runtime built on protoCore (Phase 6 Complete)
 - ✅ **protoPython Runtime** - GIL-free Python 3.14 environment built on protoCore (Phase 6 Complete)
 - ✅ **protoST Runtime** - Actor-native Smalltalk-80 runtime built on protoCore (cooperative yield, DAP debugger)
+- ✅ **protoClojure Runtime** - Clojure-flavoured language on protoCore (160 conformance fixtures, 5 ms cold-start, actor primitives, ~5M msg/s upper bound)
 
 ### Community & Open Review
 
@@ -63,9 +64,9 @@ Beyond formal audits, this project is officially **open for Community Review and
 We welcome architectural feedback, edge-case identification, and performance critiques. While the core vision is firm, the path to perfection is a collective effort of the "Swarm."
 ---
 
-## The protoCore Ecosystem: protoJS, protoPython & protoST
+## The protoCore Ecosystem: protoJS, protoPython, protoST & protoClojure
 
-protoCore serves as the robust foundation for several high-performance runtimes, demonstrating its versatility as a universal object system for the AI-augmented engineering era. Three complete runtimes are built on it today — a JavaScript engine, a GIL-free Python environment, and an actor-native Smalltalk — so whichever one you arrive through, the same core powers all three.
+protoCore serves as the robust foundation for several high-performance runtimes, demonstrating its versatility as a universal object system for the AI-augmented engineering era. Four runtimes are built on it today — a JavaScript engine, a GIL-free Python environment, an actor-native Smalltalk, and a Clojure-flavoured Lisp — so whichever one you arrive through, the same core powers all of them.
 
 ### 1. protoJS: Elite JavaScript Performance
 **protoJS** is a modern JavaScript runtime built entirely on protoCore. By replacing the standard QuickJS runtime with protoCore's immutability and concurrency primitives, it achieves industry-leading performance.
@@ -92,7 +93,17 @@ protoCore serves as the robust foundation for several high-performance runtimes,
 - ✅ **Real Parallelism** - managed `ProtoThread` worker pool over protoCore's GIL-free concurrency
 - ✅ **Tooling From Day One** - interactive REPL and a Debug Adapter Protocol (DAP) debugger for VS Code
 
-**Learn More:** See the [protoJS project](../protoJS/), [protoPython project](../protoPython/), and [protoST project](../protoST/) for complete documentation.
+### 4. protoClojure: Cold-Start Clojure on the Kernel
+**protoClojure** is a Clojure-flavoured Lisp implemented directly on protoCore — same persistent collections, same GIL-free threads, same per-thread attribute cache. It is the *immutable-by-default, REPL-first* face of the family, and the testbed for the engineering-principles checklist (no std-in-protoCore, automaticLocals from day one, ProtoContext per invocation).
+
+**Highlights:**
+- ✅ **5 ms cold-start** — vs ~1.5-2 s on JVM Clojure
+- ✅ **LargeInteger by default** — `(factorial 100)` runs without thought; Babashka fails on `(factorial 21)`
+- ✅ **Actor system on the kernel** — `actor` / `send` / `send-h` / `send-l` with 3 priority bands, single-method invariant, configurable worker pool, ~5M msg/s upper bound on a single actor
+- ✅ **Atoms / futures / promises** — all backed by protoCore's `setAttributeIfEqual` CAS and `newThread` (no `std::thread` directly; full GC quorum participation)
+- ✅ **160 conformance fixtures** + dated benchmark vs Babashka 1.4 — within 25% on compute-bound recursion, ~3× faster on `loop`/`recur` tight arithmetic
+
+**Learn More:** See the [protoJS project](../protoJS/), [protoPython project](../protoPython/), [protoST project](../protoST/), and [protoClojure project](https://github.com/gamarino/protoClojure) for complete documentation.
 
 
 ---
